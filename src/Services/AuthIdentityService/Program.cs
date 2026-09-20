@@ -1,6 +1,7 @@
 using AuthIdentityService.Contracts;
 using AuthIdentityService.Data;
 using AuthIdentityService.Data.Entities;
+using KJWebsite.BuildingBlocks;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -60,17 +61,17 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "AuthIdent
    .WithSummary("Auth service health check")
    .WithTags("System");
 
-app.MapPost("/api/v1/auth/register", async (LegacyRegistrationRequest payload, AuthDbContext db) =>
+app.MapPost("/api/v1/auth/register", async (HttpContext context, LegacyRegistrationRequest payload, AuthDbContext db) =>
 {
     if (string.IsNullOrWhiteSpace(payload.Email) || string.IsNullOrWhiteSpace(payload.Password))
     {
-        return Results.BadRequest(ApiError("VALIDATION_ERROR", "email and password are required."));
+        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "email and password are required.");
     }
 
     var email = payload.Email.Trim().ToLowerInvariant();
     if (await db.Users.AnyAsync(u => u.Email == email))
     {
-        return Results.BadRequest(ApiError("VALIDATION_ERROR", "email already exists."));
+        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "email already exists.");
     }
 
     var role = string.IsNullOrWhiteSpace(payload.Roles) ? "editor" : payload.Roles.Split(',')[0].Trim().ToLowerInvariant();
@@ -115,13 +116,13 @@ app.MapPost("/api/v1/auth/register", async (LegacyRegistrationRequest payload, A
 .WithDescription("Creates a new user. Role defaults to 'editor'. Includes optional legacy profile fields (name, gender, address, etc.).")
 .WithTags("Auth");
 
-app.MapPost("/api/v1/auth/login", async (LoginRequest payload, AuthDbContext db) =>
+app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest payload, AuthDbContext db) =>
 {
     var email = payload.Email.Trim().ToLowerInvariant();
     var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email && u.Password == payload.Password && u.Status == "active");
     if (user is null)
     {
-        return Results.Json(ApiError("UNAUTHORIZED", "Invalid credentials."), statusCode: StatusCodes.Status401Unauthorized);
+        return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid credentials.");
     }
 
     var token = $"atk_{Guid.NewGuid():N}";
@@ -152,18 +153,18 @@ app.MapPost("/api/v1/auth/login", async (LoginRequest payload, AuthDbContext db)
 .WithDescription("Authenticates a user and returns an `access_token` (in-memory, 15 min) and a `refresh_token` (persisted, 30 days). Dev seed: `admin@site.org` / `admin123`.")
 .WithTags("Auth");
 
-app.MapPost("/api/v1/auth/refresh", async (RefreshTokenRequest payload, AuthDbContext db) =>
+app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequest payload, AuthDbContext db) =>
 {
     var refreshRow = await db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == payload.RefreshToken && r.RevokedAt == null && r.ExpiresAt > DateTimeOffset.UtcNow);
     if (refreshRow is null)
     {
-        return Results.Json(ApiError("UNAUTHORIZED", "Invalid refresh token."), statusCode: StatusCodes.Status401Unauthorized);
+        return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid refresh token.");
     }
 
     var user = await db.Users.FirstOrDefaultAsync(u => u.Id == refreshRow.UserId && u.Status == "active");
     if (user is null)
     {
-        return Results.Json(ApiError("UNAUTHORIZED", "Invalid refresh token."), statusCode: StatusCodes.Status401Unauthorized);
+        return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid refresh token.");
     }
 
     refreshRow.RevokedAt = DateTimeOffset.UtcNow;
@@ -196,12 +197,12 @@ app.MapPost("/api/v1/auth/refresh", async (RefreshTokenRequest payload, AuthDbCo
 .WithDescription("Rotates the refresh token and issues a new access token. The old refresh token is immediately revoked.")
 .WithTags("Auth");
 
-app.MapPost("/api/v1/auth/logout", async (RefreshTokenRequest payload, AuthDbContext db) =>
+app.MapPost("/api/v1/auth/logout", async (HttpContext context, RefreshTokenRequest payload, AuthDbContext db) =>
 {
     var refreshRow = await db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == payload.RefreshToken && r.RevokedAt == null);
     if (refreshRow is null)
     {
-        return Results.Json(ApiError("UNAUTHORIZED", "Invalid refresh token."), statusCode: StatusCodes.Status401Unauthorized);
+        return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid refresh token.");
     }
 
     refreshRow.RevokedAt = DateTimeOffset.UtcNow;
@@ -218,26 +219,26 @@ app.MapGet("/api/v1/auth/me", async (HttpRequest request, AuthDbContext db) =>
 {
     if (!request.Headers.TryGetValue("Authorization", out var authHeader))
     {
-        return Results.Json(ApiError("UNAUTHORIZED", "Missing Authorization header."), statusCode: StatusCodes.Status401Unauthorized);
+        return ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Missing Authorization header.");
     }
 
     const string bearerPrefix = "Bearer ";
     var raw = authHeader.ToString();
     if (!raw.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
     {
-        return Results.Json(ApiError("UNAUTHORIZED", "Invalid Authorization header."), statusCode: StatusCodes.Status401Unauthorized);
+        return ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid Authorization header.");
     }
 
     var token = raw[bearerPrefix.Length..].Trim();
     if (!accessTokens.TryGetValue(token, out var userId))
     {
-        return Results.Json(ApiError("UNAUTHORIZED", "Invalid token."), statusCode: StatusCodes.Status401Unauthorized);
+        return ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid token.");
     }
 
     var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
     if (user is null)
     {
-        return Results.Json(ApiError("UNAUTHORIZED", "Invalid token."), statusCode: StatusCodes.Status401Unauthorized);
+        return ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid token.");
     }
 
     return Results.Ok(new
@@ -275,5 +276,3 @@ app.MapGet("/api/v1/auth/me", async (HttpRequest request, AuthDbContext db) =>
 .WithTags("Auth");
 
 app.Run();
-
-static object ApiError(string code, string message) => new { error = new { code, message } };

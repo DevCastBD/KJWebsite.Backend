@@ -2,7 +2,7 @@
 - Language(s): C# (`net10.0`)
 - Framework(s): ASP.NET Core Minimal APIs, YARP 2.2, EF Core 10, Scalar 2.14
 - Package manager: .NET CLI; tool manifest includes `dotnet-ef` 10.0.8
-- Test: none configured; intended command once tests exist: `dotnet test KJWebsite.Backend.slnx`
+- Test: xUnit unit tests under `tests/UnitTests`; run `dotnet test KJWebsite.Backend.slnx`
 - Lint/format: root `.editorconfig`; verify with `dotnet format KJWebsite.Backend.slnx --verify-no-changes --no-restore`
 - Size tier: standard · 166 tracked files · recorded 2026-09-20
 - Code-intelligence MCP: none

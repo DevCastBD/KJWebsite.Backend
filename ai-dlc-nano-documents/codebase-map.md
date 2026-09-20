@@ -1,5 +1,5 @@
 # Codebase Map
-<!-- generated: 2026-09-20 @ 7aac7bb · tier: standard · coverage: overview-only -->
+<!-- generated: 2026-09-20 @ caf8805 · tier: standard · coverage: overview-only -->
 
 ## Do not read in full
 | File / path | Size | Why | Instead |
@@ -19,7 +19,9 @@
 - auth (`src/Services/AuthIdentityService/**`)
   purpose: registration and token endpoints with SQLite/EF Core; entry: `Program.cs`; migrations: `Migrations/`
 - shared (`src/BuildingBlocks/**`)
-  purpose: shared building blocks; currently a minimal placeholder project
+  purpose: Result, paging, language resolution, RFC 9457/legacy-compatible errors, and endpoint-filter base
+- tests (`tests/UnitTests/**`)
+  purpose: xUnit coverage for shared BuildingBlocks behavior; entry: `KJWebsite.BuildingBlocks.UnitTests.csproj`
 - contract and plans (`openapi.v1.yaml`, `PROJECT_CONTEXT.md`, `docs/**`)
   purpose: checked-in API contract, onboarding context, and source-of-truth plans
 - OpenAPI export (`tools/OpenApiExporter/**`)
@@ -33,6 +35,8 @@
 
 ## Cross-cutting
 - OpenAPI is served from each service; Scalar is mapped by its `Program.cs`.
+- Auth, CTA, and Content errors use the shared RFC 9457 factory, preserving the legacy nested `error` object.
+- Content resolves `?lang=`, then `Accept-Language`, then `en`; public list responses echo the result as `lang`.
 - Auth and CTA use `ConnectionStrings:AuthDb` / `ConnectionStrings:CtaDb`; both call `Database.Migrate()` at startup.
 - Gateway destinations are hard-coded localhost addresses.
 - Root `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props` govern the active solution; legacy snapshots are excluded.

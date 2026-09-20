@@ -25,3 +25,11 @@
 - 2026-09-20T19:49Z [Codex] 003-issue-7-build-configuration REVISED @fbe8885: added ContentService sealed-record fixes required by enabled analyzers
 - 2026-09-20T20:00Z [Codex] 003-issue-7-build-configuration PHASE CONSTRUCT→WRAP-UP @fbe8885: clean build, test, and format verification complete
 - 2026-09-20T20:00Z [Codex] 003-issue-7-build-configuration DONE @fbe8885: no commit, push, or tracker update requested
+- 2026-09-20T20:09Z [Codex] 004-issue-8-building-blocks CREATED @caf8805: fetched GitHub issue #8
+- 2026-09-20T20:10Z [Codex] 004-issue-8-building-blocks DECISION @caf8805: Problem Details plus legacy extension; fallback language; xUnit coverage confirmed
+- 2026-09-20T20:10Z [Codex] 004-issue-8-building-blocks PHASE CLARIFY→PLAN @caf8805: six-task implementation plan drafted
+- 2026-09-20T20:11Z [Codex] 004-issue-8-building-blocks DECISION @caf8805: plan approved; staying on current issue-8 branch (user confirmed)
+- 2026-09-20T20:11Z [Codex] 004-issue-8-building-blocks BRANCH @caf8805: staying on 8-feature-b0-7-populate-buildingblocks-problemdetails-result-paging-language-resolution (user confirmed)
+- 2026-09-20T20:11Z [Codex] 004-issue-8-building-blocks PHASE PLAN→CONSTRUCT @caf8805: plan and branch approved
+- 2026-09-20T20:30Z [Codex] 004-issue-8-building-blocks PHASE CONSTRUCT→WRAP-UP @caf8805: build, six unit tests, format, OpenAPI, and live endpoint checks passed
+- 2026-09-20T20:31Z [Codex] 004-issue-8-building-blocks DONE @caf8805: shared primitives adopted; no commit, push, or tracker update requested
