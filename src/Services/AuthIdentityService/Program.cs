@@ -18,15 +18,32 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
+var usePostgreSql = string.Equals(builder.Configuration["Database:Provider"], "PostgreSql", StringComparison.OrdinalIgnoreCase);
+var authConnectionString = builder.Configuration.GetConnectionString("AuthDb") ?? "Data Source=auth.db";
 builder.Services.AddDbContext<AuthDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("AuthDb") ?? "Data Source=auth.db"));
+{
+    if (usePostgreSql)
+    {
+        options.UseNpgsql(authConnectionString);
+        return;
+    }
+
+    options.UseSqlite(authConnectionString);
+});
 
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-    db.Database.Migrate();
+    if (usePostgreSql && builder.Configuration.GetValue<bool>("Database:EnsureCreated"))
+    {
+        db.Database.EnsureCreated();
+    }
+    else
+    {
+        db.Database.Migrate();
+    }
 
     if (!db.Users.Any(u => u.Email == "admin@site.org"))
     {
@@ -276,3 +293,8 @@ app.MapGet("/api/v1/auth/me", async (HttpRequest request, AuthDbContext db) =>
 .WithTags("Auth");
 
 app.Run();
+
+namespace AuthIdentityService
+{
+    public sealed class AuthIdentityServiceTestEntryPoint;
+}

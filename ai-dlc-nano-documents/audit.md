@@ -33,3 +33,11 @@
 - 2026-09-20T20:11Z [Codex] 004-issue-8-building-blocks PHASE PLAN→CONSTRUCT @caf8805: plan and branch approved
 - 2026-09-20T20:30Z [Codex] 004-issue-8-building-blocks PHASE CONSTRUCT→WRAP-UP @caf8805: build, six unit tests, format, OpenAPI, and live endpoint checks passed
 - 2026-09-20T20:31Z [Codex] 004-issue-8-building-blocks DONE @caf8805: shared primitives adopted; no commit, push, or tracker update requested
+- 2026-09-20T20:37Z [Codex] 005-issue-9-test-scaffold CREATED @055af92: issue #9 intake; test scaffold and endpoint smoke coverage
+- 2026-09-20T20:44Z [Codex] 005-issue-9-test-scaffold DECISION @055af92: test-only PostgreSQL config for Auth and CTA; default SQLite remains
+- 2026-09-20T20:44Z [Codex] 005-issue-9-test-scaffold DECISION @055af92: concrete handlers plus gateway health; no multi-service proxy orchestration
+- 2026-09-20T20:44Z [Codex] 005-issue-9-test-scaffold PHASE CLARIFY→PLAN @055af92: user confirmed recommended scope
+- 2026-09-20T20:54Z [Codex] 005-issue-9-test-scaffold BRANCH @055af92: retained current issue #9 branch (user confirmed)
+- 2026-09-20T20:54Z [Codex] 005-issue-9-test-scaffold PHASE PLAN→CONSTRUCT @055af92: plan approved by user
+- 2026-09-20T21:05Z [Codex] 005-issue-9-test-scaffold PAUSED @055af92: Docker unavailable; PostgreSQL-backed smoke tests cannot start
+- 2026-09-20T21:14Z [Codex] 005-issue-9-test-scaffold SIDE-EFFECT @d8b61b2: pushed test scaffold to origin issue #9 branch

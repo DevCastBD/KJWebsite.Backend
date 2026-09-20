@@ -17,15 +17,32 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
+var usePostgreSql = string.Equals(builder.Configuration["Database:Provider"], "PostgreSql", StringComparison.OrdinalIgnoreCase);
+var ctaConnectionString = builder.Configuration.GetConnectionString("CtaDb") ?? "Data Source=cta.db";
 builder.Services.AddDbContext<CtaDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("CtaDb") ?? "Data Source=cta.db"));
+{
+    if (usePostgreSql)
+    {
+        options.UseNpgsql(ctaConnectionString);
+        return;
+    }
+
+    options.UseSqlite(ctaConnectionString);
+});
 
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<CtaDbContext>();
-    db.Database.Migrate();
+    if (usePostgreSql && builder.Configuration.GetValue<bool>("Database:EnsureCreated"))
+    {
+        db.Database.EnsureCreated();
+    }
+    else
+    {
+        db.Database.Migrate();
+    }
 }
 
 if (app.Environment.IsDevelopment())
@@ -95,3 +112,8 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
 .WithTags("CTA");
 
 app.Run();
+
+namespace CtaSubmissionService
+{
+    public sealed class CtaSubmissionServiceTestEntryPoint;
+}

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>KJWebsite.IntegrationTests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Services/ApiGateway/ApiGateway.csproj" />
+    <ProjectReference Include="../../../src/Services/AuthIdentityService/AuthIdentityService.csproj" />
+    <ProjectReference Include="../../../src/Services/ContentService/ContentService.csproj" />
+    <ProjectReference Include="../../../src/Services/CtaSubmissionService/CtaSubmissionService.csproj" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
