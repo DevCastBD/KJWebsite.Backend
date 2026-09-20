@@ -1,5 +1,6 @@
 using System.Globalization;
 
+using KJWebsite.BuildingBlocks;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,29 +47,29 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ContentSe
    .WithSummary("Content service health check")
    .WithTags("System");
 
-app.MapGet("/api/v1/content/projects", (string? lang, string? status) =>
+app.MapGet("/api/v1/content/projects", (HttpRequest request, string? lang, string? status) =>
 {
-    var normalizedLang = NormalizeLang(lang);
+    var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
     var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "active" : status.Trim().ToLowerInvariant();
     if (normalizedStatus is not ("active" or "all"))
     {
-        return Results.BadRequest(ApiError("VALIDATION_ERROR", "status must be active or all."));
+        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "status must be active or all.");
     }
 
-    var filtered = projects.Where(p => p.Lang == normalizedLang && (normalizedStatus == "all" || p.Status == "active")).ToArray();
-    return Results.Ok(new { items = filtered });
+    var filtered = projects.Where(p => p.Lang == resolvedLanguage && (normalizedStatus == "all" || p.Status == "active")).ToArray();
+    return Results.Ok(new { items = filtered, lang = resolvedLanguage });
 })
 .WithName("GetProjects")
 .WithSummary("List projects")
 .WithDescription("Returns projects filtered by language (`lang`: en/bn, default en) and status (`status`: active/all, default active).")
 .WithTags("Content");
 
-app.MapGet("/api/v1/content/projects/{id}", (string id, string? lang) =>
+app.MapGet("/api/v1/content/projects/{id}", (HttpRequest request, string id, string? lang) =>
 {
-    var normalizedLang = NormalizeLang(lang);
-    var item = projects.FirstOrDefault(p => p.Id == id && p.Lang == normalizedLang);
+    var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
+    var item = projects.FirstOrDefault(p => p.Id == id && p.Lang == resolvedLanguage);
     return item is null
-        ? Results.NotFound(ApiError("NOT_FOUND", "Project not found."))
+        ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.")
         : Results.Ok(item);
 })
 .WithName("GetProjectById")
@@ -76,33 +77,34 @@ app.MapGet("/api/v1/content/projects/{id}", (string id, string? lang) =>
 .WithDescription("Returns a single project by slug ID in the requested language (`lang`: en/bn, default en).")
 .WithTags("Content");
 
-app.MapGet("/api/v1/content/news", (string? lang, int? limit, int? offset) =>
+app.MapGet("/api/v1/content/news", (HttpRequest request, string? lang, int? limit, int? offset) =>
 {
-    var normalizedLang = NormalizeLang(lang);
+    var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
     var safeLimit = limit.GetValueOrDefault(20);
     var safeOffset = offset.GetValueOrDefault(0);
 
     if (safeLimit is < 1 or > 100 || safeOffset < 0)
     {
-        return Results.BadRequest(ApiError("VALIDATION_ERROR", "Invalid paging values."));
+        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
     }
 
-    var langRows = news.Where(n => n.Lang == normalizedLang).ToList();
+    var langRows = news.Where(n => n.Lang == resolvedLanguage).ToList();
     var paged = langRows.Skip(safeOffset).Take(safeLimit).ToArray();
+    var page = new PagingEnvelope<NewsItem>(paged, langRows.Count, null, safeLimit, safeOffset);
 
-    return Results.Ok(new { items = paged, total = langRows.Count, limit = safeLimit, offset = safeOffset });
+    return Results.Ok(new { page.Items, page.Total, page.Limit, page.Offset, lang = resolvedLanguage });
 })
 .WithName("GetNews")
 .WithSummary("List news articles (paginated)")
 .WithDescription("Returns paginated news articles. `lang`: en/bn (default en). `limit`: 1–100 (default 20). `offset`: default 0.")
 .WithTags("Content");
 
-app.MapGet("/api/v1/content/news/{id}", (string id, string? lang) =>
+app.MapGet("/api/v1/content/news/{id}", (HttpRequest request, string id, string? lang) =>
 {
-    var normalizedLang = NormalizeLang(lang);
-    var item = news.FirstOrDefault(n => n.Id == id && n.Lang == normalizedLang);
+    var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
+    var item = news.FirstOrDefault(n => n.Id == id && n.Lang == resolvedLanguage);
     return item is null
-        ? Results.NotFound(ApiError("NOT_FOUND", "News item not found."))
+        ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.")
         : Results.Ok(item);
 })
 .WithName("GetNewsById")
@@ -117,7 +119,7 @@ app.MapPost("/api/v1/admin/content/projects", (HttpRequest request, ProjectUpser
 
     if (payload.Translations.Count == 0)
     {
-        return Results.BadRequest(ApiError("VALIDATION_ERROR", "At least one translation is required."));
+        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "At least one translation is required.");
     }
 
     var created = payload.Translations.Select(t => new ProjectItem(
@@ -152,7 +154,7 @@ app.MapPut("/api/v1/admin/content/projects/{id}", (HttpRequest request, string i
 
     if (!projects.Any(p => p.Id == id))
     {
-        return Results.NotFound(ApiError("NOT_FOUND", "Project not found."));
+        return ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.");
     }
 
     projects.RemoveAll(p => p.Id == id);
@@ -178,7 +180,7 @@ app.MapDelete("/api/v1/admin/content/projects/{id}", (HttpRequest request, strin
 
     var removed = projects.RemoveAll(p => p.Id == id);
     return removed == 0
-        ? Results.NotFound(ApiError("NOT_FOUND", "Project not found."))
+        ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.")
         : Results.NoContent();
 })
 .WithName("DeleteProject")
@@ -193,7 +195,7 @@ app.MapPost("/api/v1/admin/content/news", (HttpRequest request, NewsUpsertReques
 
     if (payload.Translations.Count == 0)
     {
-        return Results.BadRequest(ApiError("VALIDATION_ERROR", "At least one translation is required."));
+        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "At least one translation is required.");
     }
 
     var created = payload.Translations.Select(t => new NewsItem(
@@ -225,7 +227,7 @@ app.MapPut("/api/v1/admin/content/news/{id}", (HttpRequest request, string id, N
 
     if (!news.Any(n => n.Id == id))
     {
-        return Results.NotFound(ApiError("NOT_FOUND", "News item not found."));
+        return ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.");
     }
 
     news.RemoveAll(n => n.Id == id);
@@ -256,7 +258,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", (HttpRequest request, string id
 
     var removed = news.RemoveAll(n => n.Id == id);
     return removed == 0
-        ? Results.NotFound(ApiError("NOT_FOUND", "News item not found."))
+        ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.")
         : Results.NoContent();
 })
 .WithName("DeleteNews")
@@ -265,8 +267,6 @@ app.MapDelete("/api/v1/admin/content/news/{id}", (HttpRequest request, string id
 .WithTags("Admin — Content");
 
 app.Run();
-
-static string NormalizeLang(string? lang) => string.Equals(lang, "bn", StringComparison.OrdinalIgnoreCase) ? "bn" : "en";
 
 static IResult? EnsureAdmin(HttpRequest request)
 {
@@ -277,10 +277,8 @@ static IResult? EnsureAdmin(HttpRequest request)
 
     return authHeader.ToString() == "Bearer dev-admin-token"
         ? null
-        : Results.Json(ApiError("UNAUTHORIZED", "Invalid token."), statusCode: StatusCodes.Status401Unauthorized);
+        : ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid token.");
 }
-
-static object ApiError(string code, string message) => new { error = new { code, message } };
 
 sealed record ProjectItem(
     string Id,

@@ -1,6 +1,7 @@
 using CtaSubmissionService.Contracts;
 using CtaSubmissionService.Data;
 using CtaSubmissionService.Data.Entities;
+using KJWebsite.BuildingBlocks;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -46,17 +47,17 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmis
    .WithSummary("CTA service health check")
    .WithTags("System");
 
-app.MapPost("/api/v1/cta/submissions", async (CtaSubmissionRequest payload, CtaDbContext db) =>
+app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db) =>
 {
     if (!allowedForms.Contains(payload.FormName) || !allowedTypes.Contains(payload.CtaType) || !allowedLangs.Contains(payload.Language))
     {
-        return Results.BadRequest(ApiError("VALIDATION_ERROR", "Invalid formName, ctaType, or language."));
+        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid formName, ctaType, or language.");
     }
 
     var valuesJson = System.Text.Json.JsonSerializer.Serialize(payload.Values);
     if (valuesJson.Length > 32_000)
     {
-        return Results.Json(ApiError("PAYLOAD_TOO_LARGE", "values payload exceeds 32KB."), statusCode: StatusCodes.Status413PayloadTooLarge);
+        return ApiError.Create(context, StatusCodes.Status413PayloadTooLarge, "PAYLOAD_TOO_LARGE", "values payload exceeds 32KB.");
     }
 
     var id = $"subm_{Guid.NewGuid():N}";
@@ -94,5 +95,3 @@ app.MapPost("/api/v1/cta/submissions", async (CtaSubmissionRequest payload, CtaD
 .WithTags("CTA");
 
 app.Run();
-
-static object ApiError(string code, string message) => new { error = new { code, message } };
