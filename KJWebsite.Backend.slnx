@@ -13,6 +13,7 @@
     <Project Path="tools/OpenApiExporter/OpenApiExporter.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/IntegrationTests/KJWebsite.IntegrationTests/KJWebsite.IntegrationTests.csproj" />
     <Project Path="tests/UnitTests/KJWebsite.BuildingBlocks.UnitTests/KJWebsite.BuildingBlocks.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -66,3 +66,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ApiGatewa
 app.MapReverseProxy();
 
 app.Run();
+
+namespace ApiGateway
+{
+    public sealed class ApiGatewayTestEntryPoint;
+}

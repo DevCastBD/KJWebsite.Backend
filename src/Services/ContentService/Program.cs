@@ -326,3 +326,8 @@ sealed record NewsUpsertRequest(
     List<NewsTranslationInput> Translations);
 
 sealed record NewsTranslationInput(string Lang, string Title, string? Summary, List<string>? Content);
+
+namespace ContentService
+{
+    public sealed class ContentServiceTestEntryPoint;
+}
