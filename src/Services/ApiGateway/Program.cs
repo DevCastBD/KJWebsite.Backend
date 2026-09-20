@@ -2,6 +2,9 @@ using Scalar.AspNetCore;
 using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
+var contentServiceUrl = builder.Configuration["Services:Content:Url"] ?? "http://localhost:7001/";
+var ctaServiceUrl = builder.Configuration["Services:Cta:Url"] ?? "http://localhost:7002/";
+var authServiceUrl = builder.Configuration["Services:Auth:Url"] ?? "http://localhost:7003/";
 
 builder.Services.AddOpenApi(options =>
 {
@@ -26,7 +29,7 @@ builder.Services.AddReverseProxy().LoadFromMemory(
         ClusterId = "content",
         Destinations = new Dictionary<string, DestinationConfig>
         {
-            ["content"] = new() { Address = "http://localhost:7001/" }
+            ["content"] = new() { Address = contentServiceUrl }
         }
     },
     new ClusterConfig
@@ -34,7 +37,7 @@ builder.Services.AddReverseProxy().LoadFromMemory(
         ClusterId = "cta",
         Destinations = new Dictionary<string, DestinationConfig>
         {
-            ["cta"] = new() { Address = "http://localhost:7002/" }
+            ["cta"] = new() { Address = ctaServiceUrl }
         }
     },
     new ClusterConfig
@@ -42,7 +45,7 @@ builder.Services.AddReverseProxy().LoadFromMemory(
         ClusterId = "auth",
         Destinations = new Dictionary<string, DestinationConfig>
         {
-            ["auth"] = new() { Address = "http://localhost:7003/" }
+            ["auth"] = new() { Address = authServiceUrl }
         }
     }
 ]);

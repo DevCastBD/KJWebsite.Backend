@@ -60,7 +60,7 @@ flowchart LR
 
 - [.NET SDK 10.0.300](https://dotnet.microsoft.com/download) or compatible .NET 10 SDK
 - The manifest-managed `dotnet-ef` tool
-- Docker Desktop is a **P1+** prerequisite only: no Dockerfiles or Compose setup exists today.
+- Docker Desktop or Docker Engine with Compose, if running the container stack
 
 ```bash
 dotnet tool restore
@@ -83,20 +83,32 @@ dotnet run --project src/Services/AuthIdentityService --launch-profile http
 
 The gateway at `http://localhost:7000` expects the downstream services on their listed ports. Scalar and health URLs are in [API preview](#api-preview).
 
+### Run the full stack with Docker
+
+With Docker installed, start every service and its local dependencies from the repository root:
+
+```bash
+docker compose up --build
+```
+
+The API Gateway Scalar reference is at http://localhost:7000/scalar/v1. Health endpoints are available on ports 7000–7003 at `/health`; MailHog is at http://localhost:8025. The Compose credentials are development-only and PostgreSQL data persists in the `postgres-data` volume. Stop the stack with `docker compose down`; add `--volumes` only when you intentionally want to discard local database data.
+
 ### Configuration
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | No | Host default | Use `Development` locally; Scalar and runtime OpenAPI are mapped only then. |
-| `ASPNETCORE_URLS` | No | `launchSettings.json` port | Overrides a listener; keep downstream ports aligned with the gateway's hard-coded destinations. |
+| `ASPNETCORE_URLS` | No | `launchSettings.json` port | Overrides a listener. Containers use port 8080 internally. |
 | `ConnectionStrings__AuthDb` | No | `Data Source=auth.db` | Auth SQLite connection string. |
 | `ConnectionStrings__CtaDb` | No | `Data Source=cta.db` | CTA SQLite connection string. |
+| `Database__Provider` | No | SQLite | Set to `PostgreSql` for the Compose Auth and CTA containers. |
+| `Services__{Content,Cta,Auth}__Url` | No | Localhost service ports | Gateway downstream destination overrides. |
 
 No production secret configuration exists. P1 must use environment/vault configuration, secure auth, and restrictive CORS.
 
 ## Database and migrations
 
-Auth and CTA apply their EF Core migrations at startup. Their SQLite files are development data, not production storage. Create and apply an Auth migration with:
+Auth and CTA apply their EF Core migrations at startup when using SQLite. The Docker Compose stack instead uses separate development PostgreSQL databases (`auth` and `cta`) and initializes their current schemas with `EnsureCreated`; it does not apply the SQLite migrations. Neither option is production storage. Create and apply an Auth migration with:
 
 ```bash
 dotnet ef migrations add <MigrationName> --project src/Services/AuthIdentityService --startup-project src/Services/AuthIdentityService
@@ -135,7 +147,7 @@ Branch from `develop` using `feature/*` or `fix/*`; `main` is the intended produ
 
 ## Testing
 
-There is no test project or CI workflow yet. Minimum local verification is:
+Unit and integration tests are available; integration tests use Testcontainers and therefore require Docker. CI does not exist yet. Minimum local verification is:
 
 ```bash
 dotnet build KJWebsite.Backend.slnx
@@ -154,7 +166,7 @@ dotnet publish src/Services/ApiGateway/ApiGateway.csproj -c Release -o publish/A
 
 ## Deployment
 
-Containers, Docker Compose, CI/CD, staging, and production infrastructure are **not implemented**. The P1 target is CI-built, commit-SHA-tagged container images; environment/vault configuration; expand → migrate → contract migrations; health-gated traffic; and rollback to the prior image on failed health checks. Do not automatically roll database migrations backward.
+Local Docker Compose is implemented for contributor onboarding, but CI/CD, staging, and production infrastructure are not. The P1 target is CI-built, commit-SHA-tagged container images; environment/vault configuration; expand → migrate → contract migrations; health-gated traffic; and rollback to the prior image on failed health checks. Do not automatically roll database migrations backward.
 
 ## Legacy folders
 
@@ -165,6 +177,7 @@ Containers, Docker Compose, CI/CD, staging, and production infrastructure are **
 | Symptom | Cause | Resolution |
 |---|---|---|
 | Gateway returns 502 | A downstream service is unavailable | Start all four services with the `http` profile. |
+| Compose service exits on startup | PostgreSQL is not ready or its data volume uses an older layout | Run `docker compose down --volumes`, then `docker compose up --build` to recreate local development data. |
 | Scalar returns 404 | Service is not in Development | Set `ASPNETCORE_ENVIRONMENT=Development` and restart. |
 | `dotnet ef` is unavailable | Tools are not restored | Run `dotnet tool restore`. |
 | Exporter verification fails | Contract drift | Regenerate the YAML, review it, then rerun `--verify`. |

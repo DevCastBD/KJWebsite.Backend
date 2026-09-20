@@ -1,0 +1,13 @@
+.git
+.vs
+.idea
+**/bin
+**/obj
+**/*.user
+**/*.suo
+ai-dlc-nano-documents
+docs
+kj-registration
+kj-registration-AwaitingUserFeatures
+tests
+tools
