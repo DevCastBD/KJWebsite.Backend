@@ -35,6 +35,7 @@
 - OpenAPI is served from each service; Scalar is mapped by its `Program.cs`.
 - Auth and CTA use `ConnectionStrings:AuthDb` / `ConnectionStrings:CtaDb`; both call `Database.Migrate()` at startup.
 - Gateway destinations are hard-coded localhost addresses.
+- Root `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props` govern the active solution; legacy snapshots are excluded.
 
 ## Long documents
 - `docs/MASTER_PLAN.md` (806 lines) — read with `sed -n`, never whole.
