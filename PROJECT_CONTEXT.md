@@ -1,120 +1,29 @@
-# KJWebsite.Backend - Project Context
+# KJWebsite.Backend — Project Context
 
-## Overview
-KJWebsite.Backend is a .NET 10 microservices backend for the KJ website.
-It currently includes gateway routing, public content APIs, CTA submission APIs, and auth/registration APIs.
+This is an AI and contributor orientation file: it directs readers to the authoritative documents and repository areas without duplicating implementation, operating, or roadmap details.
 
-## Tech Stack
-- .NET SDK: 10.0.300
-- ASP.NET Core Minimal APIs
-- YARP reverse proxy (gateway)
-- EF Core 10
-- SQLite (current persistence provider for auth + cta services)
+## Document ownership
 
-## Repository Structure
-- `src/Services/ApiGateway`
-- `src/Services/ContentService`
-- `src/Services/CtaSubmissionService`
-- `src/Services/AuthIdentityService`
-- `src/BuildingBlocks/KJWebsite.BuildingBlocks`
-- `openapi.v1.yaml` (aggregated API contract)
-- `PROJECT_CONTEXT.md` (this file)
+| Need | Authoritative location |
+|---|---|
+| What the backend will build and why | [Backend master plan](docs/MASTER_PLAN.md) |
+| Programme-wide sequencing and README work | [Program master plan](docs/PROGRAM_MASTER_PLAN.md) |
+| What exists now; local setup; contribution workflow | [README](README.md) |
+| Public API surface | [Committed OpenAPI contract](openapi.v1.yaml) |
+| AI-DLC work-item state and repository map | [AI-DLC Nano documents](ai-dlc-nano-documents/) |
 
-## Service Ports (Development)
-- ApiGateway: `http://localhost:7000`
-- ContentService: `http://localhost:7001`
-- CtaSubmissionService: `http://localhost:7002`
-- AuthIdentityService: `http://localhost:7003`
+The backend master plan is the single source of truth for backend development. If this file, the README, or an issue differs from it, update the plan first and then align the other document.
 
-## API Gateway Routing
-Gateway forwards:
-- `/api/v1/content/*` -> ContentService
-- `/api/v1/cta/*` -> CtaSubmissionService
-- `/api/v1/auth/*` -> AuthIdentityService
-- `/api/v1/admin/content/*` -> ContentService
+## Orientation
 
-## Auth Rules
-- Public website content endpoints are intentionally unauthenticated.
-- CTA submission endpoint is currently unauthenticated.
-- Auth endpoints handle login/refresh/logout/me and registration.
-- Content admin endpoints in ContentService expect bearer token `dev-admin-token` in current v1 implementation.
+- Start with the [README](README.md) before running, building, configuring, or contributing to the repository.
+- Use the [master plan](docs/MASTER_PLAN.md) to establish scope, phase, engineering standards, and planned architecture before proposing implementation.
+- Treat [`openapi.v1.yaml`](openapi.v1.yaml) as the checked-in gateway-level API contract; consult the README for regeneration and verification.
+- Service entry points and endpoint mappings are in [`src/Services/`](src/Services/); shared code is in [`src/BuildingBlocks/`](src/BuildingBlocks/).
+- [`kj-registration/`](kj-registration/) and [`kj-registration-AwaitingUserFeatures/`](kj-registration-AwaitingUserFeatures/) are historical snapshots. Follow the README's legacy-folder guidance before consulting them.
 
-## Implemented v1 Endpoints
+## Keeping this file useful
 
-### ContentService (public)
-- `GET /api/v1/content/projects?lang=&status=`
-- `GET /api/v1/content/projects/{id}?lang=`
-- `GET /api/v1/content/news?lang=&limit=&offset=`
-- `GET /api/v1/content/news/{id}?lang=`
-
-### ContentService (admin)
-- `POST /api/v1/admin/content/projects`
-- `PUT /api/v1/admin/content/projects/{id}`
-- `DELETE /api/v1/admin/content/projects/{id}`
-- `POST /api/v1/admin/content/news`
-- `PUT /api/v1/admin/content/news/{id}`
-- `DELETE /api/v1/admin/content/news/{id}`
-
-### CtaSubmissionService
-- `POST /api/v1/cta/submissions`
-
-### AuthIdentityService
-- `POST /api/v1/auth/register`
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/me`
-
-## Data Persistence (EF Core 10)
-
-### AuthIdentityService
-DbContext: `AuthDbContext`
-- Table: `users`
-- Table: `refresh_tokens`
-
-Legacy registration/profile fields from old system are mapped into user columns (FirstName, LastName, Gender, ReasonForJoining, etc.).
-
-### CtaSubmissionService
-DbContext: `CtaDbContext`
-- Table: `cta_submissions`
-
-Stores raw `values` as JSON plus extracted legacy awaiting-user fields:
-- FirstName, LastName, Gender, ReasonForJoining, PresentOrganization, VolunteeingExperience, DateOfBirth, CityOfResidence, CountryOfResidence.
-
-## Migrations
-Initial migrations exist in:
-- `src/Services/AuthIdentityService/Migrations`
-- `src/Services/CtaSubmissionService/Migrations`
-
-Both services call `Database.Migrate()` at startup.
-
-## Legacy Import Notes
-Two legacy snapshots were imported with history preserved via git subtree:
-- `kj-registration/` (from `master`)
-- `kj-registration-AwaitingUserFeatures/` (from `AwaitingUserFeatures`)
-
-Important: these folders are historical references and should be treated as read-only unless explicitly requested.
-
-## OpenAPI
-- Consolidated spec file: `openapi.v1.yaml`
-- Covers gateway-level v1 routes and shared schemas.
-
-## Local Run Notes
-If `dotnet` is not on PATH in a shell, use:
-- `"C:\Program Files\dotnet\dotnet.exe"`
-
-Build command:
-- `dotnet build .\KJWebsite.Backend.slnx -c Debug`
-
-## Current Constraints / Known Gaps
-- Auth tokens are currently in-memory access tokens; refresh tokens are persisted.
-- Passwords are plain in current dev implementation; production should use secure hashing.
-- SQLite is used for quick local development; consider PostgreSQL for production.
-- No centralized background job/event bus yet for notifications/analytics.
-
-## Suggested Next Steps
-1. Add password hashing + secure auth hardening.
-2. Move from in-memory access token tracking to signed JWT validation flow.
-3. Add integration tests for auth + cta + gateway routes.
-4. Add Docker setup for service + DB orchestration.
-5. Add PostgreSQL provider and migration strategy for production.
+- Link to the document that owns a fact instead of copying it here.
+- Keep only orientation, document ownership, and repository-navigation context here.
+- Update the README for current implementation and developer workflow; update the master plan for scope and roadmap changes.
