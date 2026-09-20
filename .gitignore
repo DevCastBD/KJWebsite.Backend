@@ -14,3 +14,15 @@ obj/
 # OS files
 .DS_Store
 Thumbs.db
+
+# --- ai-dlc-nano workflow files (keep ai-dlc-nano-documents/ tracked) ---
+.claude/skills/ai-dlc-nano/
+.agents/skills/ai-dlc-nano/
+.cursor/rules/ai-dlc-nano.mdc
+.codex/ai-dlc-nano.md
+.codex/ai-dlc-nano-bootstrap.md
+.codex/ai-dlc-nano-large-repo.md
+.opencode/skills/ai-dlc-nano/
+.opencode/commands/ai-dlc-nano.md
+.github/prompts/ai-dlc-nano.prompt.md
+.github/instructions/ai-dlc-nano.instructions.md
