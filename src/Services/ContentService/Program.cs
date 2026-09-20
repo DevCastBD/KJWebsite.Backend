@@ -1,5 +1,6 @@
-using Scalar.AspNetCore;
 using System.Globalization;
+
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi(options =>
@@ -281,7 +282,7 @@ static IResult? EnsureAdmin(HttpRequest request)
 
 static object ApiError(string code, string message) => new { error = new { code, message } };
 
-record ProjectItem(
+sealed record ProjectItem(
     string Id,
     string Slug,
     string Lang,
@@ -296,7 +297,7 @@ record ProjectItem(
     string Icon,
     DateTimeOffset UpdatedAt);
 
-record NewsItem(
+sealed record NewsItem(
     string Id,
     string Slug,
     string Lang,
@@ -308,7 +309,7 @@ record NewsItem(
     DateTimeOffset PublishedAt,
     string Status);
 
-record ProjectUpsertRequest(
+sealed record ProjectUpsertRequest(
     string Slug,
     string? ImageUrl,
     string? Category,
@@ -317,13 +318,13 @@ record ProjectUpsertRequest(
     string? Icon,
     List<ProjectTranslationInput> Translations);
 
-record ProjectTranslationInput(string Lang, string Title, string? ShortTitle, string? ShortDescription, string? FullDescription);
+sealed record ProjectTranslationInput(string Lang, string Title, string? ShortTitle, string? ShortDescription, string? FullDescription);
 
-record NewsUpsertRequest(
+sealed record NewsUpsertRequest(
     string Slug,
     string? ImageUrl,
     DateTimeOffset? PublishedAt,
     string Status,
     List<NewsTranslationInput> Translations);
 
-record NewsTranslationInput(string Lang, string Title, string? Summary, List<string>? Content);
+sealed record NewsTranslationInput(string Lang, string Title, string? Summary, List<string>? Content);

@@ -3,10 +3,11 @@
 - Framework(s): ASP.NET Core Minimal APIs, YARP 2.2, EF Core 10, Scalar 2.14
 - Package manager: .NET CLI; tool manifest includes `dotnet-ef` 10.0.8
 - Test: none configured; intended command once tests exist: `dotnet test KJWebsite.Backend.slnx`
-- Lint/format: no project configuration; `dotnet format` is the planned standard
+- Lint/format: root `.editorconfig`; verify with `dotnet format KJWebsite.Backend.slnx --verify-no-changes --no-restore`
 - Size tier: standard · 166 tracked files · recorded 2026-09-20
 - Code-intelligence MCP: none
 - Conventions:
+  - Root `Directory.Build.props` owns the active solution's framework, nullable, warning, and analyzer settings; `Directory.Packages.props` owns package versions.
   - Service entry points and endpoint mappings live in each service's `Program.cs`.
   - Shared types belong in `src/BuildingBlocks`; SQLite services use EF Core migrations.
   - Development service ports are 7000–7003; each service exposes `/health` and Scalar.
