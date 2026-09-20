@@ -1,0 +1,18 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+COPY ["src/BuildingBlocks/KJWebsite.BuildingBlocks/KJWebsite.BuildingBlocks.csproj", "src/BuildingBlocks/KJWebsite.BuildingBlocks/"]
+COPY ["src/Services/CtaSubmissionService/CtaSubmissionService.csproj", "src/Services/CtaSubmissionService/"]
+RUN dotnet restore "src/Services/CtaSubmissionService/CtaSubmissionService.csproj"
+
+COPY src/BuildingBlocks/KJWebsite.BuildingBlocks/ src/BuildingBlocks/KJWebsite.BuildingBlocks/
+COPY src/Services/CtaSubmissionService/ src/Services/CtaSubmissionService/
+RUN dotnet publish "src/Services/CtaSubmissionService/CtaSubmissionService.csproj" --configuration Release --no-restore --output /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
+EXPOSE 8080
+COPY --from=build /app/publish .
+USER $APP_UID
+ENTRYPOINT ["dotnet", "CtaSubmissionService.dll"]

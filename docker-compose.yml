@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: auth
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/01-create-cta.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  content-service:
+    build:
+      context: .
+      dockerfile: src/Services/ContentService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "7001:8080"
+
+  auth-identity-service:
+    build:
+      context: .
+      dockerfile: src/Services/AuthIdentityService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Database__Provider: PostgreSql
+      Database__EnsureCreated: "true"
+      ConnectionStrings__AuthDb: Host=postgres;Port=5432;Database=auth;Username=postgres;Password=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "7003:8080"
+
+  cta-submission-service:
+    build:
+      context: .
+      dockerfile: src/Services/CtaSubmissionService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Database__Provider: PostgreSql
+      Database__EnsureCreated: "true"
+      ConnectionStrings__CtaDb: Host=postgres;Port=5432;Database=cta;Username=postgres;Password=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "7002:8080"
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: src/Services/ApiGateway/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Services__Content__Url: http://content-service:8080/
+      Services__Cta__Url: http://cta-submission-service:8080/
+      Services__Auth__Url: http://auth-identity-service:8080/
+    depends_on:
+      content-service:
+        condition: service_started
+      auth-identity-service:
+        condition: service_started
+      cta-submission-service:
+        condition: service_started
+    ports:
+      - "7000:8080"
+
+volumes:
+  postgres-data:

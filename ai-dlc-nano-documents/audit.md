@@ -41,3 +41,11 @@
 - 2026-09-20T20:54Z [Codex] 005-issue-9-test-scaffold PHASE PLAN→CONSTRUCT @055af92: plan approved by user
 - 2026-09-20T21:05Z [Codex] 005-issue-9-test-scaffold PAUSED @055af92: Docker unavailable; PostgreSQL-backed smoke tests cannot start
 - 2026-09-20T21:14Z [Codex] 005-issue-9-test-scaffold SIDE-EFFECT @d8b61b2: pushed test scaffold to origin issue #9 branch
+- 2026-09-20T21:21Z [Codex] 005-issue-9-test-scaffold PAUSED @1bd3653: switched to issue #10; GitHub issue #9 is already closed
+- 2026-09-20T21:21Z [Codex] 006-issue-10-docker-compose CREATED @1bd3653: issue #10 intake; Dockerfiles and Compose stack
+- 2026-09-20T21:29Z [Codex] 006-issue-10-docker-compose DECISION @1bd3653: local PostgreSQL volume; Dev environment; gateway config; Redis/MailHog declared only
+- 2026-09-20T21:29Z [Codex] 006-issue-10-docker-compose PHASE CLARIFY→PLAN @1bd3653: assumptions confirmed; plan drafted
+- 2026-09-20T21:30Z [Codex] 006-issue-10-docker-compose BRANCH @1bd3653: current issue-10 branch selected (user confirmed)
+- 2026-09-20T21:30Z [Codex] 006-issue-10-docker-compose PHASE PLAN→CONSTRUCT @1bd3653: plan approved
+- 2026-09-20T21:31Z [Codex] 006-issue-10-docker-compose REVISED @1bd3653: separate auth/cta databases in one PostgreSQL container for EnsureCreated compatibility
+- 2026-09-20T21:31Z [Codex] 006-issue-10-docker-compose DECISION @1bd3653: proceed without Docker execution; implementation based on static validation
