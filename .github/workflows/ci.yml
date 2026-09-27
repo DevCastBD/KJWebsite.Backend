@@ -36,7 +36,7 @@ jobs:
           dotnet-version: 10.0.x
 
       # Versions are central (Directory.Packages.props), so it plus the project files key the cache.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
