@@ -1,6 +1,6 @@
-<!-- phase: CONSTRUCT | branch: 9-feature-b0-4-scaffold-test-projects-with-webapplicationfactory-and-testcontainers | tasks: 3/7
+<!-- phase: DONE | branch: 9-feature-b0-4-scaffold-test-projects-with-webapplicationfactory-and-testcontainers | tasks: 3/7
      base: 055af92 | updated: 2026-09-20
-     next: start Docker, then run PostgreSQL-backed Auth and CTA smoke tests and the full suite -->
+     next: — verified by CI on PR #130 (backend #11): 29 integration tests green on PostgreSQL -->
 # Plan: B0-4 Test Scaffold
 ## Tasks
 - [x] Pin FluentAssertions, MVC testing, Testcontainers PostgreSQL, and Npgsql centrally.

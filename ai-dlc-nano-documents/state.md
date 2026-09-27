@@ -1,11 +1,10 @@
 # AI-DLC Nano State
-- Active work item: work-items/007-issue-11-ci
-- Phase: CONSTRUCT
-- Branch: 11-feature-b0-6-github-actions-ci
+- Active work item: none
+- Phase: —
+- Branch: 11-feature-b0-6-github-actions-ci (PR #130, ready)
 - Base SHA: 7c8ce2f
-- Next step: push branch once a token with `workflow` scope is available (commit e43e5dd), open draft PR, watch first CI run
+- Next step: PR #130 in review; backend P0 left: #12 ADRs (blocked on #105/#106), #13 legacy move, #14 email template
 - Paused work items:
-  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; CI #11 verifies)
-  - work-items/005-issue-9-test-scaffold (merged #128, UNVERIFIED — 3/7, Testcontainers never run; CI #11 verifies)
+  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
-- Last updated: 2026-09-27T07:40Z by claude
+- Last updated: 2026-09-27T17:44Z by claude

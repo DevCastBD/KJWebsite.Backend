@@ -18,3 +18,6 @@
 ## Out of scope
 - P1 security gaps G1–G3 (tracked separately)
 ## Follow-ups
+- First CI run found a real bug: /auth/refresh 500'd (untranslatable DateTimeOffset comparison); fixed in 182db70 with 5 tests × SQLite + PostgreSQL
+- 006's Compose stack is still never started — optional compose-smoke job was not included; worth a follow-up issue
+- Branch protection is minimal on purpose: required checks only, no review rule, admins can override

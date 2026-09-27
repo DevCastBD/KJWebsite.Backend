@@ -58,3 +58,7 @@
 - 2026-09-27T07:56Z [claude] 007-issue-11-ci PAUSED @e43e5dd: committed locally; push rejected — token lacks 'workflow' scope (has repo + admin). Needs user.
 - 2026-09-27T17:36Z [claude] 007-issue-11-ci SIDE-EFFECT @e43e5dd: pushed with new token (repo+workflow), opened draft PR #130, commented on #11
 - 2026-09-27T17:39Z [claude] 007-issue-11-ci DECISION @e43e5dd: first CI run 19/20 integration pass; refresh 500s — DateTimeOffset LINQ comparison untranslatable (also broken on dev SQLite); fix in scope
+- 2026-09-27T17:42Z [claude] 007-issue-11-ci SIDE-EFFECT @182db70: pushed refresh fix + 5 tests x2 providers (SQLite pass locally); CI rerun
+- 2026-09-27T17:44Z [claude] 007-issue-11-ci SIDE-EFFECT @182db70: CI green (6+29 tests, 69s); set required checks build+dependency-scan on develop; PR #130 marked ready
+- 2026-09-27T17:44Z [claude] 005-issue-9-test-scaffold DONE @182db70: verified by CI — integration tests green on PostgreSQL
+- 2026-09-27T17:44Z [claude] 007-issue-11-ci DONE @182db70: CI + scan + Dependabot + refresh bug fix; 006 compose still unverified (backlog)
