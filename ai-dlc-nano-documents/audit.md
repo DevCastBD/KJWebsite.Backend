@@ -62,3 +62,7 @@
 - 2026-09-27T17:44Z [claude] 007-issue-11-ci SIDE-EFFECT @182db70: CI green (6+29 tests, 69s); set required checks build+dependency-scan on develop; PR #130 marked ready
 - 2026-09-27T17:44Z [claude] 005-issue-9-test-scaffold DONE @182db70: verified by CI — integration tests green on PostgreSQL
 - 2026-09-27T17:44Z [claude] 007-issue-11-ci DONE @182db70: CI + scan + Dependabot + refresh bug fix; 006 compose still unverified (backlog)
+- 2026-09-27T17:45Z [claude] 007-issue-11-ci SIDE-EFFECT @34242ad: commented results on #11
+- 2026-09-27T19:54Z [claude] 008-issue-140-exporter-race CREATED @924f524: flaky OpenAPI step — concurrent dotnet run builds race on BuildingBlocks
+- 2026-09-27T19:54Z [claude] 008-issue-140-exporter-race DONE @924f524: serial build + --no-build; old code 1/3 cold fails, fixed 5/5 pass
+- 2026-09-27T19:54Z [claude] — SIDE-EFFECT @924f524: created issues #140 (bug) and #141 (Dependabot batch); linked PRs #132-#139 to #141; noted on #11
