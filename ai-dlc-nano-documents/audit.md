@@ -55,3 +55,6 @@
 - 2026-09-27T07:50Z [claude] 007-issue-11-ci PHASE CLARIFY→PLAN @7c8ce2f: baseline green locally except Docker tests; stale vuln backlog line removed
 - 2026-09-27T07:53Z [claude] 007-issue-11-ci BRANCH @7c8ce2f: 11-feature-b0-6-github-actions-ci off develop (user confirmed)
 - 2026-09-27T07:53Z [claude] 007-issue-11-ci PHASE PLAN→CONSTRUCT @7c8ce2f: plan approved; optional compose-smoke not included (not confirmed)
+- 2026-09-27T07:56Z [claude] 007-issue-11-ci PAUSED @e43e5dd: committed locally; push rejected — token lacks 'workflow' scope (has repo + admin). Needs user.
+- 2026-09-27T17:36Z [claude] 007-issue-11-ci SIDE-EFFECT @e43e5dd: pushed with new token (repo+workflow), opened draft PR #130, commented on #11
+- 2026-09-27T17:39Z [claude] 007-issue-11-ci DECISION @e43e5dd: first CI run 19/20 integration pass; refresh 500s — DateTimeOffset LINQ comparison untranslatable (also broken on dev SQLite); fix in scope

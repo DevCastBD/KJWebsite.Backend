@@ -3,7 +3,7 @@
 - Phase: CONSTRUCT
 - Branch: 11-feature-b0-6-github-actions-ci
 - Base SHA: 7c8ce2f
-- Next step: write .github/workflows/ci.yml
+- Next step: push branch once a token with `workflow` scope is available (commit e43e5dd), open draft PR, watch first CI run
 - Paused work items:
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; CI #11 verifies)
   - work-items/005-issue-9-test-scaffold (merged #128, UNVERIFIED — 3/7, Testcontainers never run; CI #11 verifies)
