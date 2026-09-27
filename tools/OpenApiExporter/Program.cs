@@ -111,6 +111,8 @@ static class RuntimeOpenApiExporter
         Directory.CreateDirectory(temporaryDirectory);
         try
         {
+            await BuildServicesAsync(repositoryRoot);
+
             foreach (var service in Services)
             {
                 var port = GetUnusedLoopbackPort();
@@ -155,6 +157,45 @@ static class RuntimeOpenApiExporter
         }
     }
 
+    /// <summary>
+    /// Build every service once, one after another, before any of them starts (issue #140).
+    ///
+    /// The services used to be started with a plain `dotnet run`, all at the same moment, so each
+    /// built its own project — and all four reference BuildingBlocks. Four MSBuild processes then
+    /// raced to write the same bin/obj outputs, and CI failed at random with
+    /// "The GenerateDepsFile task failed unexpectedly". Building serially here and starting with
+    /// `--no-build` removes the race, and builds the shared project once instead of four times.
+    /// </summary>
+    private static async Task BuildServicesAsync(string repositoryRoot)
+    {
+        foreach (var service in Services)
+        {
+            var startInfo = new ProcessStartInfo("dotnet")
+            {
+                WorkingDirectory = repositoryRoot,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+            startInfo.ArgumentList.Add("build");
+            startInfo.ArgumentList.Add(Path.Combine(repositoryRoot, service.ProjectPath));
+            startInfo.ArgumentList.Add("--nologo");
+
+            using var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not build {service.Name}.");
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            if (process.ExitCode != 0)
+            {
+                var tail = string.Join(" | ", ((await stdout) + (await stderr))
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .TakeLast(12));
+                throw new InvalidOperationException($"{service.Name} failed to build (exit {process.ExitCode}): {tail}");
+            }
+        }
+    }
+
     private static StartedService StartService(ServiceDefinition definition, string repositoryRoot, string temporaryDirectory, int port)
     {
         var output = new ConcurrentQueue<string>();
@@ -166,6 +207,7 @@ static class RuntimeOpenApiExporter
             UseShellExecute = false
         };
         startInfo.ArgumentList.Add("run");
+        startInfo.ArgumentList.Add("--no-build");
         startInfo.ArgumentList.Add("--project");
         startInfo.ArgumentList.Add(Path.Combine(repositoryRoot, definition.ProjectPath));
         startInfo.ArgumentList.Add("--launch-profile");
