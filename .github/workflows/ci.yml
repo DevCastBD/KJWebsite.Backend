@@ -1,0 +1,100 @@
+# CI for every pull request and for pushes to the long-lived branches (issue #11 / B0-6, gap G9).
+# Job names are the required status checks on develop — rename them and branch protection breaks.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+# A new push to the same PR supersedes the run in flight; pushes to develop/main always finish.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  SOLUTION: KJWebsite.Backend.slnx
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Versions are central (Directory.Packages.props), so it plus the project files key the cache.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore "$SOLUTION"
+
+      - name: Build
+        run: dotnet build "$SOLUTION" --no-restore --configuration Release
+
+      - name: Format check
+        run: dotnet format "$SOLUTION" --verify-no-changes --no-restore
+
+      # Unit tests plus the Testcontainers integration tests — the hosted runner has Docker, which
+      # is the only place those can run (they need PostgreSQL containers).
+      - name: Test
+        run: >-
+          dotnet test "$SOLUTION" --no-build --configuration Release
+          --logger "trx;LogFilePrefix=results"
+          --results-directory test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/*.trx
+          if-no-files-found: warn
+
+      # The contract is a build output: fail if the committed file no longer matches the running
+      # services, so it cannot drift from the API the frontend generates types against.
+      - name: OpenAPI contract is current
+        run: dotnet run --project tools/OpenApiExporter -- --verify
+
+      - name: Upload OpenAPI contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-contract
+          path: openapi.v1.yaml
+
+  dependency-scan:
+    name: dependency-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore "$SOLUTION"
+
+      # `dotnet list --vulnerable` exits 0 even when it finds something, so the JSON is parsed:
+      # every finding goes in the job summary, and only Critical fails the build (the 7-day SLA).
+      - name: Scan for vulnerable packages
+        run: |
+          dotnet list "$SOLUTION" package --vulnerable --include-transitive --format json > vulnerable.json
+          python3 .github/scripts/check-vulnerable.py vulnerable.json --fail-on Critical

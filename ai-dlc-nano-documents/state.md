@@ -1,10 +1,10 @@
 # AI-DLC Nano State
-- Active work item: work-items/006-issue-10-docker-compose
-- Phase: CONSTRUCT
-- Branch: 10-feature-b0-5-add-a-dockerfile-per-service-and-a-docker-composeyml
-- Base SHA: 1bd3653
-- Next step: Run Compose startup and health/Scalar probes in a Docker-enabled environment before WRAP-UP.
+- Active work item: none
+- Phase: —
+- Branch: 11-feature-b0-6-github-actions-ci (PR #130, ready)
+- Base SHA: 7c8ce2f
+- Next step: PR #130 in review; backend P0 left: #12 ADRs (blocked on #105/#106), #13 legacy move, #14 email template
 - Paused work items:
-  - work-items/005-issue-9-test-scaffold (CONSTRUCT, 9-feature-b0-4-scaffold-test-projects-with-webapplicationfactory-and-testcontainers, base 055af92)
+  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
-- Last updated: 2026-09-20T21:44Z by Codex
+- Last updated: 2026-09-27T17:44Z by claude

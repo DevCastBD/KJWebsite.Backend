@@ -1,3 +1,3 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
-- [2026-09-20] backend/dependencies — high-severity Microsoft.OpenApi and SQLitePCLRaw advisories (found: 001-issue-5-backend-readme)
+- [2026-09-27] docker-compose.yml — never started by anyone; add a compose-smoke CI job (found: 007-issue-11-ci)

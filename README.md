@@ -1,5 +1,7 @@
 # KJWebsite.Backend
 
+[![CI](https://github.com/DevCastBD/KJWebsite.Backend/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/DevCastBD/KJWebsite.Backend/actions/workflows/ci.yml)
+
 The .NET 10 backend scaffold for Kolpojontro Foundation's public site and future back office. It currently serves development APIs and is not a production deployment.
 
 > [!WARNING]
@@ -147,14 +149,27 @@ Branch from `develop` using `feature/*` or `fix/*`; `main` is the intended produ
 
 ## Testing
 
-Unit and integration tests are available; integration tests use Testcontainers and therefore require Docker. CI does not exist yet. Minimum local verification is:
+xUnit unit tests live under `tests/UnitTests`; integration smoke tests under `tests/IntegrationTests` use `WebApplicationFactory` and FluentAssertions, with Testcontainers starting PostgreSQL — so the Auth and CTA suites need Docker running.
+
+**CI** (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `develop` and `main`:
+
+| Job | Steps |
+|---|---|
+| `build` | restore → build (Release, warnings as errors) → `dotnet format --verify-no-changes` → all tests, integration included → OpenAPI `--verify` (fails if `openapi.v1.yaml` has drifted) → uploads test results and the contract as artefacts |
+| `dependency-scan` | `dotnet list package --vulnerable --include-transitive`; every finding is listed in the job summary, and **Critical** findings fail the build (7-day patch SLA, `docs/MASTER_PLAN.md` §7) |
+
+Both are required checks on `develop`. Dependabot opens weekly update PRs for NuGet packages and GitHub Actions.
+
+Before pushing, the same checks locally:
 
 ```bash
 dotnet build KJWebsite.Backend.slnx
+dotnet format KJWebsite.Backend.slnx --verify-no-changes
+dotnet test KJWebsite.Backend.slnx          # Auth/CTA integration tests need Docker
 dotnet run --project tools/OpenApiExporter -- --verify
 ```
 
-For API work, also exercise the affected route through the gateway. Planned, but absent, test tooling is xUnit, FluentAssertions, Testcontainers, and `WebApplicationFactory`.
+For API work, also exercise the affected route through the gateway.
 
 ## Building for production
 

@@ -26,3 +26,5 @@ Thumbs.db
 .opencode/commands/ai-dlc-nano.md
 .github/prompts/ai-dlc-nano.prompt.md
 .github/instructions/ai-dlc-nano.instructions.md
+# CI test output (issue #11)
+test-results/

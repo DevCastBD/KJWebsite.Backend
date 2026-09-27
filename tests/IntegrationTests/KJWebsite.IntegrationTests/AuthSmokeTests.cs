@@ -52,17 +52,7 @@ public sealed class AuthSmokeTests : IDisposable
         payload.GetProperty("refresh_token").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
-    [Fact]
-    public async Task RefreshReturnsReplacementTokens()
-    {
-        var tokens = await LoginAsync();
-        using var response = await _client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = tokens.RefreshToken });
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
-        payload.GetProperty("access_token").GetString().Should().NotBe(tokens.AccessToken);
-        payload.GetProperty("refresh_token").GetString().Should().NotBe(tokens.RefreshToken);
-    }
+    // Refresh rotation lives in RefreshTokenTests.cs, which runs it against SQLite and PostgreSQL.
 
     [Fact]
     public async Task LogoutRevokesRefreshToken()

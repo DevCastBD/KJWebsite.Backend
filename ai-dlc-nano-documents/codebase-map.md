@@ -20,8 +20,8 @@
   purpose: registration and token endpoints with SQLite/EF Core; entry: `Program.cs`; migrations: `Migrations/`
 - shared (`src/BuildingBlocks/**`)
   purpose: Result, paging, language resolution, RFC 9457/legacy-compatible errors, and endpoint-filter base
-- tests (`tests/UnitTests/**`)
-  purpose: xUnit coverage for shared BuildingBlocks behavior; entry: `KJWebsite.BuildingBlocks.UnitTests.csproj`
+- tests (`tests/UnitTests/**`, `tests/IntegrationTests/**`)
+  purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests per service (Testcontainers PostgreSQL for Auth/CTA — needs Docker); RefreshTokenTests runs on SQLite + PostgreSQL
 - contract and plans (`openapi.v1.yaml`, `PROJECT_CONTEXT.md`, `docs/**`)
   purpose: checked-in API contract, onboarding context, and source-of-truth plans
 - OpenAPI export (`tools/OpenApiExporter/**`)
@@ -47,4 +47,5 @@
 
 ## Gotchas
 - Current auth stores plain-text passwords, access tokens are process-local, and content admin uses `dev-admin-token`; not production-safe.
-- Docker, CI, tests, and a configured formatter are planned but absent.
+- CI: .github/workflows/ci.yml (`build`, `dependency-scan` — both required on develop); Dependabot weekly. Local .NET 10 SDK may be at ~/.dotnet10 (system SDK can be older).
+- Never compare DateTimeOffset inside an EF LINQ predicate: SQLite cannot translate it (see RefreshTokenTests).
