@@ -1,0 +1,16 @@
+# Weekly update PRs for NuGet packages and the workflow's actions (issue #11). Critical advisories
+# still fail CI through the dependency-scan job; this keeps the rest from quietly going stale.
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      microsoft:
+        patterns: ["Microsoft.*", "System.*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

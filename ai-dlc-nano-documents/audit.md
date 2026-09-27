@@ -49,3 +49,9 @@
 - 2026-09-20T21:30Z [Codex] 006-issue-10-docker-compose PHASE PLAN→CONSTRUCT @1bd3653: plan approved
 - 2026-09-20T21:31Z [Codex] 006-issue-10-docker-compose REVISED @1bd3653: separate auth/cta databases in one PostgreSQL container for EnsureCreated compatibility
 - 2026-09-20T21:31Z [Codex] 006-issue-10-docker-compose DECISION @1bd3653: proceed without Docker execution; implementation based on static validation
+- 2026-09-27T07:40Z [claude] 007-issue-11-ci CREATED @7c8ce2f: issue #11 B0-6 CI; local has .NET 7 + no Docker, so CI is first place 005/006 run
+- 2026-09-27T07:40Z [claude] 006-issue-10-docker-compose PAUSED @7c8ce2f: state reconciled — merged as #129 but never Docker-verified; verification moves to #11
+- 2026-09-27T07:48Z [claude] 007-issue-11-ci DECISION @7c8ce2f: .NET 10 user-local; I set branch protection via API; OpenAPI fail-on-drift + artefact; scan fails on critical only (user confirmed)
+- 2026-09-27T07:50Z [claude] 007-issue-11-ci PHASE CLARIFY→PLAN @7c8ce2f: baseline green locally except Docker tests; stale vuln backlog line removed
+- 2026-09-27T07:53Z [claude] 007-issue-11-ci BRANCH @7c8ce2f: 11-feature-b0-6-github-actions-ci off develop (user confirmed)
+- 2026-09-27T07:53Z [claude] 007-issue-11-ci PHASE PLAN→CONSTRUCT @7c8ce2f: plan approved; optional compose-smoke not included (not confirmed)
