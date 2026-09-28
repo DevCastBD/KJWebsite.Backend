@@ -84,3 +84,4 @@
 - 2026-09-28T19:26Z [claude] 009-issue-14-legacy-email-template BRANCH @3ffedb2: 14-feature-b0-10-import-legacy-email-template off develop (user confirmed)
 - 2026-09-28T19:26Z [claude] 009-issue-14-legacy-email-template PHASE PLAN→CONSTRUCT @3ffedb2: fast-path plan approved (import + README + diff check)
 - 2026-09-28T19:28Z [claude] 009-issue-14-legacy-email-template DONE @3ffedb2: imported with 4 redacted lines; README with provenance, seeds, reuse warnings
+- 2026-09-28T19:28Z [claude] 009-issue-14-legacy-email-template SIDE-EFFECT @499ffa3: opened PR (closes #14); commented #14 and FrontEnd #22
