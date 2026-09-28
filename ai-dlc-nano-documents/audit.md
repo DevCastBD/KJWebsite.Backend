@@ -66,3 +66,21 @@
 - 2026-09-27T19:54Z [claude] 008-issue-140-exporter-race CREATED @924f524: flaky OpenAPI step — concurrent dotnet run builds race on BuildingBlocks
 - 2026-09-27T19:54Z [claude] 008-issue-140-exporter-race DONE @924f524: serial build + --no-build; old code 1/3 cold fails, fixed 5/5 pass
 - 2026-09-27T19:54Z [claude] — SIDE-EFFECT @924f524: created issues #140 (bug) and #141 (Dependabot batch); linked PRs #132-#139 to #141; noted on #11
+- 2026-09-27T19:54Z [claude] 008-issue-140-exporter-race SIDE-EFFECT @8b9ee04: opened fix PR (closes #140); commented on #140 and #141
+- 2026-09-27T20:01Z [claude] 008-issue-140-exporter-race SIDE-EFFECT @—: PR #142 merged; #140 closed/commented; #141 step 0 ticked; @dependabot rebase on #132
+- 2026-09-27T20:04Z [claude] — SIDE-EFFECT @1ae245f: repaired local develop — stash-pop conflict in audit.md; ff to origin/develop; 2 audit lines restored
+- 2026-09-27T20:08Z [claude] — SIDE-EFFECT @1ae245f: added merge-summary sections to Dependabot PR descriptions #132-#139 (user asked)
+- 2026-09-27T20:31Z [claude] — SIDE-EFFECT @—: #132 merged; #141 ticked 1/8; @dependabot rebase on #133
+- 2026-09-28T15:08Z [claude] — SIDE-EFFECT @—: #133 merged; #141 ticked 2/8; @dependabot rebase on #134
+- 2026-09-28T18:28Z [claude] — SIDE-EFFECT @—: #134 merged; #141 ticked 3/8 (actions group done); @dependabot rebase on #139
+- 2026-09-28T18:30Z [claude] — SIDE-EFFECT @—: Dependabot ignored rebase on #139 (11 behind); asked again; state.md corrected (was stale)
+- 2026-09-28T18:37Z [claude] — SIDE-EFFECT @e1f74c8: #139 rebased by Dependabot (d95215d, 0 behind, CI green); description marked ready
+- 2026-09-28T18:40Z [claude] — SIDE-EFFECT @07b83d9: #139 merged; #141 ticked 4/8; @dependabot rebase on #137
+- 2026-09-28T18:44Z [claude] — SIDE-EFFECT @ef3811f: #137 merged; #141 ticked 5/8; @dependabot rebase on #135
+- 2026-09-28T19:02Z [claude] — SIDE-EFFECT @431c76d: #135 merged (6/8); #136 closed by Dependabot unmerged (coverlet stays 6.0.4); @dependabot rebase #138
+- 2026-09-28T19:20Z [claude] — DONE @3ffedb2: Dependabot batch #141 complete — 7 merged, #136 closed by Dependabot; #141 closed
+- 2026-09-28T19:22Z [claude] 009-issue-14-legacy-email-template CREATED @3ffedb2: #14 B0-10; source private→public repo; 2 names + phone; images lost (domain down)
+- 2026-09-28T19:26Z [claude] 009-issue-14-legacy-email-template DECISION @3ffedb2: redact the 2 names + phone on import into the public repo (user confirmed)
+- 2026-09-28T19:26Z [claude] 009-issue-14-legacy-email-template BRANCH @3ffedb2: 14-feature-b0-10-import-legacy-email-template off develop (user confirmed)
+- 2026-09-28T19:26Z [claude] 009-issue-14-legacy-email-template PHASE PLAN→CONSTRUCT @3ffedb2: fast-path plan approved (import + README + diff check)
+- 2026-09-28T19:28Z [claude] 009-issue-14-legacy-email-template DONE @3ffedb2: imported with 4 redacted lines; README with provenance, seeds, reuse warnings
