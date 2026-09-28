@@ -61,7 +61,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: test-results/*.trx
@@ -73,7 +73,7 @@ jobs:
         run: dotnet run --project tools/OpenApiExporter -- --verify
 
       - name: Upload OpenAPI contract
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: openapi-contract
           path: openapi.v1.yaml
