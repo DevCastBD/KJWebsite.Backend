@@ -19,7 +19,7 @@ public sealed record CtaSubmissionRecord(
     DateTimeOffset CreatedAt,
     LegacyAwaitingUserProfile? AwaitingUserProfile);
 
-// Legacy-aligned volunteer intake fields extracted from kj-registration AwaitingUser/AwaitingUserApiResource.
+// Legacy-aligned volunteer intake fields extracted from legacy/kj-registration AwaitingUser/AwaitingUserApiResource.
 public sealed record LegacyAwaitingUserProfile(
     string? FirstName,
     string? LastName,

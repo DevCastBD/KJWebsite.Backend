@@ -4,8 +4,7 @@
 ## Do not read in full
 | File / path | Size | Why | Instead |
 |---|---:|---|---|
-| `kj-registration*/.vs/**/storage.ide*` | 3–4 MB | tracked legacy Visual Studio database artifacts | do not inspect |
-| `kj-registration*/obj/project.assets.json` | 587 KB | generated NuGet restore output | inspect the legacy `.csproj` instead |
+| `legacy/**/*.sql` | 8–11 KB | legacy MySQL dumps: test data, but include password hashes | read `legacy/README.md` instead |
 | `docs/MASTER_PLAN.md` | 57 KB | 806-line planning document | read a section below with `sed -n` |
 | `openapi.v1.yaml` | generated | generated aggregate API contract | regenerate with `dotnet run --project tools/OpenApiExporter` |
 
@@ -26,8 +25,8 @@
   purpose: checked-in API contract, onboarding context, and source-of-truth plans
 - OpenAPI export (`tools/OpenApiExporter/**`)
   purpose: starts isolated development services and merges their runtime OpenAPI into `openapi.v1.yaml`; verify: `dotnet run --project tools/OpenApiExporter -- --verify`
-- legacy (`kj-registration/`, `kj-registration-AwaitingUserFeatures/`)
-  purpose: read-only historical ASP.NET Identity snapshots; mine domain fields/statuses only; never build or run
+- legacy (`legacy/**`)
+  purpose: read-only 2019 ASP.NET Identity snapshots; mine domain fields/statuses only; never build or run; guide: `legacy/README.md`
 
 ## Entry points
 - `KJWebsite.Backend.slnx` — solution containing the four services and building blocks.

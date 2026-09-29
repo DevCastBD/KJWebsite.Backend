@@ -140,7 +140,7 @@ src/Services/                    gateway and three API services
 tools/OpenApiExporter/           runtime OpenAPI aggregation tool
 openapi.v1.yaml                  committed v1 API contract
 docs/                            backend and program plans
-kj-registration*/               read-only historical ASP.NET snapshots
+legacy/                          read-only 2019 registration snapshots (see legacy/README.md)
 ```
 
 ## Development workflow
@@ -185,7 +185,7 @@ Local Docker Compose is implemented for contributor onboarding, but CI/CD, stagi
 
 ## Legacy folders
 
-`kj-registration/` and `kj-registration-AwaitingUserFeatures/` are read-only git-subtree snapshots. Mine them only for legacy membership fields, statuses, roles, and registration behavior. Never run, restore, build, deploy, or copy their tracked `.vs/` or `obj/` artifacts; they are not part of the current solution.
+`legacy/kj-registration/` and `legacy/kj-registration-AwaitingUserFeatures/` are read-only snapshots of the 2019 registration app. Mine them only for legacy membership fields, statuses, roles, and registration behavior; never run, restore, build, deploy, or copy code from them. They are not part of the current solution. [`legacy/README.md`](legacy/README.md) lists what to mine and what to avoid.
 
 ## Troubleshooting
 

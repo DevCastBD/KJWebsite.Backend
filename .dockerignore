@@ -7,7 +7,6 @@
 **/*.suo
 ai-dlc-nano-documents
 docs
-kj-registration
-kj-registration-AwaitingUserFeatures
+legacy
 tests
 tools

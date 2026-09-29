@@ -1,11 +1,10 @@
 # AI-DLC Nano State
-- Active work item: none
-- Phase: —
-- Branch: 14-feature-b0-10-import-legacy-email-template
-- Base SHA: —
-- Next step: PR for #14 in review; backend P0 left: #13 (blocked on dumps decision), #12 (blocked on #105/#106)
+- Active work item: work-items/010-issue-13-legacy-move
+- Phase: WRAP-UP
+- Branch: 13-feature-b0-9-move-kj-registration-snapshots-to-legacy
+- Base SHA: 93603f4
+- Next step: push the branch, open the PR (closes #13), comment on #13; confirm CI passes
 - Paused work items:
-  - #13 (B0-9 legacy move) — BLOCKED on user decision about possible personal data in the public repo's MySQL dumps
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
-- Uncommitted code: no (audit.md lines only)
-- Last updated: 2026-09-28T19:28Z by claude
+- Uncommitted code: no
+- Last updated: 2026-09-29T19:35Z by claude

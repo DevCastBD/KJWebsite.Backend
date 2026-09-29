@@ -85,3 +85,9 @@
 - 2026-09-28T19:26Z [claude] 009-issue-14-legacy-email-template PHASE PLAN→CONSTRUCT @3ffedb2: fast-path plan approved (import + README + diff check)
 - 2026-09-28T19:28Z [claude] 009-issue-14-legacy-email-template DONE @3ffedb2: imported with 4 redacted lines; README with provenance, seeds, reuse warnings
 - 2026-09-28T19:28Z [claude] 009-issue-14-legacy-email-template SIDE-EFFECT @499ffa3: opened PR (closes #14); commented #14 and FrontEnd #22
+- 2026-09-29T04:44Z [claude] 010-issue-13-legacy-move CREATED @93603f4: #13 B0-9; dumps confirmed test data only (user reviewed)
+- 2026-09-29T04:44Z [claude] 010-issue-13-legacy-move DECISION @93603f4: dumps are test data — keep, no history rewrite (user confirmed after reviewing rows)
+- 2026-09-29T19:29Z [claude] 010-issue-13-legacy-move DECISION @93603f4: drop tracked .vs/ caches and bin/obj output during the move (user confirmed)
+- 2026-09-29T19:29Z [claude] 010-issue-13-legacy-move BRANCH @93603f4: 13-feature-b0-9-move-kj-registration-snapshots-to-legacy off develop (user confirmed)
+- 2026-09-29T19:29Z [claude] 010-issue-13-legacy-move PHASE PLAN→CONSTRUCT @93603f4: fast-path plan approved (move, README, refs, verify)
+- 2026-09-29T19:35Z [claude] 010-issue-13-legacy-move PHASE CONSTRUCT→WRAP-UP @93603f4: build/format/unit + 17 non-Docker tests pass; 89 renames; 2 follow-ups to backlog
