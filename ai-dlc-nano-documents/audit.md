@@ -91,3 +91,4 @@
 - 2026-09-29T19:29Z [claude] 010-issue-13-legacy-move BRANCH @93603f4: 13-feature-b0-9-move-kj-registration-snapshots-to-legacy off develop (user confirmed)
 - 2026-09-29T19:29Z [claude] 010-issue-13-legacy-move PHASE PLAN→CONSTRUCT @93603f4: fast-path plan approved (move, README, refs, verify)
 - 2026-09-29T19:35Z [claude] 010-issue-13-legacy-move PHASE CONSTRUCT→WRAP-UP @93603f4: build/format/unit + 17 non-Docker tests pass; 89 renames; 2 follow-ups to backlog
+- 2026-09-29T19:53Z [claude] 010-issue-13-legacy-move SIDE-EFFECT @67178a1: pushed branch, opened PR #144 (closes #13), commented #13 (user confirmed)
