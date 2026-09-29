@@ -20,7 +20,7 @@ The backend master plan is the single source of truth for backend development. I
 - Use the [master plan](docs/MASTER_PLAN.md) to establish scope, phase, engineering standards, and planned architecture before proposing implementation.
 - Treat [`openapi.v1.yaml`](openapi.v1.yaml) as the checked-in gateway-level API contract; consult the README for regeneration and verification.
 - Service entry points and endpoint mappings are in [`src/Services/`](src/Services/); shared code is in [`src/BuildingBlocks/`](src/BuildingBlocks/).
-- [`kj-registration/`](kj-registration/) and [`kj-registration-AwaitingUserFeatures/`](kj-registration-AwaitingUserFeatures/) are historical snapshots. Follow the README's legacy-folder guidance before consulting them.
+- [`legacy/kj-registration/`](legacy/kj-registration/) and [`legacy/kj-registration-AwaitingUserFeatures/`](legacy/kj-registration-AwaitingUserFeatures/) are historical snapshots. Read [`legacy/README.md`](legacy/README.md) before consulting them.
 
 ## Keeping this file useful
 

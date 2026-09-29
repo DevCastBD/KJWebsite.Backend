@@ -4,7 +4,7 @@ public sealed record LoginRequest(string Email, string Password);
 
 public sealed record RefreshTokenRequest(string RefreshToken);
 
-// Legacy-aligned registration/profile fields extracted from kj-registration ApplicationUser.
+// Legacy-aligned registration/profile fields extracted from legacy/kj-registration ApplicationUser.
 public sealed record LegacyRegistrationRequest(
     string Email,
     string Password,

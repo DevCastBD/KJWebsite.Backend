@@ -28,3 +28,8 @@ Thumbs.db
 .github/instructions/ai-dlc-nano.instructions.md
 # CI test output (issue #11)
 test-results/
+
+# Legacy snapshots: never re-commit IDE caches or build output (issue #13)
+legacy/**/.vs/
+legacy/**/bin/
+legacy/**/obj/
