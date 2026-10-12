@@ -52,7 +52,7 @@ public sealed class AuthSmokeTests : IDisposable
         payload.GetProperty("refresh_token").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
-    // Refresh rotation lives in RefreshTokenTests.cs, which runs it against SQLite and PostgreSQL.
+    // Refresh rotation lives in RefreshTokenTests.cs and runs against PostgreSQL.
 
     [Fact]
     public async Task LogoutRevokesRefreshToken()

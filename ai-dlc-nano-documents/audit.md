@@ -114,3 +114,7 @@
 - 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: committed and pushed docs/issue-105-true-microservices (user requested)
 - 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: opened PR #151 against develop, closes #105 (user requested)
 - 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: commented on #105 with ADR outcome and PR #151 (user requested)
+- 2026-10-12T14:01Z [codex] 012-issue-21-postgresql-migration DECISION @c6ee5da: PostgreSQL 17/Npgsql, separate auth and cta databases with named schemas; user ratified
+- 2026-10-12T14:01Z [codex] 012-issue-21-postgresql-migration PHASE CLARIFY→PLAN @c6ee5da: ADR-004 decision recorded; implementation plan drafted
+- 2026-10-12T14:29Z [codex] 012-issue-21-postgresql-migration BRANCH @4a38da2: feature/issue-21-postgresql created from develop (user approved)
+- 2026-10-12T14:29Z [codex] 012-issue-21-postgresql-migration PHASE PLAN→CONSTRUCT @4a38da2: plan approved; migration work begins

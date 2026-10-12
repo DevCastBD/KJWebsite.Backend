@@ -7,7 +7,8 @@
 - Verify clean database setup, seeded Bengali text, and integration tests against PostgreSQL.
 ## Decisions
 - ADR-001 accepted true microservices on 2026-10-12; see `docs/adr/0001-true-microservices.md`.
-- Pending: ADR-004 PostgreSQL ratification (#12); issue #21 depends on it.
+- ADR-004: use PostgreSQL 17 with Npgsql. Md Tahmidul Abedin ratified this on 2026-10-12 after checking the installed PostgreSQL 17.10 and existing project plan; PostgreSQL 18 was considered.
+- Keep separate `auth` and `cta` databases on the shared PostgreSQL instance, with named `auth` and `cta` schemas owned by their respective services.
 ## Out of scope
 - Later P1 identity, content, and engagement features, except changes necessary for database migration.
 ## Follow-ups

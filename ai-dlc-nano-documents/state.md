@@ -1,12 +1,11 @@
 # AI-DLC Nano State
-- Active work item: none
-- Phase: —
-- Branch: —
-- Base SHA: —
-- Next step: review PR #151; resume #21 after ADR-004 ratification (#12)
+- Active work item: work-items/012-issue-21-postgresql-migration
+- Phase: CONSTRUCT
+- Branch: feature/issue-21-postgresql
+- Base SHA: 4a38da2
+- Next step: validate PostgreSQL baselines, then complete data transfer and tests
 - Paused work items:
-  - work-items/012-issue-21-postgresql-migration (CLARIFY, branch —, base —)
   - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
-- Last updated: 2026-10-12 by codex
+- Last updated: 2026-10-13 by codex

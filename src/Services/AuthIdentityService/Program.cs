@@ -18,34 +18,20 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
-var usePostgreSql = string.Equals(builder.Configuration["Database:Provider"], "PostgreSql", StringComparison.OrdinalIgnoreCase);
-var authConnectionString = builder.Configuration.GetConnectionString("AuthDb") ?? "Data Source=auth.db";
-builder.Services.AddDbContext<AuthDbContext>(options =>
-{
-    if (usePostgreSql)
-    {
-        options.UseNpgsql(authConnectionString);
-        return;
-    }
-
-    options.UseSqlite(authConnectionString);
-});
+var authConnectionString = builder.Configuration.GetConnectionString("AuthDb")
+    ?? (builder.Configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=auth" : throw new InvalidOperationException("ConnectionStrings:AuthDb is required."));
+builder.Services.AddDbContext<AuthDbContext>(options => options.UseNpgsql(authConnectionString,
+    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "auth")));
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-    if (usePostgreSql && builder.Configuration.GetValue<bool>("Database:EnsureCreated"))
-    {
-        db.Database.EnsureCreated();
-    }
-    else
-    {
-        db.Database.Migrate();
-    }
+    db.Database.Migrate();
 
-    if (!db.Users.Any(u => u.Email == "admin@site.org"))
+    if (app.Environment.IsDevelopment() && !db.Users.Any(u => u.Email == "admin@site.org"))
     {
         db.Users.Add(new AuthUserEntity
         {

@@ -343,7 +343,7 @@ Architecture decisions are recorded in `docs/adr/NNNN-title.md`. Ratify these be
 | 001 | Modular monolith vs microservices | **Accepted: true microservices** behind the gateway ([ADR-001](adr/0001-true-microservices.md), §2.1) |
 | 002 | Identity: ASP.NET Core Identity vs hand-rolled | **ASP.NET Core Identity** — password hashing, lockout, MFA, token providers are solved problems and the legacy system already used it |
 | 003 | Token format | Asymmetric **JWT** (RS256/ES256), 15-min access token, rotating refresh token stored hashed |
-| 004 | Database | **PostgreSQL 17**, schema per service, Npgsql provider |
+| 004 | Database | **Accepted: PostgreSQL 17**, service-owned databases and schemas, Npgsql provider ([ADR-004](adr/0004-postgresql-per-service.md)) |
 | 005 | Background jobs | **Hangfire** (has a dashboard, low ceremony) or Quartz.NET; transactional outbox for side effects |
 | 006 | Object storage | **Cloudflare R2** or S3-compatible; no blobs in the database |
 | 007 | Email provider | Transactional: Postmark/SendGrid/Amazon SES. Must support bn/en templates and DKIM/SPF on the org domain |

@@ -10,13 +10,11 @@ using Microsoft.Extensions.DependencyInjection;
 namespace KJWebsite.IntegrationTests;
 
 /// <summary>
-/// Refresh-token rotation, run against every database provider the service supports.
+/// Refresh-token rotation against the PostgreSQL provider.
 ///
 /// The first CI run (issue #11) found POST /auth/refresh returning 500: its query compared
-/// `ExpiresAt > DateTimeOffset.UtcNow`, which EF Core cannot translate — SQLite stores
-/// DateTimeOffset as text and cannot compare it, and Npgsql rejected the UtcNow form. SQLite is
-/// the local-development default, so rotation had never worked there either. Running the same
-/// tests on both providers is what keeps that from recurring on either one.
+/// `ExpiresAt > DateTimeOffset.UtcNow`, which EF Core could not translate. This test keeps
+/// rotation working on the supported PostgreSQL provider.
 /// </summary>
 public abstract class RefreshTokenTestsBase<TFactory> : IDisposable
     where TFactory : WebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint>
@@ -126,7 +124,6 @@ public abstract class RefreshTokenTestsBase<TFactory> : IDisposable
     }
 }
 
-public sealed class SqliteRefreshTokenTests() : RefreshTokenTestsBase<AuthSqliteApiFactory>(new AuthSqliteApiFactory());
 
 [Collection(nameof(PostgreSqlFixtures))]
 public sealed class PostgreSqlRefreshTokenTests(PostgreSqlFixture fixture)

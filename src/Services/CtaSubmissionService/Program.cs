@@ -17,31 +17,34 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
-var usePostgreSql = string.Equals(builder.Configuration["Database:Provider"], "PostgreSql", StringComparison.OrdinalIgnoreCase);
-var ctaConnectionString = builder.Configuration.GetConnectionString("CtaDb") ?? "Data Source=cta.db";
-builder.Services.AddDbContext<CtaDbContext>(options =>
-{
-    if (usePostgreSql)
-    {
-        options.UseNpgsql(ctaConnectionString);
-        return;
-    }
-
-    options.UseSqlite(ctaConnectionString);
-});
+var ctaConnectionString = builder.Configuration.GetConnectionString("CtaDb")
+    ?? (builder.Configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=cta" : throw new InvalidOperationException("ConnectionStrings:CtaDb is required."));
+builder.Services.AddDbContext<CtaDbContext>(options => options.UseNpgsql(ctaConnectionString,
+    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "cta")));
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CtaDbContext>();
-    if (usePostgreSql && builder.Configuration.GetValue<bool>("Database:EnsureCreated"))
+    db.Database.Migrate();
+
+    if (app.Environment.IsDevelopment() && !db.Submissions.Any(s => s.Id == "subm_dev_bengali"))
     {
-        db.Database.EnsureCreated();
-    }
-    else
-    {
-        db.Database.Migrate();
+        db.Submissions.Add(new CtaSubmissionEntity
+        {
+            Id = "subm_dev_bengali",
+            FormName = "contact",
+            CtaType = "contact",
+            Language = "bn",
+            SourcePath = "/contact",
+            ValuesJson = "{\"firstName\":\"বাংলা\"}",
+            FirstName = "বাংলা",
+            SubmittedAt = DateTimeOffset.UtcNow,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        db.SaveChanges();
     }
 }
 
