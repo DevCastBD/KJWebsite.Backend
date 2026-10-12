@@ -97,48 +97,25 @@ Severity: 🔴 blocks production · 🟠 blocks a planned feature · 🟡 qualit
 
 ## 2. Target architecture
 
-### 2.1 Deployment topology (recommended)
+### 2.1 Deployment topology (ADR-001 accepted)
 
-**ADR-001 (proposed): consolidate to a modular monolith behind the existing gateway.**
-
-The current four-service split imposes distributed-systems cost — four deployables, four databases, cross-service transactions, network hops, four sets of migrations — on a volunteer-staffed non-profit with a single database's worth of data. Recommendation:
+**[ADR-001](adr/0001-true-microservices.md): retain independently deployable microservices behind the existing YARP gateway.** The organisation may need to host applications on different domains or co-host them later. Service boundaries preserve independent deployment in either arrangement; gateway routing controls the public domains.
 
 ```
-                    ┌──────────────────────────┐
-   Browser ────────▶│  ApiGateway (YARP)       │  :7000 / api.kolpojontro.org
-   (static SPA)     │  TLS, CORS, rate limit,  │
-                    │  auth pre-check, routing │
-                    └────────────┬─────────────┘
-                                 │
-                    ┌────────────▼─────────────┐
-                    │  KJWebsite.Api           │  modular monolith
-                    │  ┌─────────────────────┐ │
-                    │  │ Modules:            │ │
-                    │  │  Identity           │ │
-                    │  │  Content            │ │
-                    │  │  Engagement (CTA)   │ │
-                    │  │  Membership         │ │
-                    │  │  Finance            │ │
-                    │  │  Events             │ │
-                    │  │  Communications     │ │
-                    │  │  Reporting          │ │
-                    │  └─────────────────────┘ │
-                    └───┬──────────┬───────┬───┘
-                        │          │       │
-                  ┌─────▼────┐ ┌───▼───┐ ┌─▼──────────┐
-                  │PostgreSQL│ │ Redis │ │Object store│
-                  │(schema   │ │cache/ │ │(S3/R2)     │
-                  │ per mod.)│ │queues │ │media       │
-                  └──────────┘ └───────┘ └────────────┘
-                        │
-                  ┌─────▼──────────────┐
-                  │ Background worker  │  outbox, email, scheduled jobs
-                  └────────────────────┘
+   Browser (static SPA)
+           │
+           ▼
+   ApiGateway (YARP) ── routing, CORS, rate limits, auth pre-check
+           │
+           ├── Identity service ────┐
+           ├── Content service ─────┤
+           ├── Engagement/CTA ──────┤── PostgreSQL (schema per service)
+           └── future services ─────┘
 ```
 
-Each module keeps its own folder, its own EF `DbContext` mapped to its own **PostgreSQL schema**, and communicates with other modules only through published interfaces or in-process events. That preserves the option to extract any module into its own service later — without paying for it now.
+Each service owns its folder, EF `DbContext`, migrations, and **PostgreSQL schema**. Services communicate through authenticated APIs or events, never by writing another service's tables. Shared contracts and utilities live in versioned `BuildingBlocks` packages. P1 includes service-to-service authentication, a service registry for discovery, and distributed tracing from day one. Workers, Redis, and object storage can be added as needed. Deploy services together on shared infrastructure or separately without changing their ownership boundaries.
 
-**If the organisation prefers to keep true microservices** (ADR-001 rejected), everything in this plan still applies: each phase's module becomes a service, the shared concerns in §4 move into `BuildingBlocks` NuGet packages, and P1 additionally requires service-to-service auth, a service registry, and distributed tracing from day one. Budget roughly +30 % effort on every phase.
+The rejected modular monolith would have reduced deployables and operational work. True microservices add network hops, cross-service failure modes, and more migrations and deployment work. Budget roughly +30 % effort per phase against that alternative; monitor hosting and support costs as services are added.
 
 ### 2.2 Module responsibilities
 
@@ -361,12 +338,12 @@ These apply from P1 onwards and are enforced in code review and CI.
 
 Architecture decisions are recorded in `docs/adr/NNNN-title.md`. Ratify these before P1 code starts:
 
-| ADR | Decision | Recommendation |
+| ADR | Decision | Recommendation / status |
 |---|---|---|
-| 001 | Modular monolith vs microservices | Modular monolith behind the gateway (§2.1) |
+| 001 | Modular monolith vs microservices | **Accepted: true microservices** behind the gateway ([ADR-001](adr/0001-true-microservices.md), §2.1) |
 | 002 | Identity: ASP.NET Core Identity vs hand-rolled | **ASP.NET Core Identity** — password hashing, lockout, MFA, token providers are solved problems and the legacy system already used it |
 | 003 | Token format | Asymmetric **JWT** (RS256/ES256), 15-min access token, rotating refresh token stored hashed |
-| 004 | Database | **PostgreSQL 17**, schema per module, Npgsql provider |
+| 004 | Database | **PostgreSQL 17**, schema per service, Npgsql provider |
 | 005 | Background jobs | **Hangfire** (has a dashboard, low ceremony) or Quartz.NET; transactional outbox for side effects |
 | 006 | Object storage | **Cloudflare R2** or S3-compatible; no blobs in the database |
 | 007 | Email provider | Transactional: Postmark/SendGrid/Amazon SES. Must support bn/en templates and DKIM/SPF on the org domain |
@@ -432,7 +409,7 @@ Each phase is independently releasable and paired with the same-numbered fronten
 
 | ID | Deliverable | Closes |
 |---|---|---|
-| B1-1 | **PostgreSQL migration.** Npgsql provider, schema-per-module, re-baselined migrations, seed data, `dotnet ef` scripts, and a documented SQLite→Postgres path for existing dev data | G7 |
+| B1-1 | **PostgreSQL migration.** Npgsql provider, schema-per-service, re-baselined migrations, seed data, `dotnet ef` scripts, and a documented SQLite→Postgres path for existing dev data | G7 |
 | B1-2 | **ASP.NET Core Identity adoption.** Real password hashing, lockout, email confirmation, password reset, security stamps. One-way migration for the seeded dev user; the plain-text column is dropped, not converted | G1 |
 | B1-3 | **JWT authentication.** Asymmetric signing keys, 15-min access tokens with `sub`/`roles`/`permissions` claims, rotating refresh tokens stored **hashed**, revocation list, device/session listing, logout-all | G2 |
 | B1-4 | **Authorisation.** Replace `dev-admin-token` with policy-based authorisation over permission claims; seed roles and permissions | G3, G13 (partial) |
@@ -449,6 +426,8 @@ Each phase is independently releasable and paired with the same-numbered fronten
 | B1-15 | **Backups & DR.** Automated daily PostgreSQL backups with off-site retention, a **tested** restore procedure, and `docs/RUNBOOK.md` | G29 |
 | B1-16 | **Secrets management.** Nothing sensitive in the repository; environment variables in deployment; key rotation procedure documented | — |
 | B1-17 | **Contract tests.** A CI job that validates the running API against `openapi.v1.yaml` and publishes a typed client the frontend can consume | G26 |
+
+**ADR-001 cross-service requirements.** P1 also needs authenticated service-to-service calls, a service registry for discovery, and trace propagation across the gateway and services. Each service owns its migrations; cross-service workflows use APIs or events rather than direct table writes.
 
 **New/changed endpoints (illustrative)**
 
@@ -684,7 +663,7 @@ GET    /api/v1/admin/cta/submissions/export
 - Multi-region backups, documented **and rehearsed** disaster recovery with stated RPO/RTO.
 - Public **developer API**: API keys, scopes, quotas, documentation portal — for partner integrations.
 - Webhooks outbound so partners can subscribe to organisation events.
-- Optional module extraction (if ADR-001 is revisited): pull Finance or Identity into a standalone service using the module boundaries already in place.
+- Service isolation review: move a service to separate hosting or a domain when its scaling, security, or operational needs justify it; retain its API and data ownership boundaries.
 - Mobile/API readiness: refresh-token flows for native clients, push notification registration.
 - i18n expansion beyond bn/en if needed; translation-management workflow.
 - Operational maturity: on-call rota, runbooks per incident class, SLOs and error budgets, quarterly restore drills.
@@ -781,10 +760,10 @@ The contract each phase must deliver **before** the paired frontend work can lea
 | Current auth is deployed publicly before P1 completes | Critical — full compromise | Deployment blocked by policy until G1–G3 close; issues labelled and tracked |
 | Payment gateway approval (bKash/Nagad merchant accounts) takes months | Delays P4 | Start applications during P2; build against sandbox; ship offline-donation recording first |
 | Financial correctness bugs | Severe reputational and legal damage to a non-profit | Double-entry ledger, append-only records, 90 % test coverage on Finance, external review before go-live |
-| Microservice overhead exhausts a volunteer team | Slow delivery, half-finished services | ADR-001: modular monolith; revisit only when a module genuinely needs independent scale |
+| Microservice overhead exhausts a volunteer team | Slow delivery, half-finished services | Keep service boundaries narrow, automate deployment and observability, and track per-service operating cost; revisit ADR-001 if the overhead becomes unsustainable |
 | Volunteer developer turnover | Knowledge loss | This document, ADRs, README, runbooks; no undocumented tribal knowledge |
 | Personal data of applicants mishandled | Legal and trust damage | Retention policy, encryption, access audit, minimal collection |
-| Hosting cost exceeds a non-profit budget | Service interruption | Cost-conscious ADR-013; single small VPS + managed Postgres is sufficient through P5; apply for non-profit cloud credits |
+| Hosting cost exceeds a non-profit budget | Service interruption | Cost-conscious ADR-013; co-host services where capacity allows, measure cost as services grow, and apply for non-profit cloud credits |
 | Contract drift between frontend and backend | Rework, integration failures | OpenAPI as the contract, CI contract tests, generated clients |
 | Scope creep across nine phases | Nothing finishes | This plan is the source of truth; changes go through it first |
 
@@ -794,13 +773,12 @@ The contract each phase must deliver **before** the paired frontend work can lea
 
 Owned by the core members; each blocks the phase noted.
 
-1. **ADR-001** — modular monolith or true microservices? *(blocks P1 start)*
-2. **Hosting and budget** — monthly ceiling and preferred provider? *(blocks P1 deployment)*
-3. **Payment providers** — which merchant accounts can realistically be obtained, and who owns the applications? *(blocks P4)*
-4. **Fiscal calendar** — Bangladesh fiscal year (July–June) or calendar year? Which accounting standard does the auditor expect? *(blocks P4 ledger design)*
-5. **Membership model** — are there paid dues, and what member types exist? *(blocks P3)*
-6. **Data retention** — how long are rejected applications and donor records kept? *(blocks P3, P4)*
-7. **Public transparency** — which financial figures will the organisation publish? *(blocks P7)*
-8. **Back-office users** — how many, in which roles? *(blocks P2 RBAC seeding)*
-9. **Email domain** — who controls DNS for `kolpojontro.org` to configure SPF/DKIM/DMARC? *(blocks P1 email)*
-10. **Legal entity details** — registration number, trustees, audit obligations. *(blocks P7 and receipt content)*
+1. **Hosting and budget** — monthly ceiling and preferred provider? *(blocks P1 deployment)*
+2. **Payment providers** — which merchant accounts can realistically be obtained, and who owns the applications? *(blocks P4)*
+3. **Fiscal calendar** — Bangladesh fiscal year (July–June) or calendar year? Which accounting standard does the auditor expect? *(blocks P4 ledger design)*
+4. **Membership model** — are there paid dues, and what member types exist? *(blocks P3)*
+5. **Data retention** — how long are rejected applications and donor records kept? *(blocks P3, P4)*
+6. **Public transparency** — which financial figures will the organisation publish? *(blocks P7)*
+7. **Back-office users** — how many, in which roles? *(blocks P2 RBAC seeding)*
+8. **Email domain** — who controls DNS for `kolpojontro.org` to configure SPF/DKIM/DMARC? *(blocks P1 email)*
+9. **Legal entity details** — registration number, trustees, audit obligations. *(blocks P7 and receipt content)*
