@@ -17,14 +17,17 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
-var ctaConnectionString = builder.Configuration.GetConnectionString("CtaDb")
-    ?? (builder.Configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=cta" : throw new InvalidOperationException("ConnectionStrings:CtaDb is required."));
-builder.Services.AddDbContext<CtaDbContext>(options => options.UseNpgsql(ctaConnectionString,
-    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "cta")));
+builder.Services.AddDbContext<CtaDbContext>((services, options) =>
+{
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("CtaDb")
+        ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=cta" : throw new InvalidOperationException("ConnectionStrings:CtaDb is required."));
+    options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "cta"));
+});
 
 var app = builder.Build();
 
-if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
+if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CtaDbContext>();
@@ -92,7 +95,7 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
         Language = payload.Language,
         SourcePath = payload.SourcePath,
         ValuesJson = valuesJson,
-        SubmittedAt = payload.SubmittedAt,
+        SubmittedAt = payload.SubmittedAt.ToUniversalTime(),
         CreatedAt = createdAt,
         FirstName = awaitingProfile?.FirstName,
         LastName = awaitingProfile?.LastName,

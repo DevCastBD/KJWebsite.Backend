@@ -12,4 +12,4 @@
 ## Out of scope
 - Later P1 identity, content, and engagement features, except changes necessary for database migration.
 ## Follow-ups
-- None yet.
+- Automate data transfer from a pre-migration Compose PostgreSQL volume created with `EnsureCreated` if it contains data worth keeping; the documented SQLite importer does not handle that source format.

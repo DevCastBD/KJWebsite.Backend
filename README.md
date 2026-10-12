@@ -31,7 +31,7 @@ Four ASP.NET Core Minimal API services sit behind a YARP gateway. The gateway is
 | HTTP APIs | ASP.NET Core Minimal APIs | .NET 10 |
 | Gateway | YARP | 2.2.0 |
 | API reference | ASP.NET Core OpenAPI / Scalar | 10.0.8 / 2.14.14 |
-| Data | EF Core with SQLite | 10.0.8; Auth and CTA only |
+| Data | EF Core with PostgreSQL 17 / Npgsql | Auth and CTA own separate databases and schemas |
 | Contract | `openapi.v1.yaml` | generated and committed |
 
 No build, coverage, or deployment badges are shown because CI and hosted deployment do not exist yet.
@@ -45,16 +45,16 @@ flowchart LR
     Gateway --> CTA[CTA Submission Service :7002]
     Gateway --> Auth[Auth Identity Service :7003]
     Content --> Memory[(In-memory content)]
-    CTA --> CtaDb[(SQLite: cta.db)]
-    Auth --> AuthDb[(SQLite: auth.db)]
+    CTA --> CtaDb[(PostgreSQL: cta / cta schema)]
+    Auth --> AuthDb[(PostgreSQL: auth / auth schema)]
 ```
 
 | Service | Port | Responsibility | Database | Exposure |
 |---|---:|---|---|---|
 | `ApiGateway` | 7000 | Routes content, CTA, auth, and admin-content APIs | None | Public entry point |
 | `ContentService` | 7001 | Public projects/news and admin mutations | In-memory; resets on restart | Internal |
-| `CtaSubmissionService` | 7002 | CTA and registration-form submissions | SQLite (`cta.db`) | Internal |
-| `AuthIdentityService` | 7003 | Registration, login, refresh, logout, and profile | SQLite (`auth.db`) | Internal |
+| `CtaSubmissionService` | 7002 | CTA and registration-form submissions | PostgreSQL (`cta` database/schema) | Internal |
+| `AuthIdentityService` | 7003 | Registration, login, refresh, logout, and profile | PostgreSQL (`auth` database/schema) | Internal |
 
 ## Getting started
 
@@ -63,6 +63,7 @@ flowchart LR
 - [.NET SDK 10.0.300](https://dotnet.microsoft.com/download) or compatible .NET 10 SDK
 - The manifest-managed `dotnet-ef` tool
 - Docker Desktop or Docker Engine with Compose, if running the container stack
+- PostgreSQL 17 with the `auth` and `cta` databases and connection strings, if running services without Compose
 
 ```bash
 dotnet tool restore
@@ -74,7 +75,7 @@ On Windows, use `dotnet` from a terminal with the SDK on `PATH`; do not hard-cod
 
 ### Run all services locally
 
-Open four terminals from the repository root:
+Set `ConnectionStrings__AuthDb` and `ConnectionStrings__CtaDb` to PostgreSQL connection strings (see [database and migrations](#database-and-migrations)), then open four terminals from the repository root:
 
 ```bash
 dotnet run --project src/Services/ApiGateway --launch-profile http
@@ -93,7 +94,7 @@ With Docker installed, start every service and its local dependencies from the r
 docker compose up --build
 ```
 
-The API Gateway Scalar reference is at http://localhost:7000/scalar/v1. Health endpoints are available on ports 7000–7003 at `/health`; MailHog is at http://localhost:8025. The Compose credentials are development-only and PostgreSQL data persists in the `postgres-data` volume. Stop the stack with `docker compose down`; add `--volumes` only when you intentionally want to discard local database data.
+The API Gateway Scalar reference is at http://localhost:7000/scalar/v1. Health endpoints are available on ports 7000–7003 at `/health`; MailHog is at http://localhost:8025. The Compose credentials are development-only and PostgreSQL is available on host port 5433. Data persists in `postgres-v17-migrated-data`; the older `postgres-data` volume remains untouched. Stop the stack with `docker compose down`; add `--volumes` only when you intentionally want to discard local database data.
 
 ### Configuration
 
@@ -101,23 +102,22 @@ The API Gateway Scalar reference is at http://localhost:7000/scalar/v1. Health e
 |---|---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | No | Host default | Use `Development` locally; Scalar and runtime OpenAPI are mapped only then. |
 | `ASPNETCORE_URLS` | No | `launchSettings.json` port | Overrides a listener. Containers use port 8080 internally. |
-| `ConnectionStrings__AuthDb` | No | `Data Source=auth.db` | Auth SQLite connection string. |
-| `ConnectionStrings__CtaDb` | No | `Data Source=cta.db` | CTA SQLite connection string. |
-| `Database__Provider` | No | SQLite | Set to `PostgreSql` for the Compose Auth and CTA containers. |
+| `ConnectionStrings__AuthDb` | Yes, for Auth | None | Auth PostgreSQL connection string. |
+| `ConnectionStrings__CtaDb` | Yes, for CTA | None | CTA PostgreSQL connection string. |
 | `Services__{Content,Cta,Auth}__Url` | No | Localhost service ports | Gateway downstream destination overrides. |
 
 No production secret configuration exists. P1 must use environment/vault configuration, secure auth, and restrictive CORS.
 
 ## Database and migrations
 
-Auth and CTA apply their EF Core migrations at startup when using SQLite. The Docker Compose stack instead uses separate development PostgreSQL databases (`auth` and `cta`) and initializes their current schemas with `EnsureCreated`; it does not apply the SQLite migrations. Neither option is production storage. Create and apply an Auth migration with:
+Auth and CTA use Npgsql and apply their PostgreSQL EF Core migrations at startup. Each has a named schema and its own migration-history table. To create and apply a new Auth migration, set `ConnectionStrings__AuthDb` first and run:
 
 ```bash
 dotnet ef migrations add <MigrationName> --project src/Services/AuthIdentityService --startup-project src/Services/AuthIdentityService
 dotnet ef database update --project src/Services/AuthIdentityService --startup-project src/Services/AuthIdentityService
 ```
 
-Use the equivalent CTA paths for CTA migrations. Content has no database and resets on restart. P1 will introduce PostgreSQL, Npgsql, schema-per-module design, re-baselined migrations, and a documented one-way development-data migration; do not repoint the current SQLite migrations at PostgreSQL.
+Use the equivalent CTA paths and `ConnectionStrings__CtaDb` for CTA migrations. The [SQLite to PostgreSQL guide](docs/SQLITE_TO_POSTGRES.md) covers backups, baselines, data import, verification, and rollback. Content has no database yet and resets on restart.
 
 ## API contract
 
@@ -128,7 +128,7 @@ dotnet run --project tools/OpenApiExporter
 dotnet run --project tools/OpenApiExporter -- --verify
 ```
 
-The cross-platform exporter starts the four services in `Development` on temporary loopback ports, fetches `/openapi/v1.json`, merges the gateway health route with downstream API routes, writes deterministic YAML, then stops the temporary processes. `--verify` fails on contract drift and does not modify local SQLite data.
+The cross-platform exporter starts the four services in `Development` on temporary loopback ports, fetches `/openapi/v1.json`, merges the gateway health route with downstream API routes, writes deterministic YAML, then stops the temporary processes. `--verify` fails on contract drift; export skips database initialization because route metadata needs no database.
 
 The frontend should generate its typed client or mock from the committed YAML, not a developer's live service URL. Scalar is for local exploration only.
 
@@ -138,6 +138,7 @@ The frontend should generate its typed client or mock from the committed YAML, n
 src/BuildingBlocks/              shared building-block project (currently minimal)
 src/Services/                    gateway and three API services
 tools/OpenApiExporter/           runtime OpenAPI aggregation tool
+tools/SqliteToPostgres/          development-data transfer tool
 openapi.v1.yaml                  committed v1 API contract
 docs/                            backend and program plans
 legacy/                          read-only 2019 registration snapshots (see legacy/README.md)
@@ -192,7 +193,7 @@ Local Docker Compose is implemented for contributor onboarding, but CI/CD, stagi
 | Symptom | Cause | Resolution |
 |---|---|---|
 | Gateway returns 502 | A downstream service is unavailable | Start all four services with the `http` profile. |
-| Compose service exits on startup | PostgreSQL is not ready or its data volume uses an older layout | Run `docker compose down --volumes`, then `docker compose up --build` to recreate local development data. |
+| Compose service exits on startup | PostgreSQL is not ready, the connection string is wrong, or an old `EnsureCreated` volume was reused | Check container logs and follow [the cutover guide](docs/SQLITE_TO_POSTGRES.md); preserve old volumes until data is verified. |
 | Scalar returns 404 | Service is not in Development | Set `ASPNETCORE_ENVIRONMENT=Development` and restart. |
 | `dotnet ef` is unavailable | Tools are not restored | Run `dotnet tool restore`. |
 | Exporter verification fails | Contract drift | Regenerate the YAML, review it, then rerun `--verify`. |

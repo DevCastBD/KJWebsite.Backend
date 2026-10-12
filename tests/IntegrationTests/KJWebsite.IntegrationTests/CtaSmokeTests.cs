@@ -40,6 +40,22 @@ public sealed class CtaSmokeTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
+    [Fact]
+    public async Task CreateSubmissionAcceptsTimestampWithOffset()
+    {
+        using var response = await _client.PostAsJsonAsync("/api/v1/cta/submissions", new
+        {
+            formName = "contact",
+            ctaType = "contact",
+            language = "bn",
+            sourcePath = "/contact",
+            values = new Dictionary<string, object?> { ["firstName"] = "বাংলা" },
+            submittedAt = new DateTimeOffset(2026, 1, 1, 6, 0, 0, TimeSpan.FromHours(6))
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
     public void Dispose()
     {
         _client.Dispose();

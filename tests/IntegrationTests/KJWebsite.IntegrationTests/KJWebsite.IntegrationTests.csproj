@@ -25,6 +25,7 @@
     <ProjectReference Include="../../../src/Services/AuthIdentityService/AuthIdentityService.csproj" />
     <ProjectReference Include="../../../src/Services/ContentService/ContentService.csproj" />
     <ProjectReference Include="../../../src/Services/CtaSubmissionService/CtaSubmissionService.csproj" />
+    <ProjectReference Include="../../../tools/SqliteToPostgres/SqliteToPostgres.csproj" />
     <Using Include="Xunit" />
   </ItemGroup>
 

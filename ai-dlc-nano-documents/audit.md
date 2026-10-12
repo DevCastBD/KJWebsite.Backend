@@ -118,3 +118,6 @@
 - 2026-10-12T14:01Z [codex] 012-issue-21-postgresql-migration PHASE CLARIFY→PLAN @c6ee5da: ADR-004 decision recorded; implementation plan drafted
 - 2026-10-12T14:29Z [codex] 012-issue-21-postgresql-migration BRANCH @4a38da2: feature/issue-21-postgresql created from develop (user approved)
 - 2026-10-12T14:29Z [codex] 012-issue-21-postgresql-migration PHASE PLAN→CONSTRUCT @4a38da2: plan approved; migration work begins
+- 2026-10-12T19:48Z [codex] 012-issue-21-postgresql-migration SIDE-EFFECT @86f21c9: local WIP commit requested by user; no push
+- 2026-10-12T19:48Z [codex] 012-issue-21-postgresql-migration PHASE CONSTRUCT→WRAP-UP @86f21c9: 35 tests, Compose and API smoke, OpenAPI checks pass
+- 2026-10-12T19:48Z [codex] 012-issue-21-postgresql-migration DONE @86f21c9: PostgreSQL 17 migration complete locally; old Compose data follow-up recorded

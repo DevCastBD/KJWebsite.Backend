@@ -6,13 +6,15 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-v17-migrated-data:/var/lib/postgresql/data
       - ./docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/01-create-cta.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 10
+    ports:
+      - "5433:5432"
 
   redis:
     image: redis:7-alpine
@@ -42,8 +44,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      Database__Provider: PostgreSql
-      Database__EnsureCreated: "true"
       ConnectionStrings__AuthDb: Host=postgres;Port=5432;Database=auth;Username=postgres;Password=postgres
     depends_on:
       postgres:
@@ -58,8 +58,6 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
-      Database__Provider: PostgreSql
-      Database__EnsureCreated: "true"
       ConnectionStrings__CtaDb: Host=postgres;Port=5432;Database=cta;Username=postgres;Password=postgres
     depends_on:
       postgres:
@@ -88,4 +86,4 @@ services:
       - "7000:8080"
 
 volumes:
-  postgres-data:
+  postgres-v17-migrated-data:

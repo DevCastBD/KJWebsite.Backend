@@ -18,14 +18,17 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
-var authConnectionString = builder.Configuration.GetConnectionString("AuthDb")
-    ?? (builder.Configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=auth" : throw new InvalidOperationException("ConnectionStrings:AuthDb is required."));
-builder.Services.AddDbContext<AuthDbContext>(options => options.UseNpgsql(authConnectionString,
-    npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "auth")));
+builder.Services.AddDbContext<AuthDbContext>((services, options) =>
+{
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("AuthDb")
+        ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=auth" : throw new InvalidOperationException("ConnectionStrings:AuthDb is required."));
+    options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "auth"));
+});
 
 var app = builder.Build();
 
-if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
+if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
@@ -159,9 +162,7 @@ app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest paylo
 app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequest payload, AuthDbContext db) =>
 {
     // Token is unique-indexed, so this fetches at most one row; expiry is then checked in memory.
-    // A DateTimeOffset comparison inside the query cannot be translated by EF Core on SQLite (which
-    // stores it as text) nor, in the UtcNow form, by Npgsql — it threw, turning every refresh into a
-    // 500 and every invalid token into a 500 instead of a 401 (found by the first CI run, #11).
+    // Npgsql could not translate DateTimeOffset.UtcNow in this query (found by the first CI run, #11).
     var refreshRow = await db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == payload.RefreshToken && r.RevokedAt == null);
     if (refreshRow is null || refreshRow.ExpiresAt <= DateTimeOffset.UtcNow)
     {

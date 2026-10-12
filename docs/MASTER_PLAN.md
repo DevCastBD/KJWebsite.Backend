@@ -47,11 +47,11 @@
 
 | Component | State |
 |---|---|
-| `KJWebsite.Backend.slnx` | Solution with 5 projects |
+| `KJWebsite.Backend.slnx` | Solution with services, shared building blocks, tests, and tools |
 | `src/Services/ApiGateway` (:7000) | YARP reverse proxy; routes `/api/v1/content/*`, `/api/v1/cta/*`, `/api/v1/auth/*`, `/api/v1/admin/content/*`. Routes and destinations are **hard-coded in `Program.cs`** as `localhost` addresses |
 | `src/Services/ContentService` (:7001) | Projects + news, public read and admin write, bn/en translations. **In-memory `List<T>` — no database.** Admin auth is the literal string `dev-admin-token` |
-| `src/Services/CtaSubmissionService` (:7002) | `POST /api/v1/cta/submissions` only. SQLite + EF Core. Stores raw `values` JSON plus extracted legacy profile columns |
-| `src/Services/AuthIdentityService` (:7003) | Register / login / refresh / logout / me. SQLite + EF Core. Seeds `admin@site.org` / `admin123` |
+| `src/Services/CtaSubmissionService` (:7002) | `POST /api/v1/cta/submissions` only. PostgreSQL 17 + EF Core in its own database/schema. Stores raw `values` JSON plus extracted legacy profile columns |
+| `src/Services/AuthIdentityService` (:7003) | Register / login / refresh / logout / me. PostgreSQL 17 + EF Core in its own database/schema. Seeds `admin@site.org` / `admin123` in development |
 | `src/BuildingBlocks/KJWebsite.BuildingBlocks` | Empty (`Class1.cs`) |
 | `openapi.v1.yaml` | 638-line aggregated contract |
 | `kj-registration/`, `kj-registration-AwaitingUserFeatures/` | Read-only legacy ASP.NET Identity snapshots. Source of the membership domain: `AwaitingUser` with statuses `Awaiting / Approved / Rejected / Postponed / Terminated`, roles `SuperAdmin / Admin / Moderator / Member`, and the full member profile field set |
@@ -68,7 +68,7 @@ Severity: 🔴 blocks production · 🟠 blocks a planned feature · 🟡 qualit
 | G4 | ContentService has no persistence — content vanishes on restart | 🔴 | P1 |
 | G5 | No CORS policy — the browser frontend cannot call the API at all from another origin | 🔴 | P1 |
 | G6 | No rate limiting on public write endpoints (`/cta/submissions`, `/auth/login`, `/auth/register`) | 🔴 | P1 |
-| G7 | SQLite in a multi-service topology; no PostgreSQL provider or production data story | 🔴 | P1 |
+| G7 | Resolved by B1-1: PostgreSQL 17/Npgsql with per-service databases, schemas, migrations, and a development-data cutover path; backups remain B1-15 | — | P1 |
 | G8 | No tests of any kind | 🔴 | P0/P1 |
 | G9 | No Docker, no CI/CD, no deployment target | 🔴 | P0/P1 |
 | G10 | No structured logging, metrics, tracing, or health-check aggregation | 🟠 | P1 |

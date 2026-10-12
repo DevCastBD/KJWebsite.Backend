@@ -1,5 +1,5 @@
 # Codebase Map
-<!-- verified: 2026-10-12 @ a07fa23 · tier: standard · coverage: overview-only -->
+<!-- verified: 2026-10-13 @ 86f21c9 · tier: standard · coverage: overview-only -->
 
 ## Do not read in full
 | File / path | Size | Why | Instead |
@@ -14,17 +14,19 @@
 - content (`src/Services/ContentService/**`)
   purpose: public projects/news and admin content endpoints; in-memory data; entry: `Program.cs`; docs: `PROJECT_CONTEXT.md`
 - CTA (`src/Services/CtaSubmissionService/**`)
-  purpose: public CTA submission endpoint with SQLite/EF Core; entry: `Program.cs`; migrations: `Migrations/`
+  purpose: public CTA submission endpoint with PostgreSQL/EF Core; entry: `Program.cs`; migrations: `Migrations/`
 - auth (`src/Services/AuthIdentityService/**`)
-  purpose: registration and token endpoints with SQLite/EF Core; entry: `Program.cs`; migrations: `Migrations/`
+  purpose: registration and token endpoints with PostgreSQL/EF Core; entry: `Program.cs`; migrations: `Migrations/`
 - shared (`src/BuildingBlocks/**`)
   purpose: Result, paging, language resolution, RFC 9457/legacy-compatible errors, and endpoint-filter base
 - tests (`tests/UnitTests/**`, `tests/IntegrationTests/**`)
-  purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests per service (Testcontainers PostgreSQL for Auth/CTA — needs Docker); RefreshTokenTests runs on SQLite + PostgreSQL
+  purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests, PostgreSQL migration/collation and SQLite transfer tests (Testcontainers — needs Docker)
 - contract and plans (`openapi.v1.yaml`, `PROJECT_CONTEXT.md`, `docs/**`)
   purpose: checked-in API contract, onboarding context, source-of-truth plans, and ratified decisions in `docs/adr/`
 - OpenAPI export (`tools/OpenApiExporter/**`)
-  purpose: starts isolated development services and merges their runtime OpenAPI into `openapi.v1.yaml`; verify: `dotnet run --project tools/OpenApiExporter -- --verify`
+  purpose: starts isolated development services without database initialization and merges runtime OpenAPI into `openapi.v1.yaml`; verify: `dotnet run --project tools/OpenApiExporter -- --verify`
+- SQLite transfer (`tools/SqliteToPostgres/**`, `docs/SQLITE_TO_POSTGRES.md`)
+  purpose: one-way import of existing Auth/CTA development data into empty migrated PostgreSQL databases
 - legacy (`legacy/**`)
   purpose: read-only 2019 ASP.NET Identity snapshots; mine domain fields/statuses only; never build or run; guide: `legacy/README.md`
 
@@ -36,7 +38,7 @@
 - OpenAPI is served from each service; Scalar is mapped by its `Program.cs`.
 - Auth, CTA, and Content errors use the shared RFC 9457 factory, preserving the legacy nested `error` object.
 - Content resolves `?lang=`, then `Accept-Language`, then `en`; public list responses echo the result as `lang`.
-- Auth and CTA use `ConnectionStrings:AuthDb` / `ConnectionStrings:CtaDb`; both call `Database.Migrate()` at startup.
+- Auth and CTA require PostgreSQL `ConnectionStrings:AuthDb` / `ConnectionStrings:CtaDb`; both call `Database.Migrate()` at startup and own named schemas.
 - Gateway destinations are hard-coded localhost addresses.
 - Root `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props` govern the active solution; legacy snapshots are excluded.
 
@@ -47,4 +49,4 @@
 ## Gotchas
 - Current auth stores plain-text passwords, access tokens are process-local, and content admin uses `dev-admin-token`; not production-safe.
 - CI: .github/workflows/ci.yml (`build`, `dependency-scan` — both required on develop); Dependabot weekly. Local .NET 10 SDK may be at ~/.dotnet10 (system SDK can be older).
-- Never compare DateTimeOffset inside an EF LINQ predicate: SQLite cannot translate it (see RefreshTokenTests).
+- Npgsql `timestamp with time zone` requires UTC; normalize incoming offset timestamps before storing.
