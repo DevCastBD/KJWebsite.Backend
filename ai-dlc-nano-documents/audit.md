@@ -111,3 +111,6 @@
 - 2026-10-12T12:16Z [codex] 013-issue-105-adr-001 PHASE PLAN→CONSTRUCT @a07fa23: plan approved by user; documentation changes begin
 - 2026-10-12T12:19Z [codex] 013-issue-105-adr-001 PHASE CONSTRUCT→WRAP-UP @a07fa23: ADR and master plan aligned; doc diff, links, whitespace verified
 - 2026-10-12T12:19Z [codex] 013-issue-105-adr-001 DONE @a07fa23: ADR accepted locally; master plan and map aligned; no commit or remote action
+- 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: committed and pushed docs/issue-105-true-microservices (user requested)
+- 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: opened PR #151 against develop, closes #105 (user requested)
+- 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: commented on #105 with ADR outcome and PR #151 (user requested)

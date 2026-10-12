@@ -3,7 +3,7 @@
 - Phase: —
 - Branch: —
 - Base SHA: —
-- Next step: resume #21 after ADR-004 ratification (#12)
+- Next step: review PR #151; resume #21 after ADR-004 ratification (#12)
 - Paused work items:
   - work-items/012-issue-21-postgresql-migration (CLARIFY, branch —, base —)
   - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)

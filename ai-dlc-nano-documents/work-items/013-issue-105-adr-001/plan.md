@@ -1,6 +1,6 @@
 <!-- phase: DONE | branch: docs/issue-105-true-microservices | tasks: 4/4
      base: a07fa23 | updated: 2026-10-12
-     next: local work complete; publication handled separately -->
+     next: published as PR #151; await review -->
 # Plan: Ratify ADR-001 as true microservices
 ## Tasks
 - [x] Write `docs/adr/0001-true-microservices.md` with status, ratifier/date, context, decision, rejected monolith, rationale, and consequences.
