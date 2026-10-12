@@ -1,7 +1,5 @@
 # KJWebsite.Backend
 
-[![CI](https://github.com/DevCastBD/KJWebsite.Backend/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/DevCastBD/KJWebsite.Backend/actions/workflows/ci.yml)
-
 The .NET 10 backend scaffold for Kolpojontro Foundation's public site and future back office. It currently serves development APIs and is not a production deployment.
 
 > [!WARNING]
@@ -12,7 +10,7 @@ The .NET 10 backend scaffold for Kolpojontro Foundation's public site and future
 
 ## Overview
 
-Four ASP.NET Core Minimal API services sit behind a YARP gateway. The gateway is the public API entry point for the public website and future back office. The implementation roadmap is [docs/MASTER_PLAN.md](docs/MASTER_PLAN.md); the program plan is [docs/PROGRAM_MASTER_PLAN.md](docs/PROGRAM_MASTER_PLAN.md).
+Four ASP.NET Core Minimal API services sit behind a YARP gateway. The gateway is the public API entry point for the public website and future back office. The implementation roadmap and the execution order of the open issues (`[BE-NNN]` titles) are in [docs/MASTER_PLAN.md](docs/MASTER_PLAN.md).
 
 ## API preview
 
@@ -62,7 +60,7 @@ flowchart LR
 
 - [.NET SDK 10.0.300](https://dotnet.microsoft.com/download) or compatible .NET 10 SDK
 - The manifest-managed `dotnet-ef` tool
-- Docker Desktop or Docker Engine with Compose, if running the container stack
+- Optional: a locally installed PostgreSQL 17, only to run the Auth/CTA services or tests against PostgreSQL (SQLite is the default)
 
 ```bash
 dotnet tool restore
@@ -85,32 +83,22 @@ dotnet run --project src/Services/AuthIdentityService --launch-profile http
 
 The gateway at `http://localhost:7000` expects the downstream services on their listed ports. Scalar and health URLs are in [API preview](#api-preview).
 
-### Run the full stack with Docker
-
-With Docker installed, start every service and its local dependencies from the repository root:
-
-```bash
-docker compose up --build
-```
-
-The API Gateway Scalar reference is at http://localhost:7000/scalar/v1. Health endpoints are available on ports 7000–7003 at `/health`; MailHog is at http://localhost:8025. The Compose credentials are development-only and PostgreSQL data persists in the `postgres-data` volume. Stop the stack with `docker compose down`; add `--volumes` only when you intentionally want to discard local database data.
-
 ### Configuration
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | No | Host default | Use `Development` locally; Scalar and runtime OpenAPI are mapped only then. |
-| `ASPNETCORE_URLS` | No | `launchSettings.json` port | Overrides a listener. Containers use port 8080 internally. |
+| `ASPNETCORE_URLS` | No | `launchSettings.json` port | Overrides a listener. |
 | `ConnectionStrings__AuthDb` | No | `Data Source=auth.db` | Auth SQLite connection string. |
 | `ConnectionStrings__CtaDb` | No | `Data Source=cta.db` | CTA SQLite connection string. |
-| `Database__Provider` | No | SQLite | Set to `PostgreSql` for the Compose Auth and CTA containers. |
+| `Database__Provider` | No | SQLite | Set to `PostgreSql` to run Auth and CTA against a local PostgreSQL (with matching connection strings). |
 | `Services__{Content,Cta,Auth}__Url` | No | Localhost service ports | Gateway downstream destination overrides. |
 
 No production secret configuration exists. P1 must use environment/vault configuration, secure auth, and restrictive CORS.
 
 ## Database and migrations
 
-Auth and CTA apply their EF Core migrations at startup when using SQLite. The Docker Compose stack instead uses separate development PostgreSQL databases (`auth` and `cta`) and initializes their current schemas with `EnsureCreated`; it does not apply the SQLite migrations. Neither option is production storage. Create and apply an Auth migration with:
+Auth and CTA apply their EF Core migrations at startup when using SQLite. With `Database__Provider=PostgreSql` the services instead initialise their current schemas with `EnsureCreated` against a local PostgreSQL; they do not apply the SQLite migrations. Neither option is production storage. Create and apply an Auth migration with:
 
 ```bash
 dotnet ef migrations add <MigrationName> --project src/Services/AuthIdentityService --startup-project src/Services/AuthIdentityService
@@ -139,7 +127,7 @@ src/BuildingBlocks/              shared building-block project (currently minima
 src/Services/                    gateway and three API services
 tools/OpenApiExporter/           runtime OpenAPI aggregation tool
 openapi.v1.yaml                  committed v1 API contract
-docs/                            backend and program plans
+docs/                            backend plan and ADRs
 legacy/                          read-only 2019 registration snapshots (see legacy/README.md)
 ```
 
@@ -149,23 +137,14 @@ Branch from `develop` using `feature/*` or `fix/*`; `main` is the intended produ
 
 ## Testing
 
-xUnit unit tests live under `tests/UnitTests`; integration smoke tests under `tests/IntegrationTests` use `WebApplicationFactory` and FluentAssertions, with Testcontainers starting PostgreSQL — so the Auth and CTA suites need Docker running.
+xUnit unit tests live under `tests/UnitTests`; integration smoke tests under `tests/IntegrationTests` use `WebApplicationFactory` and FluentAssertions, and Testcontainers starting PostgreSQL, so the Auth and CTA suites currently need Docker. Issue #152 (BE-001) moves them to SQLite by default with an optional local PostgreSQL.
 
-**CI** (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `develop` and `main`:
-
-| Job | Steps |
-|---|---|
-| `build` | restore → build (Release, warnings as errors) → `dotnet format --verify-no-changes` → all tests, integration included → OpenAPI `--verify` (fails if `openapi.v1.yaml` has drifted) → uploads test results and the contract as artefacts |
-| `dependency-scan` | `dotnet list package --vulnerable --include-transitive`; every finding is listed in the job summary, and **Critical** findings fail the build (7-day patch SLA, `docs/MASTER_PLAN.md` §7) |
-
-Both are required checks on `develop`. Dependabot opens weekly update PRs for NuGet packages and GitHub Actions.
-
-Before pushing, the same checks locally:
+There is **no CI, Dependabot or Docker at this stage** (`docs/MASTER_PLAN.md`). Before pushing, run the checks locally:
 
 ```bash
 dotnet build KJWebsite.Backend.slnx
 dotnet format KJWebsite.Backend.slnx --verify-no-changes
-dotnet test KJWebsite.Backend.slnx          # Auth/CTA integration tests need Docker
+dotnet test KJWebsite.Backend.slnx          # Auth/CTA integration tests need Docker until #152
 dotnet run --project tools/OpenApiExporter -- --verify
 ```
 
@@ -181,7 +160,7 @@ dotnet publish src/Services/ApiGateway/ApiGateway.csproj -c Release -o publish/A
 
 ## Deployment
 
-Local Docker Compose is implemented for contributor onboarding, but CI/CD, staging, and production infrastructure are not. The P1 target is CI-built, commit-SHA-tagged container images; environment/vault configuration; expand → migrate → contract migrations; health-gated traffic; and rollback to the prior image on failed health checks. Do not automatically roll database migrations backward.
+Not implemented. At this stage deploys are manual: `dotnet publish` each service and run it on the host chosen in decision #106, behind the gateway, with configuration from environment variables. No containers or CI/CD pipelines for now (`docs/MASTER_PLAN.md`). Use expand → migrate → contract migrations and never roll database migrations backward automatically.
 
 ## Legacy folders
 
@@ -192,11 +171,10 @@ Local Docker Compose is implemented for contributor onboarding, but CI/CD, stagi
 | Symptom | Cause | Resolution |
 |---|---|---|
 | Gateway returns 502 | A downstream service is unavailable | Start all four services with the `http` profile. |
-| Compose service exits on startup | PostgreSQL is not ready or its data volume uses an older layout | Run `docker compose down --volumes`, then `docker compose up --build` to recreate local development data. |
 | Scalar returns 404 | Service is not in Development | Set `ASPNETCORE_ENVIRONMENT=Development` and restart. |
 | `dotnet ef` is unavailable | Tools are not restored | Run `dotnet tool restore`. |
 | Exporter verification fails | Contract drift | Regenerate the YAML, review it, then rerun `--verify`. |
 
 ## Roadmap, contributing, and license
 
-Read the [backend plan](docs/MASTER_PLAN.md), [program plan](docs/PROGRAM_MASTER_PLAN.md), and [project context](PROJECT_CONTEXT.md). Keep changes additive, preserve the frontend contract, and never weaken the security notice. No license or formal contributor guide has been selected yet; use the issue tracker for repository questions.
+Read the [backend plan](docs/MASTER_PLAN.md) (including the numbered execution order of the open issues) and [project context](PROJECT_CONTEXT.md). Keep changes additive, preserve the frontend contract, and never weaken the security notice. No license or formal contributor guide has been selected yet; use the issue tracker for repository questions.

@@ -3,10 +3,9 @@
 - Phase: —
 - Branch: —
 - Base SHA: —
-- Next step: review PR #151; resume #21 after ADR-004 ratification (#12)
+- Next step: follow docs/MASTER_PLAN.md §5 order — BE-001 (#152) first
 - Paused work items:
   - work-items/012-issue-21-postgresql-migration (CLARIFY, branch —, base —)
   - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)
-  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
 - Last updated: 2026-10-12 by codex
