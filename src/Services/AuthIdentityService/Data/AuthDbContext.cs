@@ -10,6 +10,8 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options) : DbC
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDefaultSchema("auth");
+
         modelBuilder.Entity<AuthUserEntity>(entity =>
         {
             entity.ToTable("users");

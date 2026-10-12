@@ -3,10 +3,9 @@
 - Phase: —
 - Branch: —
 - Base SHA: —
-- Next step: review PR #151; resume #21 after ADR-004 ratification (#12)
+- Next step: issue #21 complete locally; publish the branch when requested
 - Paused work items:
-  - work-items/012-issue-21-postgresql-migration (CLARIFY, branch —, base —)
   - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
-- Last updated: 2026-10-12 by codex
+- Last updated: 2026-10-13 by codex

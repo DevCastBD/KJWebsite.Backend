@@ -1,10 +1,20 @@
-<!-- phase: CLARIFY | branch: — | tasks: 0/0
-     base: — | updated: 2026-10-12
-     next: confirm ADR-004 before planning migration -->
-# Plan: PostgreSQL migration
+<!-- phase: DONE | branch: feature/issue-21-postgresql | tasks: 8/8
+     base: 4a38da2 | updated: 2026-10-13
+     next: none; implementation complete locally -->
+# Plan: PostgreSQL 17 migration
 ## Tasks
-- Pending PostgreSQL decision (ADR-004).
+- [x] Record ADR-004 with ratifier, rejected options, and service data ownership; align the master plan where needed.
+- [x] Set Npgsql as the only runtime EF provider for Auth and CTA; require PostgreSQL connection strings and remove `EnsureCreated` paths.
+- [x] Map Auth and CTA tables and migration history to named `auth` and `cta` schemas in their separate databases.
+- [x] Remove the six tracked SQLite migration files, generate PostgreSQL baselines, and validate applying each to an empty database.
+- [x] Update Compose, local configuration, and development seed data for migration-based startup, including Bengali text and collation.
+- [x] Provide repeatable `dotnet ef` commands and a documented SQLite-to-PostgreSQL export/import path with verification and rollback steps.
+- [x] Update integration coverage to use migrations on real PostgreSQL, checking schemas, seed data, Bengali ordering, and API behavior.
+- [x] Run the full solution tests, format verification, and an end-to-end service smoke check.
 ## Tests
-- To be decided at PLAN.
+- High blast radius: clean PostgreSQL 17 database migration, seed and Bengali collation checks, SQLite export/import fixture, API smoke tests, full `dotnet test KJWebsite.Backend.slnx`, `dotnet format ... --verify-no-changes --no-restore`.
+- Verified: 35 tests pass (29 integration, 6 unit), Docker Compose health/Scalar/login/CTA endpoints pass, and OpenAPI contract is current. Scoped format verification passes; full local format check encounters pre-existing CRLF checkout errors across untouched files.
 ## Files
-- To be decided at PLAN.
+- `docs/adr/0004-postgresql-per-service.md`, `docs/MASTER_PLAN.md`, `README.md`, database migration guide and importer.
+- Auth and CTA `Program.cs`, `DbContext`, migrations, package references, configuration; `Directory.Packages.props`.
+- `docker-compose.yml`, `docker/postgres/`, integration tests and test infrastructure; AI-DLC Nano state and audit.
