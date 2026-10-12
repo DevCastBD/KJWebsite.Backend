@@ -1,5 +1,5 @@
 # Codebase Map
-<!-- generated: 2026-09-20 @ caf8805 · tier: standard · coverage: overview-only -->
+<!-- verified: 2026-10-12 @ a07fa23 · tier: standard · coverage: overview-only -->
 
 ## Do not read in full
 | File / path | Size | Why | Instead |
@@ -22,7 +22,7 @@
 - tests (`tests/UnitTests/**`, `tests/IntegrationTests/**`)
   purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests per service (Testcontainers PostgreSQL for Auth/CTA — needs Docker); RefreshTokenTests runs on SQLite + PostgreSQL
 - contract and plans (`openapi.v1.yaml`, `PROJECT_CONTEXT.md`, `docs/**`)
-  purpose: checked-in API contract, onboarding context, and source-of-truth plans
+  purpose: checked-in API contract, onboarding context, source-of-truth plans, and ratified decisions in `docs/adr/`
 - OpenAPI export (`tools/OpenApiExporter/**`)
   purpose: starts isolated development services and merges their runtime OpenAPI into `openapi.v1.yaml`; verify: `dotnet run --project tools/OpenApiExporter -- --verify`
 - legacy (`legacy/**`)
@@ -41,8 +41,8 @@
 - Root `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props` govern the active solution; legacy snapshots are excluded.
 
 ## Long documents
-- `docs/MASTER_PLAN.md` (806 lines) — read with `sed -n`, never whole.
-  §1 Current state 44–97 · §4 Engineering standards 338–392 · §5 Phase plan 393–695 · §7 Security 712–734 · §8 Operations 735–751
+- `docs/MASTER_PLAN.md` (784 lines) — read with `sed -n`, never whole.
+  §1 Current state 44–97 · §4 Engineering standards 315–369 · §5 Phase plan 370–674 · §7 Security 691–713 · §8 Operations 714–730
 
 ## Gotchas
 - Current auth stores plain-text passwords, access tokens are process-local, and content admin uses `dev-admin-token`; not production-safe.

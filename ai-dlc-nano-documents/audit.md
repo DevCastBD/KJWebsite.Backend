@@ -92,3 +92,25 @@
 - 2026-09-29T19:29Z [claude] 010-issue-13-legacy-move PHASE PLAN→CONSTRUCT @93603f4: fast-path plan approved (move, README, refs, verify)
 - 2026-09-29T19:35Z [claude] 010-issue-13-legacy-move PHASE CONSTRUCT→WRAP-UP @93603f4: build/format/unit + 17 non-Docker tests pass; 89 renames; 2 follow-ups to backlog
 - 2026-09-29T19:53Z [claude] 010-issue-13-legacy-move SIDE-EFFECT @67178a1: pushed branch, opened PR #144 (closes #13), commented #13 (user confirmed)
+- 2026-10-12T11:49Z [codex] 010-issue-13-legacy-move DONE @a07fa23: PR #144 merged; issue #13 closed; prior state was stale
+- 2026-10-12T11:49Z [codex] 011-issue-116-p1-platform-core CREATED @a07fa23: intake of P1 epic; scope and ADR-001 decision pending
+- 2026-10-12T11:49Z [codex] 011-issue-116-p1-platform-core SIDE-EFFECT @a07fa23: project status Backlog to In progress; assignee already tahmidsparrow
+- 2026-10-12T11:51Z [codex] 011-issue-116-p1-platform-core PHASE INTAKE→CLARIFY @a07fa23: user approved; ADR-001 and work-item scope pending
+- 2026-10-12T11:54Z [codex] 011-issue-116-p1-platform-core DECISION @a07fa23: user selected #21 as first child item
+- 2026-10-12T11:54Z [codex] 011-issue-116-p1-platform-core PAUSED @a07fa23: #21 active; ADR-001 and remaining epic scope pending
+- 2026-10-12T11:54Z [codex] 012-issue-21-postgresql-migration CREATED @a07fa23: B1-1 intake; ADR-001 and ADR-004 pending
+- 2026-10-12T11:54Z [codex] 012-issue-21-postgresql-migration SIDE-EFFECT @a07fa23: project status Backlog to In progress; assignee already tahmidsparrow
+- 2026-10-12T11:59Z [codex] 012-issue-21-postgresql-migration PAUSED @a07fa23: user opened prerequisite ADR-001 #105; ADR-004 also pending
+- 2026-10-12T11:59Z [codex] 013-issue-105-adr-001 CREATED @a07fa23: architecture decision intake; choice and ratifier pending
+- 2026-10-12T11:59Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @a07fa23: project status Backlog to In progress; assignee already tahmidsparrow
+- 2026-10-12T12:03Z [codex] 013-issue-105-adr-001 PHASE INTAKE→CLARIFY @a07fa23: user supplied architecture choice
+- 2026-10-12T12:03Z [codex] 013-issue-105-adr-001 DECISION @a07fa23: true microservices chosen; ratifier and rationale pending
+- 2026-10-12T12:14Z [codex] 013-issue-105-adr-001 DECISION @a07fa23: separate domains or co-hosting flexibility; Md Tahmidul Abedin ratified 2026-10-12
+- 2026-10-12T12:14Z [codex] 013-issue-105-adr-001 PHASE CLARIFY→PLAN @a07fa23: ratifier and rationale confirmed; documentation plan drafted
+- 2026-10-12T12:16Z [codex] 013-issue-105-adr-001 BRANCH @a07fa23: docs/issue-105-true-microservices off develop (user approved)
+- 2026-10-12T12:16Z [codex] 013-issue-105-adr-001 PHASE PLAN→CONSTRUCT @a07fa23: plan approved by user; documentation changes begin
+- 2026-10-12T12:19Z [codex] 013-issue-105-adr-001 PHASE CONSTRUCT→WRAP-UP @a07fa23: ADR and master plan aligned; doc diff, links, whitespace verified
+- 2026-10-12T12:19Z [codex] 013-issue-105-adr-001 DONE @a07fa23: ADR accepted locally; master plan and map aligned; no commit or remote action
+- 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: committed and pushed docs/issue-105-true-microservices (user requested)
+- 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: opened PR #151 against develop, closes #105 (user requested)
+- 2026-10-12T12:27Z [codex] 013-issue-105-adr-001 SIDE-EFFECT @0456615: commented on #105 with ADR outcome and PR #151 (user requested)
