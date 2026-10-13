@@ -145,3 +145,5 @@
 - 2026-10-13T20:41Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @420e2fd: commented on #12 listing 9 new ADRs and the 3 still blocked (user requested)
 - 2026-10-13T20:41Z [claude] 015-issue-12-adr-ratification PHASE CONSTRUCT->WRAP-UP @420e2fd: 9 ADR docs committed to docs/adr/, 3 left blocked, reviewed for format consistency
 - 2026-10-13T20:42Z [claude] 015-issue-12-adr-ratification DONE @420e2fd: 9 ADRs committed locally on docs/issue-12-adr-ratification; 002 archived (retention cap); no commit/push yet
+- 2026-10-13T20:46Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @2fee563: local commit on docs/issue-12-adr-ratification (user requested)
+- 2026-10-13T20:46Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @2fee563: pushed docs/issue-12-adr-ratification and opened PR #157 against develop, closes #12 partially (user requested)
