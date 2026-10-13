@@ -132,3 +132,5 @@
 - 2026-10-13T03:58Z [claude] 014-issue-152-tests-no-docker PHASE CONSTRUCT->WRAP-UP @2052a03: 29 tests (20 Sqlite default, 9 Postgres-gated), verified both modes incl. real Postgres twice
 - 2026-10-13T03:59Z [claude] 014-issue-152-tests-no-docker DONE @2052a03: BE-001 complete locally on feat/issue-152-tests-no-docker; 001 archived (retention cap); no commit/push yet
 - 2026-10-13T13:59Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @17050c8: local commit on feat/issue-152-tests-no-docker (user requested); no push yet
+- 2026-10-13T20:13Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @65f06b3: pushed feat/issue-152-tests-no-docker and opened PR #156 against develop, closes #152 (user requested)
+- 2026-10-13T20:13Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @65f06b3: commented on #152 with implementation summary and PR #156 link (user requested)

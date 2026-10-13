@@ -3,7 +3,7 @@
 - Phase: —
 - Branch: —
 - Base SHA: —
-- Next step: issue #152 complete and committed on feat/issue-152-tests-no-docker (17050c8); push when requested
+- Next step: PR #156 open against develop for issue #152; nothing else pending
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
