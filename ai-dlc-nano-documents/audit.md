@@ -131,3 +131,4 @@
 - 2026-10-13T03:58Z [claude] 014-issue-152-tests-no-docker REVISED @2052a03: CtaDbContext ICU collation made Npgsql-only; Sqlite can't parse bn-x-icu (found running tests)
 - 2026-10-13T03:58Z [claude] 014-issue-152-tests-no-docker PHASE CONSTRUCT->WRAP-UP @2052a03: 29 tests (20 Sqlite default, 9 Postgres-gated), verified both modes incl. real Postgres twice
 - 2026-10-13T03:59Z [claude] 014-issue-152-tests-no-docker DONE @2052a03: BE-001 complete locally on feat/issue-152-tests-no-docker; 001 archived (retention cap); no commit/push yet
+- 2026-10-13T13:59Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @17050c8: local commit on feat/issue-152-tests-no-docker (user requested); no push yet
