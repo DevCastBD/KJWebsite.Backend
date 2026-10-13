@@ -28,7 +28,7 @@ public abstract class RefreshTokenTestsBase<TFactory> : IDisposable
         _client = factory.CreateClient();
     }
 
-    [Fact]
+    [RequiresPostgresFact]
     public async Task RefreshReturnsReplacementTokens()
     {
         var tokens = await LoginAsync();
@@ -40,7 +40,7 @@ public abstract class RefreshTokenTestsBase<TFactory> : IDisposable
         payload.GetProperty("refresh_token").GetString().Should().NotBe(tokens.RefreshToken);
     }
 
-    [Fact]
+    [RequiresPostgresFact]
     public async Task RefreshRevokesTheTokenItReplaced()
     {
         var tokens = await LoginAsync();
@@ -52,7 +52,7 @@ public abstract class RefreshTokenTestsBase<TFactory> : IDisposable
         await ShouldBeStatus(replay, HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [RequiresPostgresFact]
     public async Task RefreshRejectsAnExpiredToken()
     {
         var tokens = await LoginAsync();
@@ -62,14 +62,14 @@ public abstract class RefreshTokenTestsBase<TFactory> : IDisposable
         await ShouldBeStatus(response, HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [RequiresPostgresFact]
     public async Task RefreshRejectsAnUnknownToken()
     {
         using var response = await RefreshAsync("rt_does-not-exist");
         await ShouldBeStatus(response, HttpStatusCode.Unauthorized);
     }
 
-    [Fact]
+    [RequiresPostgresFact]
     public async Task RefreshRejectsALoggedOutToken()
     {
         var tokens = await LoginAsync();
@@ -125,6 +125,15 @@ public abstract class RefreshTokenTestsBase<TFactory> : IDisposable
 }
 
 
-[Collection(nameof(PostgreSqlFixtures))]
-public sealed class PostgreSqlRefreshTokenTests(PostgreSqlFixture fixture)
-    : RefreshTokenTestsBase<AuthApiFactory>(new AuthApiFactory(fixture));
+public sealed class PostgreSqlRefreshTokenTests : RefreshTokenTestsBase<PostgresAuthApiFactory>
+{
+    public PostgreSqlRefreshTokenTests() : base(CreateFactory())
+    {
+    }
+
+    private static PostgresAuthApiFactory CreateFactory()
+    {
+        TestPostgres.EnsureDatabaseExists("auth_test");
+        return new PostgresAuthApiFactory(TestPostgres.ConnectionStringFor("auth_test"));
+    }
+}

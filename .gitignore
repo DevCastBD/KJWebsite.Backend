@@ -11,6 +11,11 @@ obj/
 # Logs
 *.log
 
+# Local SQLite databases (issue #152)
+*.db
+*.db-shm
+*.db-wal
+
 # OS files
 .DS_Store
 Thumbs.db

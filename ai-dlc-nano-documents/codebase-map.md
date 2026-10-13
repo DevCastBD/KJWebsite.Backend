@@ -20,7 +20,7 @@
 - shared (`src/BuildingBlocks/**`)
   purpose: Result, paging, language resolution, RFC 9457/legacy-compatible errors, and endpoint-filter base
 - tests (`tests/UnitTests/**`, `tests/IntegrationTests/**`)
-  purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests, PostgreSQL migration/collation and SQLite transfer tests (Testcontainers — needs Docker)
+  purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests run against SQLite by default (no Docker); Postgres-specific tests (migration/collation, SQLite transfer) gate on `KJ_TEST_POSTGRES` via `[RequiresPostgresFact]`
 - contract and plans (`openapi.v1.yaml`, `PROJECT_CONTEXT.md`, `docs/**`)
   purpose: checked-in API contract, onboarding context, source-of-truth plans, and ratified decisions in `docs/adr/`
 - OpenAPI export (`tools/OpenApiExporter/**`)

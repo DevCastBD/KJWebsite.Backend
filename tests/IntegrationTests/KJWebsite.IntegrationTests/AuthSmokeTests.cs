@@ -5,17 +5,12 @@ using FluentAssertions;
 
 namespace KJWebsite.IntegrationTests;
 
-[Collection(nameof(PostgreSqlFixtures))]
 public sealed class AuthSmokeTests : IDisposable
 {
-    private readonly AuthApiFactory _factory;
+    private readonly AuthApiFactory _factory = new();
     private readonly HttpClient _client;
 
-    public AuthSmokeTests(PostgreSqlFixture fixture)
-    {
-        _factory = new AuthApiFactory(fixture);
-        _client = _factory.CreateClient();
-    }
+    public AuthSmokeTests() => _client = _factory.CreateClient();
 
     [Fact]
     public async Task HealthReturnsOk()

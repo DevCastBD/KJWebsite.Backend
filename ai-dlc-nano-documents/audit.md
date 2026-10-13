@@ -122,3 +122,12 @@
 - 2026-10-12T19:48Z [codex] 012-issue-21-postgresql-migration PHASE CONSTRUCT→WRAP-UP @86f21c9: 35 tests, Compose and API smoke, OpenAPI checks pass
 - 2026-10-12T19:48Z [codex] 012-issue-21-postgresql-migration DONE @86f21c9: PostgreSQL 17 migration complete locally; old Compose data follow-up recorded
 - 2026-10-12T19:56Z [codex] 012-issue-21-postgresql-migration SIDE-EFFECT @45cb77b: pushed feature/issue-21-postgresql and opened PR #155 against develop, closes #21 (user requested)
+- 2026-10-12T19:58Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @8b5f01e: assigned GH issue #152 to self (INTAKE auto-claim); no project board status binding documented, status unchanged
+- 2026-10-12T19:58Z [claude] 014-issue-152-tests-no-docker CREATED @8b5f01e: issue #152 (BE-001) via parent epic #115, user picked #152 over #12/#147
+- 2026-10-12T20:02Z [claude] 014-issue-152-tests-no-docker PHASE CLARIFY: researched #21 Postgres-only change vs #152 SQLite premise; split-bucket design drafted, pending user confirm
+- 2026-10-12T20:03Z [claude] 014-issue-152-tests-no-docker DECISION @8b5f01e: split-bucket design (SQLite default smoke tests, KJ_TEST_POSTGRES-gated Postgres tests, no Testcontainers) approved by user
+- 2026-10-13T03:43Z [claude] 014-issue-152-tests-no-docker BRANCH @2052a03: feat/issue-152-tests-no-docker created from develop (user approved)
+- 2026-10-13T03:43Z [claude] 014-issue-152-tests-no-docker PHASE PLAN->CONSTRUCT @2052a03: plan approved (9 tasks); construction begins
+- 2026-10-13T03:58Z [claude] 014-issue-152-tests-no-docker REVISED @2052a03: CtaDbContext ICU collation made Npgsql-only; Sqlite can't parse bn-x-icu (found running tests)
+- 2026-10-13T03:58Z [claude] 014-issue-152-tests-no-docker PHASE CONSTRUCT->WRAP-UP @2052a03: 29 tests (20 Sqlite default, 9 Postgres-gated), verified both modes incl. real Postgres twice
+- 2026-10-13T03:59Z [claude] 014-issue-152-tests-no-docker DONE @2052a03: BE-001 complete locally on feat/issue-152-tests-no-docker; 001 archived (retention cap); no commit/push yet

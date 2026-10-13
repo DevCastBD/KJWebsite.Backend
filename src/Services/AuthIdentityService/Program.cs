@@ -32,7 +32,15 @@ if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenA
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-    db.Database.Migrate();
+    // Tests swap in the Sqlite provider, which has no migrations to replay; Postgres keeps its migration history.
+    if (db.Database.IsNpgsql())
+    {
+        db.Database.Migrate();
+    }
+    else
+    {
+        db.Database.EnsureCreated();
+    }
 
     if (app.Environment.IsDevelopment() && !db.Users.Any(u => u.Email == "admin@site.org"))
     {

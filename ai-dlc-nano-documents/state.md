@@ -3,9 +3,9 @@
 - Phase: —
 - Branch: —
 - Base SHA: —
-- Next step: issue #21 complete locally; publish the branch when requested
+- Next step: issue #152 complete locally on feat/issue-152-tests-no-docker; commit/push when requested
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
-- Uncommitted code: no
-- Last updated: 2026-10-13 by codex
+- Uncommitted code: yes
+- Last updated: 2026-10-13T09:58Z by claude

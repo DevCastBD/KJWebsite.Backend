@@ -5,36 +5,31 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SqliteToPostgres;
-using Testcontainers.PostgreSql;
 
 namespace KJWebsite.IntegrationTests;
 
 public sealed class SqliteDataTransferTests
 {
-    [Fact]
+    [RequiresPostgresFact]
     public async Task CopiesAuthUsersAndRefreshTokensWithUtcTimestamps()
     {
         var sourcePath = Path.Combine(Path.GetTempPath(), $"kj-auth-transfer-{Guid.NewGuid():N}.db");
-        await using var database = new PostgreSqlBuilder("postgres:17-alpine")
-            .WithDatabase("auth")
-            .WithUsername("testuser")
-            .WithPassword("testpassword")
-            .Build();
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("auth_transfer_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
 
         try
         {
             await CreateAuthSqliteFixture(sourcePath);
-            await database.StartAsync();
             var options = new DbContextOptionsBuilder<AuthDbContext>()
-                .UseNpgsql(database.GetConnectionString(), npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "auth"))
+                .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "auth"))
                 .Options;
             await using (var db = new AuthDbContext(options))
             {
                 await db.Database.MigrateAsync();
             }
 
-            await SqliteDataTransfer.CopyAsync(sourcePath, database.GetConnectionString(), "auth", ["users", "refresh_tokens"]);
-            await using var connection = new NpgsqlConnection(database.GetConnectionString());
+            await SqliteDataTransfer.CopyAsync(sourcePath, connectionString, "auth", ["users", "refresh_tokens"]);
+            await using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
             await using var command = new NpgsqlCommand("""
                 SELECT u."FirstName", u."IsMailingAddressSameAsPermanentAddress", t."ExpiresAt"
@@ -51,33 +46,30 @@ public sealed class SqliteDataTransferTests
         {
             SqliteConnection.ClearAllPools();
             if (File.Exists(sourcePath)) File.Delete(sourcePath);
+            await TestPostgres.DropDatabaseAsync(databaseName);
         }
     }
 
-    [Fact]
+    [RequiresPostgresFact]
     public async Task CopiesBengaliDevelopmentDataAndRefusesANonEmptyTarget()
     {
         var sourcePath = Path.Combine(Path.GetTempPath(), $"kj-cta-transfer-{Guid.NewGuid():N}.db");
-        await using var database = new PostgreSqlBuilder("postgres:17-alpine")
-            .WithDatabase("cta")
-            .WithUsername("testuser")
-            .WithPassword("testpassword")
-            .Build();
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("cta_transfer_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
 
         try
         {
             await CreateSqliteFixture(sourcePath);
-            await database.StartAsync();
             var options = new DbContextOptionsBuilder<CtaDbContext>()
-                .UseNpgsql(database.GetConnectionString(), npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "cta"))
+                .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "cta"))
                 .Options;
             await using (var db = new CtaDbContext(options))
             {
                 await db.Database.MigrateAsync();
             }
 
-            await SqliteDataTransfer.CopyAsync(sourcePath, database.GetConnectionString(), "cta", ["cta_submissions"]);
-            await using var connection = new NpgsqlConnection(database.GetConnectionString());
+            await SqliteDataTransfer.CopyAsync(sourcePath, connectionString, "cta", ["cta_submissions"]);
+            await using var connection = new NpgsqlConnection(connectionString);
             await connection.OpenAsync();
             await using var command = new NpgsqlCommand("SELECT \"FirstName\", \"ValuesJson\" FROM cta.cta_submissions", connection);
             await using var reader = await command.ExecuteReaderAsync();
@@ -87,13 +79,14 @@ public sealed class SqliteDataTransferTests
             (await reader.ReadAsync()).Should().BeFalse();
             await reader.CloseAsync();
 
-            var retry = () => SqliteDataTransfer.CopyAsync(sourcePath, database.GetConnectionString(), "cta", ["cta_submissions"]);
+            var retry = () => SqliteDataTransfer.CopyAsync(sourcePath, connectionString, "cta", ["cta_submissions"]);
             await retry.Should().ThrowAsync<InvalidOperationException>();
         }
         finally
         {
             SqliteConnection.ClearAllPools();
             if (File.Exists(sourcePath)) File.Delete(sourcePath);
+            await TestPostgres.DropDatabaseAsync(databaseName);
         }
     }
 
