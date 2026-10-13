@@ -1,36 +1,71 @@
+using AuthIdentityService.Data;
+using CtaSubmissionService.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
-using Testcontainers.PostgreSql;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace KJWebsite.IntegrationTests;
 
-[CollectionDefinition(nameof(PostgreSqlFixtures))]
-public sealed class PostgreSqlFixtures : ICollectionFixture<PostgreSqlFixture>;
-
-public sealed class PostgreSqlFixture : IAsyncLifetime
+/// <summary>
+/// SQLite-by-default: plain CRUD smoke tests get a throwaway database with no external setup.
+/// Overrides the DbContextOptions the service's own Program.cs registered for Npgsql.
+/// </summary>
+public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebApplicationFactory<TEntryPoint>
+    where TEntryPoint : class
+    where TContext : DbContext
 {
-    private readonly PostgreSqlContainer _authDatabase = new PostgreSqlBuilder("postgres:17-alpine")
-        .WithDatabase("auth")
-        .WithUsername("testuser")
-        .WithPassword("testpassword")
-        .Build();
+    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"kj-test-{Guid.NewGuid():N}.db");
 
-    private readonly PostgreSqlContainer _ctaDatabase = new PostgreSqlBuilder("postgres:17-alpine")
-        .WithDatabase("cta")
-        .WithUsername("testuser")
-        .WithPassword("testpassword")
-        .Build();
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Development");
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<DbContextOptions<TContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<TContext>>();
+            services.AddDbContext<TContext>(options => options.UseSqlite($"Data Source={_dbPath}"));
+        });
+    }
 
-    public string AuthConnectionString => _authDatabase.GetConnectionString();
-    public string CtaConnectionString => _ctaDatabase.GetConnectionString();
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        SqliteConnection.ClearAllPools();
+        TryDeleteFile(_dbPath);
+    }
 
-    public Task InitializeAsync() => Task.WhenAll(_authDatabase.StartAsync(), _ctaDatabase.StartAsync());
-
-    public Task DisposeAsync() => Task.WhenAll(_authDatabase.DisposeAsync().AsTask(), _ctaDatabase.DisposeAsync().AsTask());
+    // Windows can briefly hold the file handle after ClearAllPools(); a short retry avoids leaking temp files.
+    private static void TryDeleteFile(string path)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                if (File.Exists(path)) File.Delete(path);
+                return;
+            }
+            catch (IOException) when (attempt < 2)
+            {
+                Thread.Sleep(50);
+            }
+        }
+    }
 }
 
-public abstract class PostgreSqlWebApplicationFactory<TEntryPoint>(string connectionString, string connectionName)
+public sealed class AuthApiFactory : SqliteWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint, AuthDbContext>;
+
+public sealed class CtaApiFactory : SqliteWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint, CtaDbContext>;
+
+/// <summary>
+/// Postgres-required: tests that verify real PostgreSQL behavior (migrations, schemas, collation).
+/// Connects to the database named by <paramref name="connectionName"/> under KJ_TEST_POSTGRES.
+/// </summary>
+public abstract class PostgresWebApplicationFactory<TEntryPoint>(string connectionString, string connectionName)
     : WebApplicationFactory<TEntryPoint>
     where TEntryPoint : class
 {
@@ -47,11 +82,11 @@ public abstract class PostgreSqlWebApplicationFactory<TEntryPoint>(string connec
     }
 }
 
-public sealed class AuthApiFactory(PostgreSqlFixture fixture)
-    : PostgreSqlWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint>(fixture.AuthConnectionString, "AuthDb");
+public sealed class PostgresAuthApiFactory(string connectionString)
+    : PostgresWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint>(connectionString, "AuthDb");
 
-public sealed class CtaApiFactory(PostgreSqlFixture fixture)
-    : PostgreSqlWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint>(fixture.CtaConnectionString, "CtaDb");
+public sealed class PostgresCtaApiFactory(string connectionString)
+    : PostgresWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint>(connectionString, "CtaDb");
 
 public sealed class ContentApiFactory : WebApplicationFactory<ContentService.ContentServiceTestEntryPoint>
 {

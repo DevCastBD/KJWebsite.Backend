@@ -3,9 +3,9 @@
 - Phase: —
 - Branch: —
 - Base SHA: —
-- Next step: issue #21 complete locally; publish the branch when requested
+- Next step: PR #156 open against develop for issue #152; nothing else pending
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
-- Last updated: 2026-10-13 by codex
+- Last updated: 2026-10-13T09:58Z by claude

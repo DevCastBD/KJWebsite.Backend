@@ -8,35 +8,38 @@ using Npgsql;
 
 namespace KJWebsite.IntegrationTests;
 
-[Collection(nameof(PostgreSqlFixtures))]
-public sealed class PostgreSqlMigrationTests(PostgreSqlFixture fixture)
+public sealed class PostgreSqlMigrationTests
 {
-    [Fact]
+    [RequiresPostgresFact]
     public async Task AuthMigrationCreatesOnlyAuthSchemaTables()
     {
-        using var factory = new AuthApiFactory(fixture);
+        TestPostgres.EnsureDatabaseExists("auth_test");
+        var connectionString = TestPostgres.ConnectionStringFor("auth_test");
+        using var factory = new PostgresAuthApiFactory(connectionString);
         using var client = factory.CreateClient();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
         db.Database.GetAppliedMigrations().Should().ContainSingle().Which.Should().Contain("InitialPostgreSql");
-        (await TableExists(fixture.AuthConnectionString, "auth", "users")).Should().BeTrue();
-        (await TableExists(fixture.AuthConnectionString, "auth", "refresh_tokens")).Should().BeTrue();
-        (await TableExists(fixture.AuthConnectionString, "auth", "__EFMigrationsHistory")).Should().BeTrue();
-        (await TableExists(fixture.AuthConnectionString, "public", "users")).Should().BeFalse();
+        (await TableExists(connectionString, "auth", "users")).Should().BeTrue();
+        (await TableExists(connectionString, "auth", "refresh_tokens")).Should().BeTrue();
+        (await TableExists(connectionString, "auth", "__EFMigrationsHistory")).Should().BeTrue();
+        (await TableExists(connectionString, "public", "users")).Should().BeFalse();
     }
 
-    [Fact]
+    [RequiresPostgresFact]
     public async Task CtaMigrationSeedsBengaliTextAndUsesBengaliCollation()
     {
-        using var factory = new CtaApiFactory(fixture);
+        TestPostgres.EnsureDatabaseExists("cta_test");
+        var connectionString = TestPostgres.ConnectionStringFor("cta_test");
+        using var factory = new PostgresCtaApiFactory(connectionString);
         using var client = factory.CreateClient();
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CtaDbContext>();
 
         db.Database.GetAppliedMigrations().Should().ContainSingle().Which.Should().Contain("InitialPostgreSql");
-        (await TableExists(fixture.CtaConnectionString, "cta", "cta_submissions")).Should().BeTrue();
-        (await TableExists(fixture.CtaConnectionString, "cta", "__EFMigrationsHistory")).Should().BeTrue();
+        (await TableExists(connectionString, "cta", "cta_submissions")).Should().BeTrue();
+        (await TableExists(connectionString, "cta", "__EFMigrationsHistory")).Should().BeTrue();
         var seed = await db.Submissions.SingleAsync(s => s.Id == "subm_dev_bengali");
         seed.ValuesJson.Should().Contain("বাংলা");
 

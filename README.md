@@ -150,13 +150,16 @@ Branch from `develop` using `feature/*` or `fix/*`; `main` is the intended produ
 
 ## Testing
 
-xUnit unit tests live under `tests/UnitTests`; integration smoke tests under `tests/IntegrationTests` use `WebApplicationFactory` and FluentAssertions, with Testcontainers starting PostgreSQL — so the Auth and CTA suites need Docker running.
+xUnit unit tests live under `tests/UnitTests`; integration smoke tests under `tests/IntegrationTests` use `WebApplicationFactory` and FluentAssertions. `dotnet test` needs no Docker and no setup:
+
+- **By default**, the Auth and CTA smoke tests run against a throwaway SQLite database per test class.
+- **Set `KJ_TEST_POSTGRES`** (a connection string without a database, e.g. `Host=localhost;Username=postgres;Password=postgres`) to also run the tests that verify real PostgreSQL behavior: migrations and schemas, the ICU Bengali collation, the Npgsql `DateTimeOffset` translation regression (#11), and the SQLite-to-Postgres data transfer. These create their own `auth_test` / `cta_test` databases (and throwaway ones for the transfer test) on the server `KJ_TEST_POSTGRES` points at, and are skipped with a clear reason when it is unset.
 
 **CI** (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `develop` and `main`:
 
 | Job | Steps |
 |---|---|
-| `build` | restore → build (Release, warnings as errors) → `dotnet format --verify-no-changes` → all tests, integration included → OpenAPI `--verify` (fails if `openapi.v1.yaml` has drifted) → uploads test results and the contract as artefacts |
+| `build` | restore → build (Release, warnings as errors) → `dotnet format --verify-no-changes` → all tests, integration included (`KJ_TEST_POSTGRES` is not currently set in CI, so the Postgres-specific tests skip there — see issue #152 follow-up) → OpenAPI `--verify` (fails if `openapi.v1.yaml` has drifted) → uploads test results and the contract as artefacts |
 | `dependency-scan` | `dotnet list package --vulnerable --include-transitive`; every finding is listed in the job summary, and **Critical** findings fail the build (7-day patch SLA, `docs/MASTER_PLAN.md` §7) |
 
 Both are required checks on `develop`. Dependabot opens weekly update PRs for NuGet packages and GitHub Actions.
@@ -166,7 +169,7 @@ Before pushing, the same checks locally:
 ```bash
 dotnet build KJWebsite.Backend.slnx
 dotnet format KJWebsite.Backend.slnx --verify-no-changes
-dotnet test KJWebsite.Backend.slnx          # Auth/CTA integration tests need Docker
+dotnet test KJWebsite.Backend.slnx          # set KJ_TEST_POSTGRES to also run the Postgres-specific tests
 dotnet run --project tools/OpenApiExporter -- --verify
 ```
 

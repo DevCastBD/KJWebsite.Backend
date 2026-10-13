@@ -4,17 +4,12 @@ using FluentAssertions;
 
 namespace KJWebsite.IntegrationTests;
 
-[Collection(nameof(PostgreSqlFixtures))]
 public sealed class CtaSmokeTests : IDisposable
 {
-    private readonly CtaApiFactory _factory;
+    private readonly CtaApiFactory _factory = new();
     private readonly HttpClient _client;
 
-    public CtaSmokeTests(PostgreSqlFixture fixture)
-    {
-        _factory = new CtaApiFactory(fixture);
-        _client = _factory.CreateClient();
-    }
+    public CtaSmokeTests() => _client = _factory.CreateClient();
 
     [Fact]
     public async Task HealthReturnsOk()
