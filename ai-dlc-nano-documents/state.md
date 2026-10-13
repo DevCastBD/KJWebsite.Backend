@@ -3,9 +3,9 @@
 - Phase: —
 - Branch: —
 - Base SHA: —
-- Next step: PR #156 open against develop for issue #152; nothing else pending
+- Next step: issue #12 (9 ADRs) complete locally on docs/issue-12-adr-ratification; commit/push when requested
 - Paused work items:
-  - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)
+  - work-items/011-issue-116-p1-platform-core (CLARIFY, blocked on #30/#27 next; #12 done)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
-- Uncommitted code: no
-- Last updated: 2026-10-13T09:58Z by claude
+- Uncommitted code: yes
+- Last updated: 2026-10-14T07:15Z by claude
