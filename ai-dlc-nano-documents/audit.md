@@ -152,3 +152,9 @@
 - 2026-10-15T09:30Z [claude] 017-issue-27-cors BRANCH @8146350: feature/issue-27-cors created off develop (user confirmed)
 - 2026-10-15T09:31Z [claude] 017-issue-27-cors PHASE PLAN→CONSTRUCT @8146350: plan approved (fast path)
 - 2026-10-15T09:45Z [claude] 017-issue-27-cors DONE @8146350: gateway CORS+security headers, 7 tests, suite green; uncommitted
+- 2026-10-15T10:00Z [claude] 017-issue-27-cors SIDE-EFFECT @2c6c433: local commit on feature/issue-27-cors, not pushed (user requested)
+- 2026-10-15T10:10Z [claude] 018-issue-19-verify-g5 DONE @2c6c433: live preflight verified (site no creds, admin creds, unlisted none); no code change
+- 2026-10-15T10:25Z [claude] 019-issue-26-content-contract CREATED @2c6c433: from #26; 4 decisions confirmed (in-memory, bootstrap+settings, projects paging, admin reads)
+- 2026-10-15T10:30Z [claude] 019-issue-26-content-contract BRANCH @2c6c433: feature/issue-26-content-contract off feature/issue-27-cors (user confirmed)
+- 2026-10-15T10:30Z [claude] 019-issue-26-content-contract PHASE PLAN→CONSTRUCT @2c6c433: plan approved
+- 2026-10-15T11:10Z [claude] 019-issue-26-content-contract DONE @2c6c433: envelope+bootstrap+ETag+admin reads+openapi regenerated; 52 tests ok; uncommitted
