@@ -11,3 +11,8 @@
   - Service entry points and endpoint mappings live in each service's `Program.cs`.
   - Shared types belong in `src/BuildingBlocks`; Auth and CTA own PostgreSQL databases, schemas, and EF Core migrations.
   - Development service ports are 7000–7003; each service exposes `/health` and Scalar.
+
+## Tracker bindings
+- GitHub assignee for the requesting user: tahmidsparrow (Md Tahmidul Abedin)
+- Project: DevCastBD/KolpoJontro Web (#2), PVT_kwDOEyBfw84Bhalz
+- Status field: PVTSSF_lADOEyBfw84BhalzzhgWZ-U; In progress option: 47fc9ee4

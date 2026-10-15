@@ -134,6 +134,17 @@
 - 2026-10-13T13:59Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @17050c8: local commit on feat/issue-152-tests-no-docker (user requested); no push yet
 - 2026-10-13T20:13Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @65f06b3: pushed feat/issue-152-tests-no-docker and opened PR #156 against develop, closes #152 (user requested)
 - 2026-10-13T20:13Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @65f06b3: commented on #152 with implementation summary and PR #156 link (user requested)
-- 2026-10-15T06:00Z [claude] 016-issue-147-contributing-docs CREATED @420e2fd: from issue #147
-- 2026-10-15T06:00Z [claude] 016-issue-147-contributing-docs BRANCH @420e2fd: Feature/KJ-147/contributing-docs off develop (user confirmed)
-- 2026-10-15T06:00Z [claude] 016-issue-147-contributing-docs DONE @420e2fd: docs written, uncommitted until commit
+- 2026-10-13T20:23Z [claude] 011-issue-116-p1-platform-core DECISION @67e6b55: #21 done; BE-004 #27 blocked via #30->#12; user chose to work #12 first (new item)
+- 2026-10-13T20:24Z [claude] 015-issue-12-adr-ratification CREATED @67e6b55: issue #12 (BE-002), surfaced via 011's dependency chain; already assigned to tahmidsparrow, no status change made (no board binding documented)
+- 2026-10-13T20:28Z [codex] 015-issue-12-adr-ratification SIDE-EFFECT @67e6b55: #12 already assigned to tahmidsparrow; project status Backlog to In progress
+- 2026-10-13T20:35Z [claude] 015-issue-12-adr-ratification DECISION @67e6b55: use plan recommendations; ADR-005=Hangfire, ADR-006=Cloudflare R2 (user picked); ratifier Md Tahmidul Abedin
+- 2026-10-13T20:35Z [claude] 015-issue-12-adr-ratification DECISION @67e6b55: ADR-008/011/014 left un-ratified (blocked on #111/#153/#110, user confirmed)
+- 2026-10-13T20:35Z [claude] 015-issue-12-adr-ratification PHASE CLARIFY->PLAN @67e6b55: scope settled for 9 ADRs
+- 2026-10-13T20:37Z [claude] 015-issue-12-adr-ratification BRANCH @420e2fd: docs/issue-12-adr-ratification created from develop (user approved)
+- 2026-10-13T20:37Z [claude] 015-issue-12-adr-ratification PHASE PLAN->CONSTRUCT @420e2fd: plan approved (9 ADR docs); construction begins
+- 2026-10-13T20:41Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @420e2fd: commented on #12 listing 9 new ADRs and the 3 still blocked (user requested)
+- 2026-10-13T20:41Z [claude] 015-issue-12-adr-ratification PHASE CONSTRUCT->WRAP-UP @420e2fd: 9 ADR docs committed to docs/adr/, 3 left blocked, reviewed for format consistency
+- 2026-10-13T20:42Z [claude] 015-issue-12-adr-ratification DONE @420e2fd: 9 ADRs committed locally on docs/issue-12-adr-ratification; 002 archived (retention cap); no commit/push yet
+- 2026-10-13T20:46Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @2fee563: local commit on docs/issue-12-adr-ratification (user requested)
+- 2026-10-13T20:46Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @2fee563: pushed docs/issue-12-adr-ratification and opened PR #157 against develop, closes #12 partially (user requested)
+- 2026-10-15T05:59Z [claude] 015-issue-12-adr-ratification DECISION @229f6d6: user chose all 3 remaining ADRs Accepted; added on PR #157 branch

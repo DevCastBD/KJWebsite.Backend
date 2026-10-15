@@ -3,8 +3,9 @@
 - Phase: —
 - Branch: —
 - Base SHA: —
-- Next step: follow docs/MASTER_PLAN.md §5 order — BE-001 (#152) done; continue in plan order
+- Next step: PR #157 open against develop for issue #12; nothing else pending
 - Paused work items:
-  - work-items/011-issue-116-p1-platform-core (CLARIFY, branch —, base —)
+  - work-items/011-issue-116-p1-platform-core (CLARIFY, blocked on #30/#27 next; #12 done)
+  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
-- Last updated: 2026-10-13T09:58Z by claude
+- Last updated: 2026-10-14T07:15Z by claude
