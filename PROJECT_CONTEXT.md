@@ -6,8 +6,7 @@ This is an AI and contributor orientation file: it directs readers to the author
 
 | Need | Authoritative location |
 |---|---|
-| What the backend will build and why | [Backend master plan](docs/MASTER_PLAN.md) |
-| Programme-wide sequencing and README work | [Program master plan](docs/PROGRAM_MASTER_PLAN.md) |
+| What the backend will build, why, and in which order | [Backend master plan](docs/MASTER_PLAN.md) |
 | What exists now; local setup; contribution workflow | [README](README.md) |
 | Public API surface | [Committed OpenAPI contract](openapi.v1.yaml) |
 | AI-DLC work-item state and repository map | [AI-DLC Nano documents](ai-dlc-nano-documents/) |

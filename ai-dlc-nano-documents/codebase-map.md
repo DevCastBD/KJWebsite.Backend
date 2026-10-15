@@ -48,5 +48,6 @@
 
 ## Gotchas
 - Current auth stores plain-text passwords, access tokens are process-local, and content admin uses `dev-admin-token`; not production-safe.
-- CI: .github/workflows/ci.yml (`build`, `dependency-scan` — both required on develop); Dependabot weekly. Local .NET 10 SDK may be at ~/.dotnet10 (system SDK can be older).
+- No CI, Dependabot or Docker at this stage (plan v2); run build/format/test/OpenAPI --verify locally. Local .NET 10 SDK may be at ~/.dotnet10 (system SDK can be older).
 - Npgsql `timestamp with time zone` requires UTC; normalize incoming offset timestamps before storing.
+- Never compare DateTimeOffset inside an EF LINQ predicate: SQLite cannot translate it (see RefreshTokenTests).
