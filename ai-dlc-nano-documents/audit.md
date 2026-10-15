@@ -158,3 +158,7 @@
 - 2026-10-15T10:30Z [claude] 019-issue-26-content-contract BRANCH @2c6c433: feature/issue-26-content-contract off feature/issue-27-cors (user confirmed)
 - 2026-10-15T10:30Z [claude] 019-issue-26-content-contract PHASE PLAN→CONSTRUCT @2c6c433: plan approved
 - 2026-10-15T11:10Z [claude] 019-issue-26-content-contract DONE @2c6c433: envelope+bootstrap+ETag+admin reads+openapi regenerated; 52 tests ok; uncommitted
+- 2026-10-15T11:20Z [claude] 019-issue-26-content-contract SIDE-EFFECT @7a947d1: local commit on feature/issue-26-content-contract, not pushed (user requested)
+- 2026-10-15T11:25Z [claude] 020-issue-20-contract-docs CREATED @7a947d1: from #20 (docs-only; code done by #26)
+- 2026-10-15T11:50Z [claude] 020-issue-20-contract-docs DONE @7a947d1: docs/CONTENT_CONTRACT.md + README link, checked vs live responses; uncommitted
+- 2026-10-15T11:50Z [claude] 020-issue-20-contract-docs BRANCH @7a947d1: stayed on feature/issue-26-content-contract (user confirmed)

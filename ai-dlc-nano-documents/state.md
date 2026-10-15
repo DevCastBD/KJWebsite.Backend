@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (queue: #20, #21; #26 done uncommitted on feature/issue-26-content-contract)
+- Active work item: none  (queue: #21; #20 docs uncommitted on feature/issue-26-content-contract)
 - Phase: —
 - Branch: feature/issue-26-content-contract
 - Base SHA: —
-- Next step: commit #26 on approval, then start #20
+- Next step: commit #20 docs; start #21 (already has local work item 012, branch feature/issue-21-postgresql)
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY, blocked on #30/#27 next; #12 done)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
