@@ -15,6 +15,8 @@
 - [x] `docs/adr/0013-hosting.md` — shape only: manual `dotnet publish` deploys, no containers for now; full provider/budget decision stays open on #106
 - [x] Posted comment on #12 noting ADR-008/011/014 remain blocked on #111/#153/#110
 
+- [x] `0008-payments.md`, `0011-observability.md`, `0014-data-residency-and-privacy.md` — Accepted, ratified by FHShubho per user; 014 numeric windows deferred to #110
+
 ## Tests
 - None — documentation only (architecture decisions, no code). Verified by review: each file follows the existing 0001/0004 format (Status/Date/Ratified by/Source, Context, Decision, Rejected alternatives, Consequences) and matches the plan's stated recommendation plus the two user-picked pins.
 

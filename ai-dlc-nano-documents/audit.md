@@ -147,3 +147,4 @@
 - 2026-10-13T20:42Z [claude] 015-issue-12-adr-ratification DONE @420e2fd: 9 ADRs committed locally on docs/issue-12-adr-ratification; 002 archived (retention cap); no commit/push yet
 - 2026-10-13T20:46Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @2fee563: local commit on docs/issue-12-adr-ratification (user requested)
 - 2026-10-13T20:46Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @2fee563: pushed docs/issue-12-adr-ratification and opened PR #157 against develop, closes #12 partially (user requested)
+- 2026-10-15T05:59Z [claude] 015-issue-12-adr-ratification DECISION @229f6d6: user chose all 3 remaining ADRs Accepted; added on PR #157 branch
