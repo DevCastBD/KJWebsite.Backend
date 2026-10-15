@@ -162,3 +162,5 @@
 - 2026-10-15T11:25Z [claude] 020-issue-20-contract-docs CREATED @7a947d1: from #20 (docs-only; code done by #26)
 - 2026-10-15T11:50Z [claude] 020-issue-20-contract-docs DONE @7a947d1: docs/CONTENT_CONTRACT.md + README link, checked vs live responses; uncommitted
 - 2026-10-15T11:50Z [claude] 020-issue-20-contract-docs BRANCH @7a947d1: stayed on feature/issue-26-content-contract (user confirmed)
+- 2026-10-15T12:00Z [claude] 020-issue-20-contract-docs SIDE-EFFECT @9294699: local commit on feature/issue-26-content-contract, not pushed (user requested)
+- 2026-10-15T12:10Z [claude] 021-issue-21-audit DONE @9294699: criteria audited; Auth/CTA ok, Content has no DB (#25); 9 PG tests pass on local PG 18.6
