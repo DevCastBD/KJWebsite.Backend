@@ -148,3 +148,7 @@
 - 2026-10-13T20:46Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @2fee563: local commit on docs/issue-12-adr-ratification (user requested)
 - 2026-10-13T20:46Z [claude] 015-issue-12-adr-ratification SIDE-EFFECT @2fee563: pushed docs/issue-12-adr-ratification and opened PR #157 against develop, closes #12 partially (user requested)
 - 2026-10-15T05:59Z [claude] 015-issue-12-adr-ratification DECISION @229f6d6: user chose all 3 remaining ADRs Accepted; added on PR #157 branch
+- 2026-10-15T09:00Z [claude] 017-issue-27-cors CREATED @8146350: from issue #27; assigned #27,#19,#26,#20,#21 to FHShubho (user confirmed)
+- 2026-10-15T09:30Z [claude] 017-issue-27-cors BRANCH @8146350: feature/issue-27-cors created off develop (user confirmed)
+- 2026-10-15T09:31Z [claude] 017-issue-27-cors PHASE PLAN→CONSTRUCT @8146350: plan approved (fast path)
+- 2026-10-15T09:45Z [claude] 017-issue-27-cors DONE @8146350: gateway CORS+security headers, 7 tests, suite green; uncommitted

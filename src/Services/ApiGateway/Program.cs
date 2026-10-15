@@ -1,3 +1,5 @@
+using ApiGateway;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Scalar.AspNetCore;
 using Yarp.ReverseProxy.Configuration;
 
@@ -6,6 +8,9 @@ var contentServiceUrl = builder.Configuration["Services:Content:Url"] ?? "http:/
 var ctaServiceUrl = builder.Configuration["Services:Cta:Url"] ?? "http://localhost:7002/";
 var authServiceUrl = builder.Configuration["Services:Auth:Url"] ?? "http://localhost:7003/";
 
+builder.Services.Configure<ApiGateway.CorsOptions>(builder.Configuration.GetSection(ApiGateway.CorsOptions.SectionName));
+builder.Services.AddCors();
+builder.Services.AddSingleton<ICorsPolicyProvider, OriginCorsPolicyProvider>();
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, ct) =>
@@ -51,6 +56,12 @@ builder.Services.AddReverseProxy().LoadFromMemory(
 ]);
 
 var app = builder.Build();
+
+// Resolve eagerly so an invalid origin in configuration fails startup, not the first request.
+_ = app.Services.GetRequiredService<ICorsPolicyProvider>();
+
+app.UseSecurityHeaders();
+app.UseCors();
 
 if (app.Environment.IsDevelopment())
 {
