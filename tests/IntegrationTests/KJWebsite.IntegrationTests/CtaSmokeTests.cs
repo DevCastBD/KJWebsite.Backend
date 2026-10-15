@@ -4,17 +4,12 @@ using FluentAssertions;
 
 namespace KJWebsite.IntegrationTests;
 
-[Collection(nameof(PostgreSqlFixtures))]
 public sealed class CtaSmokeTests : IDisposable
 {
-    private readonly CtaApiFactory _factory;
+    private readonly CtaApiFactory _factory = new();
     private readonly HttpClient _client;
 
-    public CtaSmokeTests(PostgreSqlFixture fixture)
-    {
-        _factory = new CtaApiFactory(fixture);
-        _client = _factory.CreateClient();
-    }
+    public CtaSmokeTests() => _client = _factory.CreateClient();
 
     [Fact]
     public async Task HealthReturnsOk()
@@ -35,6 +30,22 @@ public sealed class CtaSmokeTests : IDisposable
             sourcePath = "/contact",
             values = new Dictionary<string, object?> { ["firstName"] = "Test" },
             submittedAt = DateTimeOffset.UtcNow
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task CreateSubmissionAcceptsTimestampWithOffset()
+    {
+        using var response = await _client.PostAsJsonAsync("/api/v1/cta/submissions", new
+        {
+            formName = "contact",
+            ctaType = "contact",
+            language = "bn",
+            sourcePath = "/contact",
+            values = new Dictionary<string, object?> { ["firstName"] = "বাংলা" },
+            submittedAt = new DateTimeOffset(2026, 1, 1, 6, 0, 0, TimeSpan.FromHours(6))
         });
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);

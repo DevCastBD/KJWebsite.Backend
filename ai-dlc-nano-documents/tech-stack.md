@@ -1,7 +1,7 @@
 # Tech Stack
 - Language(s): C# (`net10.0`)
 - Framework(s): ASP.NET Core Minimal APIs, YARP 2.2, EF Core 10, Scalar 2.14
-- Package manager: .NET CLI; tool manifest includes `dotnet-ef` 10.0.8
+- Package manager: .NET CLI; root tool manifest includes `dotnet-ef` 10.0.12
 - Test: xUnit unit tests under `tests/UnitTests`; run `dotnet test KJWebsite.Backend.slnx`
 - Lint/format: root `.editorconfig`; verify with `dotnet format KJWebsite.Backend.slnx --verify-no-changes --no-restore`
 - Size tier: standard · 166 tracked files · recorded 2026-09-20
@@ -9,5 +9,5 @@
 - Conventions:
   - Root `Directory.Build.props` owns the active solution's framework, nullable, warning, and analyzer settings; `Directory.Packages.props` owns package versions.
   - Service entry points and endpoint mappings live in each service's `Program.cs`.
-  - Shared types belong in `src/BuildingBlocks`; SQLite services use EF Core migrations.
+  - Shared types belong in `src/BuildingBlocks`; Auth and CTA own PostgreSQL databases, schemas, and EF Core migrations.
   - Development service ports are 7000–7003; each service exposes `/health` and Scalar.

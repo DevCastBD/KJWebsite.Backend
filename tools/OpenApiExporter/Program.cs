@@ -217,13 +217,9 @@ static class RuntimeOpenApiExporter
         startInfo.ArgumentList.Add($"http://127.0.0.1:{port}");
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
-        if (definition.Name == "AuthIdentityService")
+        if (definition.Name is "AuthIdentityService" or "CtaSubmissionService")
         {
-            startInfo.Environment["ConnectionStrings__AuthDb"] = $"Data Source={Path.Combine(temporaryDirectory, "auth.db")}";
-        }
-        else if (definition.Name == "CtaSubmissionService")
-        {
-            startInfo.Environment["ConnectionStrings__CtaDb"] = $"Data Source={Path.Combine(temporaryDirectory, "cta.db")}";
+            startInfo.Environment["OpenApi__Export"] = "true";
         }
 
         var process = Process.Start(startInfo) ?? throw new InvalidOperationException($"Could not start {definition.Name}.");

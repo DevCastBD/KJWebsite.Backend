@@ -17,31 +17,45 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
-var usePostgreSql = string.Equals(builder.Configuration["Database:Provider"], "PostgreSql", StringComparison.OrdinalIgnoreCase);
-var ctaConnectionString = builder.Configuration.GetConnectionString("CtaDb") ?? "Data Source=cta.db";
-builder.Services.AddDbContext<CtaDbContext>(options =>
+builder.Services.AddDbContext<CtaDbContext>((services, options) =>
 {
-    if (usePostgreSql)
-    {
-        options.UseNpgsql(ctaConnectionString);
-        return;
-    }
-
-    options.UseSqlite(ctaConnectionString);
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("CtaDb")
+        ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=cta" : throw new InvalidOperationException("ConnectionStrings:CtaDb is required."));
+    options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "cta"));
 });
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<CtaDbContext>();
-    if (usePostgreSql && builder.Configuration.GetValue<bool>("Database:EnsureCreated"))
+    // Tests swap in the Sqlite provider, which has no migrations to replay; Postgres keeps its migration history.
+    if (db.Database.IsNpgsql())
     {
-        db.Database.EnsureCreated();
+        db.Database.Migrate();
     }
     else
     {
-        db.Database.Migrate();
+        db.Database.EnsureCreated();
+    }
+
+    if (app.Environment.IsDevelopment() && !db.Submissions.Any(s => s.Id == "subm_dev_bengali"))
+    {
+        db.Submissions.Add(new CtaSubmissionEntity
+        {
+            Id = "subm_dev_bengali",
+            FormName = "contact",
+            CtaType = "contact",
+            Language = "bn",
+            SourcePath = "/contact",
+            ValuesJson = "{\"firstName\":\"বাংলা\"}",
+            FirstName = "বাংলা",
+            SubmittedAt = DateTimeOffset.UtcNow,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        db.SaveChanges();
     }
 }
 
@@ -89,7 +103,7 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
         Language = payload.Language,
         SourcePath = payload.SourcePath,
         ValuesJson = valuesJson,
-        SubmittedAt = payload.SubmittedAt,
+        SubmittedAt = payload.SubmittedAt.ToUniversalTime(),
         CreatedAt = createdAt,
         FirstName = awaitingProfile?.FirstName,
         LastName = awaitingProfile?.LastName,

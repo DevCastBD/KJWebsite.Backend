@@ -16,13 +16,13 @@
 
 ## 1. Where we are
 
-Four services behind a YARP gateway, all runnable with `dotnet run` on SQLite (Content is in memory):
+Four services behind a YARP gateway, runnable with `dotnet run` (Auth and CTA need a local PostgreSQL 17; Content is in memory):
 
 | Service | Port | State |
 |---|---|---|
 | ApiGateway | 7000 | Routes hard-coded in `Program.cs`; `/health`; no CORS, auth or rate limiting |
 | ContentService | 7001 | Projects + news read/admin; **in-memory**; admin auth is the literal `dev-admin-token` |
-| CtaSubmissionService | 7002 | `POST /api/v1/cta/submissions`; SQLite or Npgsql; allow-list validation, 32 KB cap |
+| CtaSubmissionService | 7002 | `POST /api/v1/cta/submissions`; PostgreSQL (Npgsql, own schema); allow-list validation, 32 KB cap |
 | AuthIdentityService | 7003 | Register/login/refresh/logout/me; **plain-text passwords**, GUID tokens in a process dictionary |
 
 Done in P0: README with security notice, PROJECT_CONTEXT, central build config, BuildingBlocks (Problem Details, `Result`, paging, language), test projects, legacy snapshots moved to `legacy/`, legacy email template, ADR-001.
@@ -47,7 +47,7 @@ Browser (static SPA, works without us)
    ▼
 ApiGateway (YARP) ── CORS, rate limits, routing from config, /health
    ├── Identity ─────┐
-   ├── Content ──────┤── PostgreSQL in production (schema per service); SQLite locally/tests
+   ├── Content ──────┤── PostgreSQL (schema per service)
    ├── Engagement ───┤
    └── later: Membership, Finance, Events, Communications, Reporting
 ```
@@ -58,7 +58,7 @@ Each service owns its folder, `DbContext`, migrations and schema; no service wri
 |---|---|
 | 001 | Independently deployable microservices behind YARP (accepted); cross-service extras deferred (BE-093) |
 | 002 / 003 | ASP.NET Core Identity; asymmetric JWT (15-min access) + rotating refresh tokens stored hashed |
-| 004 | PostgreSQL 17 in production, schema per service (Npgsql); SQLite for local dev and tests |
+| 004 | PostgreSQL 17, service-owned databases and schemas (Npgsql); accepted, see [ADR-004](adr/0004-postgresql-per-service.md); tests use SQLite |
 | 005 | Hangfire or Quartz + transactional outbox for side effects |
 | 006 / 007 | S3-compatible object storage (R2/S3); transactional email provider with DKIM/SPF |
 | 008 | bKash + Nagad + SSLCommerz; Stripe/PayPal for diaspora donors |
