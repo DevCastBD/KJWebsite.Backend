@@ -117,6 +117,8 @@ dotnet run --project tools/OpenApiExporter -- --verify
 
 The cross-platform exporter starts the four services in `Development` on temporary loopback ports, fetches `/openapi/v1.json`, merges the gateway health route with downstream API routes, writes deterministic YAML, then stops the temporary processes. `--verify` fails on contract drift; export skips database initialization because route metadata needs no database.
 
+The content response shapes and their mapping to the frontend's internal shape are described in [docs/CONTENT_CONTRACT.md](docs/CONTENT_CONTRACT.md).
+
 The frontend should generate its typed client or mock from the committed YAML, not a developer's live service URL. Scalar is for local exploration only.
 
 ## Project structure

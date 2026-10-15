@@ -152,3 +152,17 @@
 - 2026-10-15T09:30Z [claude] 017-issue-27-cors BRANCH @8146350: feature/issue-27-cors created off develop (user confirmed)
 - 2026-10-15T09:31Z [claude] 017-issue-27-cors PHASE PLAN→CONSTRUCT @8146350: plan approved (fast path)
 - 2026-10-15T09:45Z [claude] 017-issue-27-cors DONE @8146350: gateway CORS+security headers, 7 tests, suite green; uncommitted
+- 2026-10-15T10:00Z [claude] 017-issue-27-cors SIDE-EFFECT @2c6c433: local commit on feature/issue-27-cors, not pushed (user requested)
+- 2026-10-15T10:10Z [claude] 018-issue-19-verify-g5 DONE @2c6c433: live preflight verified (site no creds, admin creds, unlisted none); no code change
+- 2026-10-15T10:25Z [claude] 019-issue-26-content-contract CREATED @2c6c433: from #26; 4 decisions confirmed (in-memory, bootstrap+settings, projects paging, admin reads)
+- 2026-10-15T10:30Z [claude] 019-issue-26-content-contract BRANCH @2c6c433: feature/issue-26-content-contract off feature/issue-27-cors (user confirmed)
+- 2026-10-15T10:30Z [claude] 019-issue-26-content-contract PHASE PLAN→CONSTRUCT @2c6c433: plan approved
+- 2026-10-15T11:10Z [claude] 019-issue-26-content-contract DONE @2c6c433: envelope+bootstrap+ETag+admin reads+openapi regenerated; 52 tests ok; uncommitted
+- 2026-10-15T11:20Z [claude] 019-issue-26-content-contract SIDE-EFFECT @7a947d1: local commit on feature/issue-26-content-contract, not pushed (user requested)
+- 2026-10-15T11:25Z [claude] 020-issue-20-contract-docs CREATED @7a947d1: from #20 (docs-only; code done by #26)
+- 2026-10-15T11:50Z [claude] 020-issue-20-contract-docs DONE @7a947d1: docs/CONTENT_CONTRACT.md + README link, checked vs live responses; uncommitted
+- 2026-10-15T11:50Z [claude] 020-issue-20-contract-docs BRANCH @7a947d1: stayed on feature/issue-26-content-contract (user confirmed)
+- 2026-10-15T12:00Z [claude] 020-issue-20-contract-docs SIDE-EFFECT @9294699: local commit on feature/issue-26-content-contract, not pushed (user requested)
+- 2026-10-15T12:10Z [claude] 021-issue-21-audit DONE @9294699: criteria audited; Auth/CTA ok, Content has no DB (#25); 9 PG tests pass on local PG 18.6
+- 2026-10-15T12:30Z [claude] 017-issue-27-cors SIDE-EFFECT @5e026d9: pushed feature/issue-27-cors, opened PR #159 to develop (user requested)
+- 2026-10-15T12:30Z [claude] 019-issue-26-content-contract SIDE-EFFECT @5e026d9: pushed feature/issue-26-content-contract, opened PR #160 based on #27 branch (user requested)

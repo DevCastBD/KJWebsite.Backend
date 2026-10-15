@@ -1,7 +1,11 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 using KJWebsite.BuildingBlocks;
 using Scalar.AspNetCore;
+
+const int MaxPageSize = 100;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi(options =>
@@ -47,21 +51,24 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ContentSe
    .WithSummary("Content service health check")
    .WithTags("System");
 
-app.MapGet("/api/v1/content/projects", (HttpRequest request, string? lang, string? status) =>
+app.MapGet("/api/v1/content/projects", (HttpRequest request, string? lang, string? status, int? limit, int? offset) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
-    var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "active" : status.Trim().ToLowerInvariant();
-    if (normalizedStatus is not ("active" or "all"))
+    if (!TryReadStatus(status, out var normalizedStatus))
     {
         return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "status must be active or all.");
     }
 
-    var filtered = projects.Where(p => p.Lang == resolvedLanguage && (normalizedStatus == "all" || p.Status == "active")).ToArray();
-    return Results.Ok(new { items = filtered, lang = resolvedLanguage });
+    if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
+    {
+        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
+    }
+
+    return Cached(request, Page(ProjectsFor(resolvedLanguage, normalizedStatus), safeLimit, safeOffset, resolvedLanguage));
 })
 .WithName("GetProjects")
-.WithSummary("List projects")
-.WithDescription("Returns projects filtered by language (`lang`: en/bn, default en) and status (`status`: active/all, default active).")
+.WithSummary("List projects (paginated)")
+.WithDescription("Returns `{ items, total, limit, offset, lang }`. `lang`: en/bn (default en). `status`: active/all (default active). `limit`: 1–100 (default 20). `offset`: default 0. ETag + Cache-Control are set.")
 .WithTags("Content");
 
 app.MapGet("/api/v1/content/projects/{id}", (HttpRequest request, string id, string? lang) =>
@@ -70,7 +77,7 @@ app.MapGet("/api/v1/content/projects/{id}", (HttpRequest request, string id, str
     var item = projects.FirstOrDefault(p => p.Id == id && p.Lang == resolvedLanguage);
     return item is null
         ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.")
-        : Results.Ok(item);
+        : Cached(request, item);
 })
 .WithName("GetProjectById")
 .WithSummary("Get project by ID")
@@ -80,23 +87,16 @@ app.MapGet("/api/v1/content/projects/{id}", (HttpRequest request, string id, str
 app.MapGet("/api/v1/content/news", (HttpRequest request, string? lang, int? limit, int? offset) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
-    var safeLimit = limit.GetValueOrDefault(20);
-    var safeOffset = offset.GetValueOrDefault(0);
-
-    if (safeLimit is < 1 or > 100 || safeOffset < 0)
+    if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
     {
         return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
     }
 
-    var langRows = news.Where(n => n.Lang == resolvedLanguage).ToList();
-    var paged = langRows.Skip(safeOffset).Take(safeLimit).ToArray();
-    var page = new PagingEnvelope<NewsItem>(paged, langRows.Count, null, safeLimit, safeOffset);
-
-    return Results.Ok(new { page.Items, page.Total, page.Limit, page.Offset, lang = resolvedLanguage });
+    return Cached(request, Page(NewsFor(resolvedLanguage), safeLimit, safeOffset, resolvedLanguage));
 })
 .WithName("GetNews")
 .WithSummary("List news articles (paginated)")
-.WithDescription("Returns paginated news articles. `lang`: en/bn (default en). `limit`: 1–100 (default 20). `offset`: default 0.")
+.WithDescription("Returns `{ items, total, limit, offset, lang }`. `lang`: en/bn (default en). `limit`: 1–100 (default 20). `offset`: default 0. ETag + Cache-Control are set.")
 .WithTags("Content");
 
 app.MapGet("/api/v1/content/news/{id}", (HttpRequest request, string id, string? lang) =>
@@ -105,12 +105,98 @@ app.MapGet("/api/v1/content/news/{id}", (HttpRequest request, string id, string?
     var item = news.FirstOrDefault(n => n.Id == id && n.Lang == resolvedLanguage);
     return item is null
         ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.")
-        : Results.Ok(item);
+        : Cached(request, item);
 })
 .WithName("GetNewsById")
 .WithSummary("Get news article by ID")
 .WithDescription("Returns a single news article by slug ID in the requested language (`lang`: en/bn, default en).")
 .WithTags("Content");
+
+app.MapGet("/api/v1/content/bootstrap", (HttpRequest request, string? lang) =>
+{
+    var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
+    return Cached(request, new
+    {
+        projects = Page(ProjectsFor(resolvedLanguage, "active"), MaxPageSize, 0, resolvedLanguage),
+        news = Page(NewsFor(resolvedLanguage), MaxPageSize, 0, resolvedLanguage),
+        settings = new Dictionary<string, string>(),
+        lang = resolvedLanguage
+    });
+})
+.WithName("GetContentBootstrap")
+.WithSummary("Cold-start bundle")
+.WithDescription("Returns `{ projects, news, settings, lang }` in one call for the SPA's first render (up to 100 active projects and 100 news items). ETag + Cache-Control are set.")
+.WithTags("Content");
+
+app.MapGet("/api/v1/admin/content/projects", (HttpRequest request, int? limit, int? offset) =>
+{
+    var authResult = EnsureAdmin(request);
+    if (authResult is not null) return authResult;
+
+    if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
+    {
+        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
+    }
+
+    request.HttpContext.Response.Headers.CacheControl = "no-store";
+    var all = projects.GroupBy(p => p.Id).Select(g => ToProjectAdminView(g.ToList())).ToList();
+    return Results.Ok(PageAll(all, safeLimit, safeOffset));
+})
+.WithName("ListAdminProjects")
+.WithSummary("List projects with all translations")
+.WithDescription("Returns every translation of every project, grouped per slug. Requires `Authorization: Bearer dev-admin-token`.")
+.WithTags("Admin — Content");
+
+app.MapGet("/api/v1/admin/content/projects/{id}", (HttpRequest request, string id) =>
+{
+    var authResult = EnsureAdmin(request);
+    if (authResult is not null) return authResult;
+
+    var rows = projects.Where(p => p.Id == id).ToList();
+    request.HttpContext.Response.Headers.CacheControl = "no-store";
+    return rows.Count == 0
+        ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.")
+        : Results.Ok(ToProjectAdminView(rows));
+})
+.WithName("GetAdminProject")
+.WithSummary("Get a project with all translations")
+.WithDescription("Requires `Authorization: Bearer dev-admin-token`.")
+.WithTags("Admin — Content");
+
+app.MapGet("/api/v1/admin/content/news", (HttpRequest request, int? limit, int? offset) =>
+{
+    var authResult = EnsureAdmin(request);
+    if (authResult is not null) return authResult;
+
+    if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
+    {
+        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
+    }
+
+    request.HttpContext.Response.Headers.CacheControl = "no-store";
+    var all = news.GroupBy(n => n.Id).Select(g => ToNewsAdminView(g.ToList())).ToList();
+    return Results.Ok(PageAll(all, safeLimit, safeOffset));
+})
+.WithName("ListAdminNews")
+.WithSummary("List news articles with all translations")
+.WithDescription("Returns every translation of every article, grouped per slug. Requires `Authorization: Bearer dev-admin-token`.")
+.WithTags("Admin — Content");
+
+app.MapGet("/api/v1/admin/content/news/{id}", (HttpRequest request, string id) =>
+{
+    var authResult = EnsureAdmin(request);
+    if (authResult is not null) return authResult;
+
+    var rows = news.Where(n => n.Id == id).ToList();
+    request.HttpContext.Response.Headers.CacheControl = "no-store";
+    return rows.Count == 0
+        ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.")
+        : Results.Ok(ToNewsAdminView(rows));
+})
+.WithName("GetAdminNews")
+.WithSummary("Get a news article with all translations")
+.WithDescription("Requires `Authorization: Bearer dev-admin-token`.")
+.WithTags("Admin — Content");
 
 app.MapPost("/api/v1/admin/content/projects", (HttpRequest request, ProjectUpsertRequest payload) =>
 {
@@ -268,6 +354,62 @@ app.MapDelete("/api/v1/admin/content/news/{id}", (HttpRequest request, string id
 
 app.Run();
 
+List<ProjectItem> ProjectsFor(string language, string status) =>
+    projects.Where(p => p.Lang == language && (status == "all" || p.Status == "active")).ToList();
+
+List<NewsItem> NewsFor(string language) => news.Where(n => n.Lang == language).ToList();
+
+static bool TryReadStatus(string? status, out string normalized)
+{
+    normalized = string.IsNullOrWhiteSpace(status) ? "active" : status.Trim().ToLowerInvariant();
+    return normalized is "active" or "all";
+}
+
+static bool TryReadPaging(int? limit, int? offset, out int safeLimit, out int safeOffset)
+{
+    safeLimit = limit.GetValueOrDefault(20);
+    safeOffset = offset.GetValueOrDefault(0);
+    return safeLimit is >= 1 and <= MaxPageSize && safeOffset >= 0;
+}
+
+static object Page<T>(List<T> rows, int limit, int offset, string language)
+{
+    var paged = rows.Skip(offset).Take(limit).ToArray();
+    return new { items = paged, total = rows.Count, limit, offset, lang = language };
+}
+
+static object PageAll<T>(List<T> rows, int limit, int offset) =>
+    new PagingEnvelope<T>(rows.Skip(offset).Take(limit).ToArray(), rows.Count, null, limit, offset);
+
+static IResult Cached(HttpRequest request, object body)
+{
+    var json = JsonSerializer.SerializeToUtf8Bytes(body, JsonSerializerOptions.Web);
+    var etag = $"\"{Convert.ToHexString(SHA256.HashData(json))[..32].ToLowerInvariant()}\"";
+    var headers = request.HttpContext.Response.Headers;
+    headers.ETag = etag;
+    headers.CacheControl = "public, max-age=60";
+    headers.Vary = "Accept-Language";
+
+    var ifNoneMatch = request.Headers.IfNoneMatch;
+    return ifNoneMatch.Any(v => v is not null && (v == "*" || v.Split(',').Select(t => t.Trim()).Contains(etag)))
+        ? Results.StatusCode(StatusCodes.Status304NotModified)
+        : Results.Bytes(json, "application/json");
+}
+
+static ProjectAdminView ToProjectAdminView(List<ProjectItem> rows)
+{
+    var first = rows[0];
+    return new ProjectAdminView(first.Slug, first.ImageUrl, first.Category, first.Year, first.Status, first.Icon,
+        [.. rows.Select(r => new ProjectTranslationView(r.Lang, r.Title, r.ShortTitle, r.ShortDescription, r.FullDescription))]);
+}
+
+static NewsAdminView ToNewsAdminView(List<NewsItem> rows)
+{
+    var first = rows[0];
+    return new NewsAdminView(first.Slug, first.ImageUrl, first.PublishedAt, first.Status,
+        [.. rows.Select(r => new NewsTranslationView(r.Lang, r.Title, r.Summary, r.Content))]);
+}
+
 static IResult? EnsureAdmin(HttpRequest request)
 {
     if (!request.Headers.TryGetValue("Authorization", out var authHeader))
@@ -306,6 +448,14 @@ sealed record NewsItem(
     string Date,
     DateTimeOffset PublishedAt,
     string Status);
+
+sealed record ProjectTranslationView(string Lang, string Title, string ShortTitle, string ShortDescription, string FullDescription);
+
+sealed record ProjectAdminView(string Slug, string ImageUrl, string Category, string Year, string Status, string Icon, List<ProjectTranslationView> Translations);
+
+sealed record NewsTranslationView(string Lang, string Title, string Summary, List<string> Content);
+
+sealed record NewsAdminView(string Slug, string ImageUrl, DateTimeOffset PublishedAt, string Status, List<NewsTranslationView> Translations);
 
 sealed record ProjectUpsertRequest(
     string Slug,

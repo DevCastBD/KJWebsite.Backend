@@ -21,8 +21,8 @@ paths:
     get:
       tags:
         - "Content"
-      summary: "List projects"
-      description: "Returns projects filtered by language (\u0060lang\u0060: en/bn, default en) and status (\u0060status\u0060: active/all, default active)."
+      summary: "List projects (paginated)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060lang\u0060: en/bn (default en). \u0060status\u0060: active/all (default active). \u0060limit\u0060: 1\u2013100 (default 20). \u0060offset\u0060: default 0. ETag \u002B Cache-Control are set."
       operationId: "GetProjects"
       parameters:
         -
@@ -35,6 +35,24 @@ paths:
           in: "query"
           schema:
             type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
       responses:
         "200":
           description: "OK"
@@ -65,7 +83,7 @@ paths:
       tags:
         - "Content"
       summary: "List news articles (paginated)"
-      description: "Returns paginated news articles. \u0060lang\u0060: en/bn (default en). \u0060limit\u0060: 1\u2013100 (default 20). \u0060offset\u0060: default 0."
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060lang\u0060: en/bn (default en). \u0060limit\u0060: 1\u2013100 (default 20). \u0060offset\u0060: default 0. ETag \u002B Cache-Control are set."
       operationId: "GetNews"
       parameters:
         -
@@ -116,7 +134,51 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/content/bootstrap:
+    get:
+      tags:
+        - "Content"
+      summary: "Cold-start bundle"
+      description: "Returns \u0060{ projects, news, settings, lang }\u0060 in one call for the SPA\u0027s first render (up to 100 active projects and 100 news items). ETag \u002B Cache-Control are set."
+      operationId: "GetContentBootstrap"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/content/projects:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List projects with all translations"
+      description: "Returns every translation of every project, grouped per slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      operationId: "ListAdminProjects"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
     post:
       tags:
         - "Admin \u2014 Content"
@@ -133,6 +195,22 @@ paths:
         "200":
           description: "OK"
   "/api/v1/admin/content/projects/{id}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get a project with all translations"
+      description: "Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      operationId: "GetAdminProject"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
     put:
       tags:
         - "Admin \u2014 Content"
@@ -172,6 +250,34 @@ paths:
         "200":
           description: "OK"
   /api/v1/admin/content/news:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List news articles with all translations"
+      description: "Returns every translation of every article, grouped per slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      operationId: "ListAdminNews"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
     post:
       tags:
         - "Admin \u2014 Content"
@@ -188,6 +294,22 @@ paths:
         "200":
           description: "OK"
   "/api/v1/admin/content/news/{id}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get a news article with all translations"
+      description: "Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      operationId: "GetAdminNews"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
     put:
       tags:
         - "Admin \u2014 Content"
