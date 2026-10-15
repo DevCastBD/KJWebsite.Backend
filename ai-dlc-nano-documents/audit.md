@@ -134,3 +134,6 @@
 - 2026-10-13T13:59Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @17050c8: local commit on feat/issue-152-tests-no-docker (user requested); no push yet
 - 2026-10-13T20:13Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @65f06b3: pushed feat/issue-152-tests-no-docker and opened PR #156 against develop, closes #152 (user requested)
 - 2026-10-13T20:13Z [claude] 014-issue-152-tests-no-docker SIDE-EFFECT @65f06b3: commented on #152 with implementation summary and PR #156 link (user requested)
+- 2026-10-15T06:00Z [claude] 016-issue-147-contributing-docs CREATED @420e2fd: from issue #147
+- 2026-10-15T06:00Z [claude] 016-issue-147-contributing-docs BRANCH @420e2fd: Feature/KJ-147/contributing-docs off develop (user confirmed)
+- 2026-10-15T06:00Z [claude] 016-issue-147-contributing-docs DONE @420e2fd: docs written, uncommitted until commit

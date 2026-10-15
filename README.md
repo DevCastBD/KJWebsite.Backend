@@ -133,7 +133,7 @@ legacy/                          read-only 2019 registration snapshots (see lega
 
 ## Development workflow
 
-Branch from `develop` using `feature/*` or `fix/*`; `main` is the intended production branch. Use conventional commits and squash-merge pull requests. Before review, build the solution, regenerate the contract when endpoints change, run contract verification, and keep this README truthful.
+Branch from `develop` using `Feature/KJ-<issue>/<slug>`; `main` is the intended production branch. Use conventional commits; pull requests are merged with a merge commit. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Before review, build the solution, regenerate the contract when endpoints change, run contract verification, and keep this README truthful.
 
 ## Testing
 
@@ -180,4 +180,4 @@ Not implemented. At this stage deploys are manual: `dotnet publish` each service
 
 ## Roadmap, contributing, and license
 
-Read the [backend plan](docs/MASTER_PLAN.md) (including the numbered execution order of the open issues) and [project context](PROJECT_CONTEXT.md). Keep changes additive, preserve the frontend contract, and never weaken the security notice. No license or formal contributor guide has been selected yet; use the issue tracker for repository questions.
+Read the [backend plan](docs/MASTER_PLAN.md), [program plan](docs/PROGRAM_MASTER_PLAN.md), and [project context](PROJECT_CONTEXT.md). Keep changes additive, preserve the frontend contract, and never weaken the security notice. No license has been selected yet; read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and use the issue tracker for repository questions.
