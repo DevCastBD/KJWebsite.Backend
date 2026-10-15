@@ -1,7 +1,5 @@
 # KJWebsite.Backend
 
-[![CI](https://github.com/DevCastBD/KJWebsite.Backend/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/DevCastBD/KJWebsite.Backend/actions/workflows/ci.yml)
-
 The .NET 10 backend scaffold for Kolpojontro Foundation's public site and future back office. It currently serves development APIs and is not a production deployment.
 
 > [!WARNING]
@@ -12,7 +10,7 @@ The .NET 10 backend scaffold for Kolpojontro Foundation's public site and future
 
 ## Overview
 
-Four ASP.NET Core Minimal API services sit behind a YARP gateway. The gateway is the public API entry point for the public website and future back office. The implementation roadmap is [docs/MASTER_PLAN.md](docs/MASTER_PLAN.md); the program plan is [docs/PROGRAM_MASTER_PLAN.md](docs/PROGRAM_MASTER_PLAN.md).
+Four ASP.NET Core Minimal API services sit behind a YARP gateway. The gateway is the public API entry point for the public website and future back office. The implementation roadmap and the execution order of the open issues (`[BE-NNN]` titles) are in [docs/MASTER_PLAN.md](docs/MASTER_PLAN.md).
 
 ## API preview
 
@@ -62,8 +60,7 @@ flowchart LR
 
 - [.NET SDK 10.0.300](https://dotnet.microsoft.com/download) or compatible .NET 10 SDK
 - The manifest-managed `dotnet-ef` tool
-- Docker Desktop or Docker Engine with Compose, if running the container stack
-- PostgreSQL 17 with the `auth` and `cta` databases and connection strings, if running services without Compose
+- PostgreSQL 17 with the `auth` and `cta` databases and connection strings, to run the Auth and CTA services (Docker is not used)
 
 ```bash
 dotnet tool restore
@@ -86,22 +83,12 @@ dotnet run --project src/Services/AuthIdentityService --launch-profile http
 
 The gateway at `http://localhost:7000` expects the downstream services on their listed ports. Scalar and health URLs are in [API preview](#api-preview).
 
-### Run the full stack with Docker
-
-With Docker installed, start every service and its local dependencies from the repository root:
-
-```bash
-docker compose up --build
-```
-
-The API Gateway Scalar reference is at http://localhost:7000/scalar/v1. Health endpoints are available on ports 7000–7003 at `/health`; MailHog is at http://localhost:8025. The Compose credentials are development-only and PostgreSQL is available on host port 5433. Data persists in `postgres-v17-migrated-data`; the older `postgres-data` volume remains untouched. Stop the stack with `docker compose down`; add `--volumes` only when you intentionally want to discard local database data.
-
 ### Configuration
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | No | Host default | Use `Development` locally; Scalar and runtime OpenAPI are mapped only then. |
-| `ASPNETCORE_URLS` | No | `launchSettings.json` port | Overrides a listener. Containers use port 8080 internally. |
+| `ASPNETCORE_URLS` | No | `launchSettings.json` port | Overrides a listener. |
 | `ConnectionStrings__AuthDb` | Yes, for Auth | None | Auth PostgreSQL connection string. |
 | `ConnectionStrings__CtaDb` | Yes, for CTA | None | CTA PostgreSQL connection string. |
 | `Services__{Content,Cta,Auth}__Url` | No | Localhost service ports | Gateway downstream destination overrides. |
@@ -140,13 +127,13 @@ src/Services/                    gateway and three API services
 tools/OpenApiExporter/           runtime OpenAPI aggregation tool
 tools/SqliteToPostgres/          development-data transfer tool
 openapi.v1.yaml                  committed v1 API contract
-docs/                            backend and program plans
+docs/                            backend plan and ADRs
 legacy/                          read-only 2019 registration snapshots (see legacy/README.md)
 ```
 
 ## Development workflow
 
-Branch from `develop` using `feature/*` or `fix/*`; `main` is the intended production branch. Use conventional commits and squash-merge pull requests. Before review, build the solution, regenerate the contract when endpoints change, run contract verification, and keep this README truthful.
+Branch from `develop` using `Feature/KJ-<issue>/<slug>`; `main` is the intended production branch. Use conventional commits; pull requests are merged with a merge commit. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Before review, build the solution, regenerate the contract when endpoints change, run contract verification, and keep this README truthful.
 
 ## Testing
 
@@ -155,16 +142,7 @@ xUnit unit tests live under `tests/UnitTests`; integration smoke tests under `te
 - **By default**, the Auth and CTA smoke tests run against a throwaway SQLite database per test class.
 - **Set `KJ_TEST_POSTGRES`** (a connection string without a database, e.g. `Host=localhost;Username=postgres;Password=postgres`) to also run the tests that verify real PostgreSQL behavior: migrations and schemas, the ICU Bengali collation, the Npgsql `DateTimeOffset` translation regression (#11), and the SQLite-to-Postgres data transfer. These create their own `auth_test` / `cta_test` databases (and throwaway ones for the transfer test) on the server `KJ_TEST_POSTGRES` points at, and are skipped with a clear reason when it is unset.
 
-**CI** (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `develop` and `main`:
-
-| Job | Steps |
-|---|---|
-| `build` | restore → build (Release, warnings as errors) → `dotnet format --verify-no-changes` → all tests, integration included (`KJ_TEST_POSTGRES` is not currently set in CI, so the Postgres-specific tests skip there — see issue #152 follow-up) → OpenAPI `--verify` (fails if `openapi.v1.yaml` has drifted) → uploads test results and the contract as artefacts |
-| `dependency-scan` | `dotnet list package --vulnerable --include-transitive`; every finding is listed in the job summary, and **Critical** findings fail the build (7-day patch SLA, `docs/MASTER_PLAN.md` §7) |
-
-Both are required checks on `develop`. Dependabot opens weekly update PRs for NuGet packages and GitHub Actions.
-
-Before pushing, the same checks locally:
+There is **no CI, Dependabot or Docker at this stage** (`docs/MASTER_PLAN.md`). Before pushing, run the checks locally:
 
 ```bash
 dotnet build KJWebsite.Backend.slnx
@@ -185,7 +163,7 @@ dotnet publish src/Services/ApiGateway/ApiGateway.csproj -c Release -o publish/A
 
 ## Deployment
 
-Local Docker Compose is implemented for contributor onboarding, but CI/CD, staging, and production infrastructure are not. The P1 target is CI-built, commit-SHA-tagged container images; environment/vault configuration; expand → migrate → contract migrations; health-gated traffic; and rollback to the prior image on failed health checks. Do not automatically roll database migrations backward.
+Not implemented. At this stage deploys are manual: `dotnet publish` each service and run it on the host chosen in decision #106, behind the gateway, with configuration from environment variables. No containers or CI/CD pipelines for now (`docs/MASTER_PLAN.md`). Use expand → migrate → contract migrations and never roll database migrations backward automatically.
 
 ## Legacy folders
 
@@ -196,11 +174,10 @@ Local Docker Compose is implemented for contributor onboarding, but CI/CD, stagi
 | Symptom | Cause | Resolution |
 |---|---|---|
 | Gateway returns 502 | A downstream service is unavailable | Start all four services with the `http` profile. |
-| Compose service exits on startup | PostgreSQL is not ready, the connection string is wrong, or an old `EnsureCreated` volume was reused | Check container logs and follow [the cutover guide](docs/SQLITE_TO_POSTGRES.md); preserve old volumes until data is verified. |
 | Scalar returns 404 | Service is not in Development | Set `ASPNETCORE_ENVIRONMENT=Development` and restart. |
 | `dotnet ef` is unavailable | Tools are not restored | Run `dotnet tool restore`. |
 | Exporter verification fails | Contract drift | Regenerate the YAML, review it, then rerun `--verify`. |
 
 ## Roadmap, contributing, and license
 
-Read the [backend plan](docs/MASTER_PLAN.md), [program plan](docs/PROGRAM_MASTER_PLAN.md), and [project context](PROJECT_CONTEXT.md). Keep changes additive, preserve the frontend contract, and never weaken the security notice. No license or formal contributor guide has been selected yet; use the issue tracker for repository questions.
+Read the [backend plan](docs/MASTER_PLAN.md), [program plan](docs/PROGRAM_MASTER_PLAN.md), and [project context](PROJECT_CONTEXT.md). Keep changes additive, preserve the frontend contract, and never weaken the security notice. No license has been selected yet; read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and use the issue tracker for repository questions.

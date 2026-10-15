@@ -11,21 +11,15 @@ sqlite3 auth.db ".backup 'auth.backup.db'"
 sqlite3 cta.db ".backup 'cta.backup.db'"
 ```
 
-Keep the originals and backups until the new services have passed validation. Do not copy a live SQLite database file without its WAL state. Compose now uses a new `postgres-v17-migrated-data` volume, leaving the previous `postgres-data` volume intact. Start only PostgreSQL while importing:
-
-```bash
-docker compose up -d postgres
-```
-
-Compose exposes PostgreSQL on host port **5433** to avoid the usual local PostgreSQL port 5432. Its `auth` and `cta` databases are created on a fresh volume. For an external PostgreSQL server, create those databases first and use its own connection strings. Use a fresh target: the transfer tool refuses non-empty tables.
+Keep the originals and backups until the new services have passed validation. Do not copy a live SQLite database file without its WAL state. Use a locally installed PostgreSQL 17 (Docker is not used at this stage): create the empty `auth` and `cta` databases first and use that server's own connection strings. Use a fresh target: the transfer tool refuses non-empty tables.
 
 ## 2. Apply the PostgreSQL baselines
 
-Set `ConnectionStrings__AuthDb` and `ConnectionStrings__CtaDb` in the shell running `dotnet ef`. These examples use the development-only Compose credentials; replace them outside Compose.
+Set `ConnectionStrings__AuthDb` and `ConnectionStrings__CtaDb` in the shell running `dotnet ef`. These examples use a local server with the default `postgres` user; adjust host, port and credentials to yours.
 
 ```bash
-export ConnectionStrings__AuthDb='Host=localhost;Port=5433;Database=auth;Username=postgres;Password=postgres'
-export ConnectionStrings__CtaDb='Host=localhost;Port=5433;Database=cta;Username=postgres;Password=postgres'
+export ConnectionStrings__AuthDb='Host=localhost;Port=5432;Database=auth;Username=postgres;Password=postgres'
+export ConnectionStrings__CtaDb='Host=localhost;Port=5432;Database=cta;Username=postgres;Password=postgres'
 dotnet ef database update --project src/Services/AuthIdentityService --startup-project src/Services/AuthIdentityService
 dotnet ef database update --project src/Services/CtaSubmissionService --startup-project src/Services/CtaSubmissionService
 ```
@@ -51,4 +45,4 @@ Compare the importer's counts with `SELECT COUNT(*)` from each SQLite source tab
 
 For rollback **before accepting new PostgreSQL writes**, stop the new services and run the previous SQLite-backed release against the untouched original files. Keep the previous Compose volume as a separate backup. If PostgreSQL has accepted new writes, reconcile them before reverting; switching the old application back without reconciliation would lose those writes. Later PostgreSQL schema changes must use expand → migrate → contract over at least one release; do not drop fields still used by the previous release.
 
-An existing Compose volume created with `EnsureCreated` has tables without EF migration history. Do not run the new baselines against those tables. Preserve that volume, export its data, and import into a fresh migrated volume after reviewing its schema and data; the SQLite importer is only for SQLite sources.
+An existing database created with `EnsureCreated` has tables without EF migration history. Do not run the new baselines against those tables. Preserve that database, export its data, and import into a fresh migrated database after reviewing its schema and data; the SQLite importer is only for SQLite sources.
