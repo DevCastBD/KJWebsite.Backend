@@ -3,7 +3,7 @@
 - Phase: —
 - Branch: feature/issue-26-content-contract
 - Base SHA: —
-- Next step: user decides push/PRs for feature/issue-27-cors and feature/issue-26-content-contract
+- Next step: PRs #159 (#27) and #160 (#26+#20, based on #27 branch) open; retarget #160 to develop after #159 merges
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY, blocked on #30/#27 next; #12 done)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
