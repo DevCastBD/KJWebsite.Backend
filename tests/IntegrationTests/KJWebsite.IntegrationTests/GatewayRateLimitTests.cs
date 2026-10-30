@@ -18,6 +18,7 @@ public sealed class GatewayRateLimitTests : IDisposable
             builder.UseSetting("RateLimiting:Register:PermitLimit", "2");
             builder.UseSetting("RateLimiting:CtaSubmission:PermitLimit", "2");
             builder.UseSetting("RateLimiting:MembershipIntake:PermitLimit", "2");
+            builder.UseSetting("RateLimiting:MembershipStatus:PermitLimit", "2");
             builder.UseSetting("RateLimiting:Global:PermitLimit", "50");
             builder.UseSetting("ForwardedHeaders:TrustAnyProxy", "true");
         });
@@ -77,6 +78,7 @@ public sealed class GatewayRateLimitTests : IDisposable
     [InlineData("/api/v1/cta/submissions")]
     [InlineData("/api/v1/membership/applications")]
     [InlineData("/api/v1/membership/applications/check")]
+    [InlineData("/api/v1/membership/applications/status")]
     public async Task RegisterAndSubmissionsUseTheirOwnLimit(string path)
     {
         using var client = _factory.CreateClient();

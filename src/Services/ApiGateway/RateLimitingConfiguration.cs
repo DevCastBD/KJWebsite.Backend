@@ -33,6 +33,9 @@ public sealed class RateLimitingOptions
     /// <summary>Public membership intake: submitting an application and the duplicate check, per client IP.</summary>
     public RateLimitRule MembershipIntake { get; set; } = new() { PermitLimit = 20, WindowSeconds = 3600 };
 
+    /// <summary>Public status lookups (reference + email): tighter than intake, because each call is a guess.</summary>
+    public RateLimitRule MembershipStatus { get; set; } = new() { PermitLimit = 10, WindowSeconds = 900 };
+
     public int SlidingSegments { get; set; } = 6;
 }
 
@@ -160,6 +163,11 @@ public static class RateLimitingConfiguration
         if (path.Equals("/api/v1/cta/submissions", StringComparison.OrdinalIgnoreCase))
         {
             return ("cta", rules.CtaSubmission);
+        }
+
+        if (path.Equals("/api/v1/membership/applications/status", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("membership-status", rules.MembershipStatus);
         }
 
         if (path.Equals("/api/v1/membership/applications", StringComparison.OrdinalIgnoreCase)

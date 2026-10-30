@@ -8,6 +8,7 @@ public sealed class ApplicationEntity
 {
     public string Id { get; set; } = string.Empty;
     public string Reference { get; set; } = string.Empty;
+    public string? CampaignId { get; set; }
     public string Language { get; set; } = string.Empty;
     public string Status { get; set; } = ApplicationStatuses.Received;
     public DateTimeOffset SubmittedAt { get; set; }
@@ -35,6 +36,7 @@ public sealed class ApplicationEntity
     public string PhoneHash { get; set; } = string.Empty;
 
     public List<AttachmentEntity> Attachments { get; set; } = [];
+    public List<ApplicationStatusEventEntity> StatusEvents { get; set; } = [];
 }
 
 public static class ApplicationStatuses
@@ -58,4 +60,28 @@ public static class AttachmentScanStatuses
 {
     /// <summary>Stored, not yet virus scanned or EXIF-stripped: the media pipeline (#41) is not built yet.</summary>
     public const string Pending = "pending";
+}
+
+/// <summary>One step in an application's public timeline: the status and when it was reached. Nothing else belongs here.</summary>
+public sealed class ApplicationStatusEventEntity
+{
+    public int Id { get; set; }
+    public string ApplicationId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateTimeOffset At { get; set; }
+}
+
+/// <summary>A recruitment season. Open while not closed by hand and inside its window.</summary>
+public sealed class CampaignEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public string NameEn { get; set; } = string.Empty;
+    public string NameBn { get; set; } = string.Empty;
+    public DateTimeOffset OpensAt { get; set; }
+    public DateTimeOffset? ClosesAt { get; set; }
+    public DateTimeOffset? ClosedAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public bool IsOpen(DateTimeOffset now) => ClosedAt is null && OpensAt <= now && (ClosesAt is null || now < ClosesAt);
 }

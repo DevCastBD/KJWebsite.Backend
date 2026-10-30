@@ -40,9 +40,9 @@ public sealed class MembershipIntakeTests : IDisposable
         first.StatusCode.Should().Be(HttpStatusCode.Created);
         var body = await Json(first);
         body.GetProperty("id").GetString().Should().StartWith("app_");
-        body.GetProperty("reference").GetString().Should().Be($"KJ-{DateTime.UtcNow.Year}-0001");
+        body.GetProperty("reference").GetString().Should().MatchRegex($"^KJ-{DateTime.UtcNow.Year}-[0-9A-HJKMNP-TV-Z]{{8}}$");
         body.GetProperty("status").GetString().Should().Be("received");
-        (await Json(second)).GetProperty("reference").GetString().Should().Be($"KJ-{DateTime.UtcNow.Year}-0002");
+        (await Json(second)).GetProperty("reference").GetString().Should().NotBe(body.GetProperty("reference").GetString());
     }
 
     [Fact]

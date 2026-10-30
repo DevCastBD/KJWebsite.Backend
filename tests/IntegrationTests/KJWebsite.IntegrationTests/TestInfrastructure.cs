@@ -148,7 +148,11 @@ public sealed class MembershipApiFactory : SqliteWebApplicationFactory<Membershi
     {
         base.ConfigureWebHost(builder);
         builder.ConfigureAppConfiguration((_, configuration) =>
-            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Membership:AttachmentsPath"] = AttachmentsPath }));
+            configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Membership:AttachmentsPath"] = AttachmentsPath,
+                ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary)
+            }));
         builder.ConfigureServices(services => services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(Logs));
     }
 
