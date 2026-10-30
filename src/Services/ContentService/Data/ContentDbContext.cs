@@ -17,6 +17,7 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<RedirectEntity> Redirects => Set<RedirectEntity>();
     public DbSet<ContentRevisionEntity> Revisions => Set<ContentRevisionEntity>();
     public DbSet<SettingEntity> Settings => Set<SettingEntity>();
+    public DbSet<SearchTermEntity> SearchTerms => Set<SearchTermEntity>();
     public DbSet<FeatureFlagEntity> FeatureFlags => Set<FeatureFlagEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -161,6 +162,17 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.HasKey(x => x.Key);
             entity.Property(x => x.Key).HasMaxLength(100);
             entity.Property(x => x.Description).HasMaxLength(500).IsRequired();
+        });
+
+        modelBuilder.Entity<SearchTermEntity>(entity =>
+        {
+            entity.ToTable("search_terms");
+            entity.HasKey(x => new { x.ContentItemId, x.Lang, x.Term });
+            entity.Property(x => x.ContentItemId).HasMaxLength(64);
+            entity.Property(x => x.Lang).HasMaxLength(8);
+            entity.Property(x => x.Term).HasMaxLength(64);
+            entity.HasIndex(x => new { x.Lang, x.Term });
+            entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

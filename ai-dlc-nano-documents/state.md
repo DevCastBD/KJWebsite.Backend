@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 3 / P2 run: #48, #38, #42, #43, #39, #40, #45, #44 done as stacked local branches off origin/develop; #108 skipped by user)
+- Active work item: none  (milestone 3 / P2 run: #48, #38, #42, #43, #39, #40, #45, #44, #47 done as stacked local branches off origin/develop; #108 skipped by user)
 - Phase: —
-- Branch: Feature/issue-44-backoffice-apis
+- Branch: Feature/issue-47-public-extras
 - Base SHA: —
-- Next step: BE-036 #41 media needs decisions (see backlog); then #46, #47 in order. Push stack + PRs only on request (48→develop, 38→48, 42→38, 43→42, 39→43, 40→39, 45→40, 44→45)
+- Next step: BE-036 #41 media needs decisions (see backlog); then #46 (blocked on #34) in order. Push stack + PRs only on request (48→develop, 38→48, 42→38, 43→42, 39→43, 40→39, 45→40, 44→45, 47→44)
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY, epic checklist not touched this run)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)

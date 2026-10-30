@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] search — term index is prefix-LIKE; add trigram/GIN or a real FTS index when the corpus grows; sitemap vs frontend sitemap must be merged as an index (found: 043-issue-47)
+- [2026-10-31] inbox(#46) — blocked until #34 is on develop; SLA targets must be config-only with no default (user decision), breaches reported only when set (found: 042-run)
 - [2026-10-31] tests — auth integration tests flake ~1 in 5 full runs (RoleManagement/Token/Register); passes alone; suspect shared SQLite/timing under parallel load (found: 042-issue-44)
 - [2026-10-31] back office — dashboard/search/bulk cover ContentService only; add submissions, media, users when #34/#41 land; cache is per instance (found: 042-issue-44)
 - [2026-10-31] settings — secret custom.* values stored plain; wire to #36 secrets store before real credentials (found: 041-issue-45)

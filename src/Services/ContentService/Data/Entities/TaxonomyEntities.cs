@@ -70,3 +70,12 @@ public sealed class FeatureFlagEntity
     public string Description { get; set; } = string.Empty;
     public DateTimeOffset UpdatedAt { get; set; }
 }
+
+/// <summary>One searchable term of one language of one item (the search index). `Weight`: 3 title, 2 summary, 1 body.</summary>
+public sealed class SearchTermEntity
+{
+    public string ContentItemId { get; set; } = string.Empty;
+    public string Lang { get; set; } = string.Empty;
+    public string Term { get; set; } = string.Empty;
+    public int Weight { get; set; }
+}

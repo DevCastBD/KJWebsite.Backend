@@ -36,7 +36,7 @@ public sealed record RevisionDiff(int From, int To, List<RevisionChange> Changes
 /// Revision history. A snapshot is taken after each content change; an identical snapshot is not stored twice. Diffs are field-level
 /// (per language for translations) so a bilingual item shows exactly which language changed.
 /// </summary>
-public sealed class RevisionStore(ContentDbContext db, TimeProvider time, IHttpContextAccessor accessor)
+public sealed class RevisionStore(ContentDbContext db, TimeProvider time, IHttpContextAccessor accessor, SearchIndex search)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -55,6 +55,8 @@ public sealed class RevisionStore(ContentDbContext db, TimeProvider time, IHttpC
         {
             return latest.Number;
         }
+
+        await search.ReindexAsync(itemId);
 
         var number = (latest?.Number ?? 0) + 1;
         db.Revisions.Add(new ContentRevisionEntity

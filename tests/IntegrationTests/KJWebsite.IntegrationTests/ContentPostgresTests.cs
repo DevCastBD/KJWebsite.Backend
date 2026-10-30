@@ -86,4 +86,29 @@ public sealed class ContentPostgresTests
             await TestPostgres.DropDatabaseAsync(databaseName);
         }
     }
+    [RequiresPostgresFact]
+    public async Task BengaliSearchWorksOnPostgreSqlIncludingConjunctsAndTheStartupBackfill()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("content_search_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            using var factory = new PostgresContentApiFactory(connectionString);
+            using var client = factory.CreateClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/content/pages") { Content = JsonContent.Create(new { slug = "pg-search", status = "published", translations = new[] { new { lang = "bn", title = "নারীর ক্ষমতায়ন", body = "প্রশিক্ষণ" } } }) };
+            request.Headers.Authorization = new("Bearer", TestTokens.ContentAdmin());
+            (await client.SendAsync(request)).StatusCode.Should().Be(HttpStatusCode.Created);
+
+            foreach (var q in new[] { "ক্ষমতা", "ক্ষমতায়ন নারীর", "পাঠশালা" })
+            {
+                var found = await client.GetFromJsonAsync<JsonElement>($"/api/v1/content/search?lang=bn&q={Uri.EscapeDataString(q)}");
+                found.GetProperty("items").GetArrayLength().Should().BeGreaterThan(0, q);
+            }
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await TestPostgres.DropDatabaseAsync(databaseName);
+        }
+    }
 }
