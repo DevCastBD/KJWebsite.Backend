@@ -2011,6 +2011,57 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/content/dashboard:
+    get:
+      tags:
+        - "Admin \u2014 Back office"
+      summary: "Back-office summary: what needs attention"
+      description: "Item counts per type and status, the in-review queue, the next scheduled publications, translation gap totals, trash size and (with audit.view) the latest activity. Cached for 30 s (\u0060BackOffice:DashboardCacheSeconds\u0060), so it is cheap on every page view. Submissions and media widgets arrive with their modules."
+      operationId: "GetDashboard"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/search:
+    get:
+      tags:
+        - "Admin \u2014 Back office"
+      summary: "Search items, tags, redirects and settings"
+      description: "Substring match on slugs, titles and summaries in any language. Only kinds the caller may read are searched (\u0060searched\u0060 lists them); the rest are omitted, so a result never reveals a record the caller cannot open."
+      operationId: "GlobalSearch"
+      parameters:
+        -
+          name: "q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/bulk:
+    post:
+      tags:
+        - "Admin \u2014 Back office"
+      summary: "Apply one action to up to 100 items"
+      description: "Actions: \u0060workflow:draft|in_review|scheduled|published|archived\u0060 (scheduled needs \u0060publishAt\u0060), \u0060delete\u0060, \u0060restore\u0060, \u0060tag-add\u0060, \u0060tag-remove\u0060 (with \u0060tag\u0060). Always 200: read \u0060results\u0060 for each item\u0027s \u0060ok\u0060 or \u0060failed\u0060 with a code. Each item is checked against the caller\u0027s permissions and audited like a single change, and a failure never stops the rest."
+      operationId: "BulkAction"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/content/audit:
     get:
       tags:
@@ -2557,6 +2608,8 @@ tags:
   -
     name: "Admin \u2014 Site settings"
   -
+    name: "Admin \u2014 Back office"
+  -
     name: "Admin \u2014 Audit log"
   -
     name: "CTA"
@@ -2566,6 +2619,41 @@ tags:
     name: "Admin \u2014 Roles and users"
 components:
   schemas:
+    BulkItem:
+      required:
+        - "type"
+        - "slug"
+      type: "object"
+      properties:
+        type:
+          type: "string"
+        slug:
+          type: "string"
+    BulkRequest:
+      required:
+        - "action"
+        - "items"
+        - "tag"
+        - "publishAt"
+      type: "object"
+      properties:
+        action:
+          type: "string"
+        items:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/BulkItem"
+        tag:
+          type:
+            - "null"
+            - "string"
+        publishAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
     ContentTranslationInput:
       required:
         - "lang"

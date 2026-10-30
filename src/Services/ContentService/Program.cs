@@ -51,6 +51,8 @@ builder.Services.AddScoped<RedirectStore>();
 builder.Services.AddScoped<GenericContentStore>();
 builder.Services.AddScoped<RevisionStore>();
 builder.Services.AddScoped<SettingsStore>();
+builder.Services.AddScoped<BackOfficeStore>();
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<EditorialWorkflow>();
 builder.Services.AddSingleton<PreviewTokens>();
 builder.Services.AddSingleton<ScheduledPublisher>();
@@ -346,6 +348,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 
 app.MapGenericContent();
 app.MapSettings();
+app.MapBackOffice();
 app.MapAuditLog<ContentDbContext>("/api/v1/admin/content/audit", "Content");
 
 app.Run();
