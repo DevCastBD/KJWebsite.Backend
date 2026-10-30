@@ -1,13 +1,13 @@
-<!-- phase: PLAN | branch: feature/issue-32-email-outbox | tasks: 0/5
-     base: — | updated: 2026-10-30
-     next: await plan approval, then branch feature/issue-32-email-outbox (feature/issue-33-outbox-jobs) -->
+<!-- phase: DONE | branch: feature/issue-32-email-outbox | tasks: 5/5
+     base: 4c56000 | updated: 2026-10-30
+     next: none; committed locally -->
 # Plan: Email delivery via outbox, bn/en templates
 ## Tasks
-- [ ] IEmailSender + Postmark + file-pickup dev sender; options
-- [ ] Template renderer + bn/en templates (3 kinds)
-- [ ] CTA submission enqueues ack + admin notification via outbox; Auth emails use sender
-- [ ] Tests: provider outage doesn't fail request, bilingual render, outbox dispatch
-- [ ] Docs, full suite + format
+- [x] IEmailSender + Postmark + file-pickup dev sender; options
+- [x] Template renderer + bn/en templates (3 kinds)
+- [x] CTA submission enqueues ack + admin notification via outbox; Auth emails use sender
+- [x] Tests: provider outage doesn't fail request, bilingual render, outbox dispatch
+- [x] Docs, full suite + format
 ## Tests
 - Standard + failure path
 ## Files

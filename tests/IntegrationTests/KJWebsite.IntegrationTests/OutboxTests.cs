@@ -115,16 +115,16 @@ public sealed class OutboxTests : IDisposable
             ctaType = "contact",
             language = "en",
             sourcePath = "/contact",
-            values = new Dictionary<string, object?> { ["firstName"] = "Rahim" },
+            values = new Dictionary<string, object?> { ["firstName"] = "Rahim", ["email"] = "rahim@example.com" },
             submittedAt = DateTimeOffset.UtcNow
         });
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var pending = await WithDb(db => db.OutboxMessages.AsNoTracking().Where(m => m.Type == "cta.submission.received").ToListAsync());
-        pending.Should().ContainSingle();
-        pending[0].Payload.Should().NotContain("Rahim", "payloads carry ids, not personal data");
+        var pending = await WithDb(db => db.OutboxMessages.AsNoTracking().Where(m => m.Type == "cta.email").ToListAsync());
+        pending.Should().ContainSingle("the sender gets an acknowledgement; no org inbox is configured");
+        pending[0].Payload.Should().NotContain("Rahim").And.NotContain("rahim@example.com", "payloads carry ids, not personal data");
 
-        var real = _factory.Services.GetServices<IOutboxHandler>().Single(h => h.MessageType == "cta.submission.received");
+        var real = _factory.Services.GetServices<IOutboxHandler>().Single(h => h.MessageType == "cta.email");
         (await Dispatcher(null, TimeProvider.System, real).RunAsync()).Should().Be(1);
         (await Load(pending[0].Id)).ProcessedAt.Should().NotBeNull();
     }

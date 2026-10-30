@@ -4,11 +4,13 @@ using CtaSubmissionService.Data.Entities;
 using CtaSubmissionService.Outbox;
 using CtaSubmissionService.Validation;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Email;
 using KJWebsite.BuildingBlocks.Jobs;
 using KJWebsite.BuildingBlocks.Outbox;
 using KJWebsite.BuildingBlocks.Security;
 using KJWebsite.BuildingBlocks.Validation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,7 +37,8 @@ builder.Services.AddDbContext<CtaDbContext>((services, options) =>
 
 builder.Services.AddKjJwtAuthentication();
 builder.Services.AddKjBackgroundJobs<CtaDbContext>(builder.Configuration, "CtaDb");
-builder.Services.AddOutboxHandler<SubmissionReceivedHandler>();
+builder.Services.AddKjEmail(builder.Configuration, builder.Environment);
+builder.Services.AddOutboxHandler<CtaEmailHandler>();
 
 health.AddDbContextCheck<CtaDbContext>("database", tags: [KjObservability.ReadyTag, KjObservability.StartupTag]);
 
@@ -94,7 +97,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmis
    .WithTags("System")
 .AllowAnonymous();
 
-app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db, IOutboxSignal outbox) =>
+app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db, IOutboxSignal outbox, IOptions<EmailOptions> email) =>
 {
     var valuesJson = System.Text.Json.JsonSerializer.Serialize(payload.Values);
     var id = $"subm_{Guid.NewGuid():N}";
@@ -122,8 +125,9 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
         CountryOfResidence = awaitingProfile?.CountryOfResidence
     });
 
-    // Same SaveChanges as the submission: the event exists if and only if the submission does.
-    db.Enqueue(OutboxTypes.SubmissionReceived, new { submissionId = id, formName = payload.FormName, language = payload.Language });
+    // Same SaveChanges as the submission: the emails are queued if and only if the submission is stored,
+    // and a mail provider outage can never fail or slow this request.
+    CtaEmailPlanner.Enqueue(db, id, payload.FormName, payload.Values, email.Value);
 
     await db.SaveChangesAsync();
     outbox.Signal();
