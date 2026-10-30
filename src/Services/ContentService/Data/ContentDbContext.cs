@@ -30,6 +30,8 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.Type).HasMaxLength(32).IsRequired();
             entity.Property(x => x.Slug).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            // Optimistic concurrency for admin edits (If-Match): a save fails when the row changed since it was read.
+            entity.Property(x => x.UpdatedAt).IsConcurrencyToken();
             entity.HasIndex(x => new { x.Type, x.Slug }).IsUnique();
             entity.HasIndex(x => new { x.Type, x.SortOrder });
             entity.HasOne(x => x.Project).WithOne().HasForeignKey<ProjectEntity>(p => p.ContentItemId).OnDelete(DeleteBehavior.Cascade);

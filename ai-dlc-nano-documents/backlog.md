@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] backend/tests — AuthSmokeTests.RegisterReturnsCreated failed once in a full run, passed 3 reruns (found: 035-issue-48)
+- [2026-10-31] backend/idempotency — Redis store and Redis output cache never run live (no Docker) (found: 035-issue-48)
 - [2026-10-30] ContentService — public lists load then page in memory; push paging to SQL when content grows (found: 025-issue-25-content-persistence)
 - [2026-10-30] auth — SuperAdmin cannot-be-deleted guard needs RBAC APIs (P2); refresh token still in JSON body, cookie pending F1-13 (found: 024-issue-24-authorization)
 - [2026-10-30] auth — Identity email/reset tokens use per-instance data-protection keys; persist the key ring before multi-replica (found: 022-issue-22-identity)
