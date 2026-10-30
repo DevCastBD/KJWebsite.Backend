@@ -56,6 +56,18 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentPageOfProjectItem"
+        "304":
+          description: "Not Modified"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   "/api/v1/content/projects/{id}":
     get:
       tags:
@@ -78,6 +90,24 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectItem"
+        "304":
+          description: "Not Modified"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/content/news:
     get:
       tags:
@@ -112,6 +142,18 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentPageOfNewsItem"
+        "304":
+          description: "Not Modified"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   "/api/v1/content/news/{id}":
     get:
       tags:
@@ -134,6 +176,24 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsItem"
+        "304":
+          description: "Not Modified"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/content/bootstrap:
     get:
       tags:
@@ -150,6 +210,18 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentBootstrap"
+        "304":
+          description: "Not Modified"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/admin/content/projects:
     get:
       tags:
@@ -179,6 +251,28 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagingEnvelopeOfProjectAdminView"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
     post:
       tags:
         - "Admin \u2014 Content"
@@ -192,8 +286,30 @@ paths:
               $ref: "#/components/schemas/ProjectUpsertRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectItem"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   "/api/v1/admin/content/projects/{id}":
     get:
       tags:
@@ -211,6 +327,28 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectAdminView"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
     put:
       tags:
         - "Admin \u2014 Content"
@@ -233,6 +371,34 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectItem"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
     delete:
       tags:
         - "Admin \u2014 Content"
@@ -247,8 +413,26 @@ paths:
           schema:
             type: "string"
       responses:
-        "200":
-          description: "OK"
+        "204":
+          description: "No Content"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/admin/content/news:
     get:
       tags:
@@ -278,6 +462,28 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagingEnvelopeOfNewsAdminView"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
     post:
       tags:
         - "Admin \u2014 Content"
@@ -291,8 +497,30 @@ paths:
               $ref: "#/components/schemas/NewsUpsertRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsItem"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   "/api/v1/admin/content/news/{id}":
     get:
       tags:
@@ -310,6 +538,28 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsAdminView"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
     put:
       tags:
         - "Admin \u2014 Content"
@@ -332,6 +582,34 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsItem"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
     delete:
       tags:
         - "Admin \u2014 Content"
@@ -346,8 +624,26 @@ paths:
           schema:
             type: "string"
       responses:
-        "200":
-          description: "OK"
+        "204":
+          description: "No Content"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/cta/submissions:
     post:
       tags:
@@ -362,8 +658,24 @@ paths:
               $ref: "#/components/schemas/CtaSubmissionRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionCreated"
+        "429":
+          description: "Too Many Requests"
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/admin/cta/submissions:
     get:
       tags:
@@ -373,49 +685,49 @@ paths:
       operationId: "ListCtaSubmissions"
       parameters:
         -
-          name: "Status"
+          name: "status"
           in: "query"
           schema:
             type: "string"
         -
-          name: "FormName"
+          name: "formName"
           in: "query"
           schema:
             type: "string"
         -
-          name: "CtaType"
+          name: "ctaType"
           in: "query"
           schema:
             type: "string"
         -
-          name: "Language"
+          name: "language"
           in: "query"
           schema:
             type: "string"
         -
-          name: "AssigneeId"
+          name: "assigneeId"
           in: "query"
           schema:
             type: "string"
         -
-          name: "Q"
+          name: "q"
           in: "query"
           schema:
             type: "string"
         -
-          name: "From"
-          in: "query"
-          schema:
-            type: "string"
-            format: "date-time"
-        -
-          name: "To"
+          name: "from"
           in: "query"
           schema:
             type: "string"
             format: "date-time"
         -
-          name: "Limit"
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "limit"
           in: "query"
           schema:
             pattern: "^-?(?:0|[1-9]\\d*)$"
@@ -424,7 +736,7 @@ paths:
               - "string"
             format: "int32"
         -
-          name: "Offset"
+          name: "offset"
           in: "query"
           schema:
             pattern: "^-?(?:0|[1-9]\\d*)$"
@@ -435,6 +747,28 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagingEnvelopeOfSubmissionSummary"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/admin/cta/submissions/export:
     get:
       tags:
@@ -444,49 +778,49 @@ paths:
       operationId: "ExportCtaSubmissions"
       parameters:
         -
-          name: "Status"
+          name: "status"
           in: "query"
           schema:
             type: "string"
         -
-          name: "FormName"
+          name: "formName"
           in: "query"
           schema:
             type: "string"
         -
-          name: "CtaType"
+          name: "ctaType"
           in: "query"
           schema:
             type: "string"
         -
-          name: "Language"
+          name: "language"
           in: "query"
           schema:
             type: "string"
         -
-          name: "AssigneeId"
+          name: "assigneeId"
           in: "query"
           schema:
             type: "string"
         -
-          name: "Q"
+          name: "q"
           in: "query"
           schema:
             type: "string"
         -
-          name: "From"
-          in: "query"
-          schema:
-            type: "string"
-            format: "date-time"
-        -
-          name: "To"
+          name: "from"
           in: "query"
           schema:
             type: "string"
             format: "date-time"
         -
-          name: "Limit"
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "limit"
           in: "query"
           schema:
             pattern: "^-?(?:0|[1-9]\\d*)$"
@@ -495,7 +829,7 @@ paths:
               - "string"
             format: "int32"
         -
-          name: "Offset"
+          name: "offset"
           in: "query"
           schema:
             pattern: "^-?(?:0|[1-9]\\d*)$"
@@ -511,6 +845,24 @@ paths:
               schema:
                 type: "string"
                 format: "byte"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   "/api/v1/admin/cta/submissions/{id}":
     get:
       tags:
@@ -528,6 +880,28 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionDetail"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
     patch:
       tags:
         - "Admin \u2014 CTA"
@@ -550,6 +924,34 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionPatchResult"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/register:
     post:
       tags:
@@ -564,8 +966,24 @@ paths:
               $ref: "#/components/schemas/LegacyRegistrationRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisteredUser"
+        "429":
+          description: "Too Many Requests"
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/login:
     post:
       tags:
@@ -582,6 +1000,40 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokens"
+        "429":
+          description: "Too Many Requests"
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Unauthorized"
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "Forbidden"
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "423":
+          description: "Locked"
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/refresh:
     post:
       tags:
@@ -598,6 +1050,22 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokens"
+        "401":
+          description: "Unauthorized"
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/logout:
     post:
       tags:
@@ -612,8 +1080,14 @@ paths:
               $ref: "#/components/schemas/RefreshTokenRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "204":
+          description: "No Content"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/confirm-email:
     post:
       tags:
@@ -628,8 +1102,14 @@ paths:
               $ref: "#/components/schemas/ConfirmEmailRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "204":
+          description: "No Content"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/resend-confirmation:
     post:
       tags:
@@ -644,8 +1124,18 @@ paths:
               $ref: "#/components/schemas/ResendConfirmationRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "202":
+          description: "Accepted"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/forgot-password:
     post:
       tags:
@@ -660,8 +1150,18 @@ paths:
               $ref: "#/components/schemas/ForgotPasswordRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "202":
+          description: "Accepted"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/reset-password:
     post:
       tags:
@@ -676,8 +1176,14 @@ paths:
               $ref: "#/components/schemas/ResetPasswordRequest"
         required: true
       responses:
-        "200":
-          description: "OK"
+        "204":
+          description: "No Content"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/me:
     get:
       tags:
@@ -688,6 +1194,22 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MeResponse"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /.well-known/jwks.json:
     get:
       tags:
@@ -708,6 +1230,22 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   "/api/v1/auth/sessions/{id}":
     delete:
       tags:
@@ -723,8 +1261,26 @@ paths:
           schema:
             type: "string"
       responses:
-        "200":
-          description: "OK"
+        "204":
+          description: "No Content"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
+          description: "Not found."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /api/v1/auth/logout-all:
     post:
       tags:
@@ -733,8 +1289,26 @@ paths:
       description: "Revokes all refresh tokens for the user, on every device. Returns 204."
       operationId: "LogoutAll"
       responses:
-        "200":
-          description: "OK"
+        "204":
+          description: "No Content"
+        "400":
+          description: "Validation failed. \u0060errors\u0060 lists each field."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "401":
+          description: "Authentication is required."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: "The caller lacks the required permission."
+          content:
+            "application/problem\u002Bjson":
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
 tags:
   -
     name: "System"
@@ -750,6 +1324,154 @@ tags:
     name: "Auth"
 components:
   schemas:
+    ContentBootstrap:
+      required:
+        - "projects"
+        - "news"
+        - "settings"
+        - "lang"
+      type: "object"
+      properties:
+        projects:
+          $ref: "#/components/schemas/ContentPageOfProjectItem"
+        news:
+          $ref: "#/components/schemas/ContentPageOfNewsItem"
+        settings:
+          type: "object"
+          additionalProperties:
+            type: "string"
+        lang:
+          type: "string"
+    ContentPageOfNewsItem:
+      required:
+        - "items"
+        - "total"
+        - "limit"
+        - "offset"
+        - "lang"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/NewsItem"
+        total:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        limit:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        offset:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        lang:
+          type: "string"
+    ContentPageOfProjectItem:
+      required:
+        - "items"
+        - "total"
+        - "limit"
+        - "offset"
+        - "lang"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProjectItem"
+        total:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        limit:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        offset:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        lang:
+          type: "string"
+    NewsAdminView:
+      required:
+        - "slug"
+        - "imageUrl"
+        - "publishedAt"
+        - "status"
+        - "translations"
+      type: "object"
+      properties:
+        slug:
+          type: "string"
+        imageUrl:
+          type: "string"
+        publishedAt:
+          type: "string"
+          format: "date-time"
+        status:
+          type: "string"
+        translations:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/NewsTranslationView"
+    NewsItem:
+      required:
+        - "id"
+        - "slug"
+        - "lang"
+        - "title"
+        - "summary"
+        - "content"
+        - "imageUrl"
+        - "date"
+        - "publishedAt"
+        - "status"
+        - "tags"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        slug:
+          type: "string"
+        lang:
+          type: "string"
+        title:
+          type: "string"
+        summary:
+          type: "string"
+        content:
+          type: "array"
+          items:
+            type: "string"
+        imageUrl:
+          type: "string"
+        date:
+          type: "string"
+        publishedAt:
+          type: "string"
+          format: "date-time"
+        status:
+          type: "string"
+        tags:
+          type: "array"
+          items:
+            type: "string"
     NewsTranslationInput:
       required:
         - "lang"
@@ -782,6 +1504,32 @@ components:
             - "array"
           items:
             type: "string"
+    NewsTranslationView:
+      required:
+        - "lang"
+        - "title"
+        - "summary"
+        - "content"
+        - "date"
+        - "tags"
+      type: "object"
+      properties:
+        lang:
+          type: "string"
+        title:
+          type: "string"
+        summary:
+          type: "string"
+        content:
+          type: "array"
+          items:
+            type: "string"
+        date:
+          type: "string"
+        tags:
+          type: "array"
+          items:
+            type: "string"
     NewsUpsertRequest:
       required:
         - "slug"
@@ -808,6 +1556,145 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/NewsTranslationInput"
+    PagingEnvelopeOfNewsAdminView:
+      required:
+        - "items"
+        - "limit"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/NewsAdminView"
+        total:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        nextCursor:
+          type:
+            - "null"
+            - "string"
+        limit:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        offset:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+    PagingEnvelopeOfProjectAdminView:
+      required:
+        - "items"
+        - "limit"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProjectAdminView"
+        total:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        nextCursor:
+          type:
+            - "null"
+            - "string"
+        limit:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        offset:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+    ProjectAdminView:
+      required:
+        - "slug"
+        - "imageUrl"
+        - "category"
+        - "year"
+        - "status"
+        - "icon"
+        - "translations"
+      type: "object"
+      properties:
+        slug:
+          type: "string"
+        imageUrl:
+          type: "string"
+        category:
+          type: "string"
+        year:
+          type: "string"
+        status:
+          type: "string"
+        icon:
+          type: "string"
+        translations:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProjectTranslationView"
+    ProjectItem:
+      required:
+        - "id"
+        - "slug"
+        - "lang"
+        - "title"
+        - "shortTitle"
+        - "shortDescription"
+        - "fullDescription"
+        - "imageUrl"
+        - "category"
+        - "year"
+        - "status"
+        - "icon"
+        - "updatedAt"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        slug:
+          type: "string"
+        lang:
+          type: "string"
+        title:
+          type: "string"
+        shortTitle:
+          type: "string"
+        shortDescription:
+          type: "string"
+        fullDescription:
+          type: "string"
+        imageUrl:
+          type: "string"
+        category:
+          type: "string"
+        year:
+          type: "string"
+        status:
+          type: "string"
+        icon:
+          type: "string"
+        updatedAt:
+          type: "string"
+          format: "date-time"
     ProjectTranslationInput:
       required:
         - "lang"
@@ -841,6 +1728,31 @@ components:
           type:
             - "null"
             - "string"
+    ProjectTranslationView:
+      required:
+        - "lang"
+        - "title"
+        - "shortTitle"
+        - "shortDescription"
+        - "fullDescription"
+        - "category"
+        - "year"
+      type: "object"
+      properties:
+        lang:
+          type: "string"
+        title:
+          type: "string"
+        shortTitle:
+          type: "string"
+        shortDescription:
+          type: "string"
+        fullDescription:
+          type: "string"
+        category:
+          type: "string"
+        year:
+          type: "string"
     ProjectUpsertRequest:
       required:
         - "slug"
@@ -908,6 +1820,153 @@ components:
           type:
             - "null"
             - "string"
+    PagingEnvelopeOfSubmissionSummary:
+      required:
+        - "items"
+        - "limit"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SubmissionSummary"
+        total:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        nextCursor:
+          type:
+            - "null"
+            - "string"
+        limit:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        offset:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+    ProblemDetails:
+      type: "object"
+      properties:
+        type:
+          type:
+            - "null"
+            - "string"
+        title:
+          type:
+            - "null"
+            - "string"
+        status:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        detail:
+          type:
+            - "null"
+            - "string"
+        instance:
+          type:
+            - "null"
+            - "string"
+    SubmissionAuditView:
+      required:
+        - "actor"
+        - "action"
+        - "detail"
+        - "at"
+      type: "object"
+      properties:
+        actor:
+          type: "string"
+        action:
+          type: "string"
+        detail:
+          type:
+            - "null"
+            - "string"
+        at:
+          type: "string"
+          format: "date-time"
+    SubmissionCreated:
+      required:
+        - "id"
+        - "status"
+        - "created_at"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        status:
+          type: "string"
+        created_at:
+          type: "string"
+          format: "date-time"
+    SubmissionDetail:
+      required:
+        - "id"
+        - "formName"
+        - "ctaType"
+        - "language"
+        - "sourcePath"
+        - "status"
+        - "assigneeId"
+        - "notes"
+        - "values"
+        - "submittedAt"
+        - "createdAt"
+        - "updatedAt"
+        - "history"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        formName:
+          type: "string"
+        ctaType:
+          type: "string"
+        language:
+          type: "string"
+        sourcePath:
+          type: "string"
+        status:
+          type: "string"
+        assigneeId:
+          type:
+            - "null"
+            - "string"
+        notes:
+          type:
+            - "null"
+            - "string"
+        values:
+          type: "object"
+        submittedAt:
+          type: "string"
+          format: "date-time"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        updatedAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        history:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SubmissionAuditView"
     SubmissionPatchRequest:
       required:
         - "status"
@@ -927,6 +1986,110 @@ components:
           type:
             - "null"
             - "string"
+    SubmissionPatchResult:
+      required:
+        - "id"
+        - "status"
+        - "assigneeId"
+        - "notes"
+        - "updatedAt"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        status:
+          type: "string"
+        assigneeId:
+          type:
+            - "null"
+            - "string"
+        notes:
+          type:
+            - "null"
+            - "string"
+        updatedAt:
+          type: "string"
+          format: "date-time"
+    SubmissionSummary:
+      required:
+        - "id"
+        - "formName"
+        - "ctaType"
+        - "language"
+        - "status"
+        - "assigneeId"
+        - "name"
+        - "email"
+        - "submittedAt"
+        - "createdAt"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        formName:
+          type: "string"
+        ctaType:
+          type: "string"
+        language:
+          type: "string"
+        status:
+          type: "string"
+        assigneeId:
+          type:
+            - "null"
+            - "string"
+        name:
+          type:
+            - "null"
+            - "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        submittedAt:
+          type: "string"
+          format: "date-time"
+        createdAt:
+          type: "string"
+          format: "date-time"
+    AuthTokens:
+      required:
+        - "access_token"
+        - "refresh_token"
+        - "expires_in"
+        - "token_type"
+        - "user"
+      type: "object"
+      properties:
+        access_token:
+          type: "string"
+        refresh_token:
+          type: "string"
+        expires_in:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        token_type:
+          type: "string"
+        user:
+          $ref: "#/components/schemas/AuthUserSummary"
+    AuthUserSummary:
+      required:
+        - "id"
+        - "email"
+        - "role"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        role:
+          type: "string"
     ConfirmEmailRequest:
       required:
         - "userId"
@@ -1064,6 +2227,128 @@ components:
           type: "string"
         password:
           type: "string"
+    MemberProfileView:
+      required:
+        - "firstName"
+        - "lastName"
+        - "gender"
+        - "reasonForJoining"
+        - "presentOrganization"
+        - "volunteeingExperience"
+        - "dateOfBirth"
+        - "cityOfResidence"
+        - "countryOfResidence"
+        - "permanentAddress"
+        - "mailingAddress"
+        - "isMailingAddressSameAsPermanentAddress"
+        - "bloodGroup"
+        - "areasOfExpertise"
+        - "highestDegree"
+        - "disabilitiesIfAny"
+        - "nationality"
+        - "personalWebPage"
+        - "socialMediaLink"
+      type: "object"
+      properties:
+        firstName:
+          type:
+            - "null"
+            - "string"
+        lastName:
+          type:
+            - "null"
+            - "string"
+        gender:
+          type:
+            - "null"
+            - "string"
+        reasonForJoining:
+          type:
+            - "null"
+            - "string"
+        presentOrganization:
+          type:
+            - "null"
+            - "string"
+        volunteeingExperience:
+          type:
+            - "null"
+            - "string"
+        dateOfBirth:
+          type:
+            - "null"
+            - "string"
+        cityOfResidence:
+          type:
+            - "null"
+            - "string"
+        countryOfResidence:
+          type:
+            - "null"
+            - "string"
+        permanentAddress:
+          type:
+            - "null"
+            - "string"
+        mailingAddress:
+          type:
+            - "null"
+            - "string"
+        isMailingAddressSameAsPermanentAddress:
+          type: "boolean"
+        bloodGroup:
+          type:
+            - "null"
+            - "string"
+        areasOfExpertise:
+          type:
+            - "null"
+            - "string"
+        highestDegree:
+          type:
+            - "null"
+            - "string"
+        disabilitiesIfAny:
+          type:
+            - "null"
+            - "string"
+        nationality:
+          type:
+            - "null"
+            - "string"
+        personalWebPage:
+          type:
+            - "null"
+            - "string"
+        socialMediaLink:
+          type:
+            - "null"
+            - "string"
+    MeResponse:
+      required:
+        - "id"
+        - "email"
+        - "role"
+        - "profile"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        role:
+          type: "string"
+        profile:
+          $ref: "#/components/schemas/MemberProfileView"
+    MessageResponse:
+      required:
+        - "message"
+      type: "object"
+      properties:
+        message:
+          type: "string"
     RefreshTokenRequest:
       required:
         - "refreshToken"
@@ -1071,6 +2356,24 @@ components:
       properties:
         refreshToken:
           type: "string"
+    RegisteredUser:
+      required:
+        - "id"
+        - "email"
+        - "role"
+        - "emailConfirmationRequired"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        role:
+          type: "string"
+        emailConfirmationRequired:
+          type: "boolean"
     ResendConfirmationRequest:
       required:
         - "email"
@@ -1091,3 +2394,35 @@ components:
           type: "string"
         newPassword:
           type: "string"
+    SessionList:
+      required:
+        - "items"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SessionView"
+    SessionView:
+      required:
+        - "id"
+        - "createdAt"
+        - "lastUsedAt"
+        - "userAgent"
+        - "current"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        lastUsedAt:
+          type: "string"
+          format: "date-time"
+        userAgent:
+          type:
+            - "null"
+            - "string"
+        current:
+          type: "boolean"

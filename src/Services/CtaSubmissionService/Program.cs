@@ -8,6 +8,7 @@ using CtaSubmissionService.Validation;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Email;
 using KJWebsite.BuildingBlocks.Jobs;
+using KJWebsite.BuildingBlocks.OpenApi;
 using KJWebsite.BuildingBlocks.Outbox;
 using KJWebsite.BuildingBlocks.Security;
 using KJWebsite.BuildingBlocks.Validation;
@@ -20,6 +21,7 @@ var health = builder.AddKjObservability("CtaSubmissionService");
 builder.Services.AddKjValidation<CtaSubmissionRequestValidator>();
 builder.Services.AddOpenApi(options =>
 {
+    options.AddKjErrorResponses();
     options.AddDocumentTransformer((document, context, ct) =>
     {
         document.Info.Title = "CTA Submission Service API";
@@ -147,11 +149,13 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
     await db.SaveChangesAsync();
     outbox.Signal();
 
-    return Results.Created($"/api/v1/cta/submissions/{id}", new { id, status = "accepted", created_at = createdAt });
+    return Results.Created($"/api/v1/cta/submissions/{id}", new SubmissionCreated(id, "accepted", createdAt));
 })
 .WithName("CreateCtaSubmission")
 .WithSummary("Submit a CTA form")
 .WithDescription("Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact.")
+.Produces<SubmissionCreated>(StatusCodes.Status201Created)
+.ProducesProblem(StatusCodes.Status429TooManyRequests)
 .WithTags("CTA")
 .WithValidation<CtaSubmissionRequest>()
 .AllowAnonymous();
