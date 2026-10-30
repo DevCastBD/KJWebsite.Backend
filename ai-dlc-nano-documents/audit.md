@@ -188,3 +188,4 @@
 - 2026-10-30T17:55Z [claude] 028-issue-30-gateway-config DONE @891a4b8: YARP from config, health checks, correlation ID, compression; 119 tests (109 pass, 10 PG skipped)
 - 2026-10-30T17:59Z [claude] 029-issue-31-observability DONE @9d63380: Serilog JSON + PII redaction, health live/ready/startup, metrics; 134 tests (124 pass, 10 PG skipped)
 - 2026-10-30T18:05Z [claude] 030-issue-33-outbox-jobs DONE @2ba5ca5: outbox + dispatcher + Hangfire, dead-letter, authenticated dashboard; 146 tests green incl. PostgreSQL, live run on PG verified
+- 2026-10-30T18:08Z [claude] 031-issue-32-email-outbox DONE @4c56000: IEmailSender + Postmark + file sink, bn/en templates via outbox; 164 tests green incl. PostgreSQL; SPF/DKIM/DMARC and client rendering are manual (#107)
