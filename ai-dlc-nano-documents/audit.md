@@ -215,3 +215,4 @@
 - 2026-10-30T20:33Z [claude] 047-issue-52-approval-provisioning CREATED @e22f9cb: stacked on #51 branch; atomicity approach chosen by user; plan awaiting approval
 - 2026-10-30T20:37Z [claude] 047-issue-52-approval-provisioning PHASE PLAN→CONSTRUCT @e22f9cb: plan approved (idempotent sync call, passwordless confirmed account)
 - 2026-10-30T20:37Z [claude] 047-issue-52-approval-provisioning DONE @e22f9cb: approve provisions login+member+code+welcome; 293 tests green incl PG; not pushed
+- 2026-10-30T20:39Z [claude] 048-issue-53-member-self-service CREATED @6056728: stacked on #52 branch; card=PDF now, align campaigns/current (user); plan awaiting approval

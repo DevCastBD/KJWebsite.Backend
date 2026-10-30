@@ -30,7 +30,7 @@ CV: pdf/doc/docx up to 5 MB; photo: jpeg/png/webp up to 2 MB. The leading bytes 
 
 A campaign is a recruitment season: `slug`, bilingual name, `opensAt`, optional `closesAt`, and a manual `closedAt`. It is open inside its window until closed.
 
-- `GET /api/v1/membership/campaigns/current` (public) → `{intake, campaign}`; `intake` is `open`, `closed` or `unrestricted`.
+- `GET /api/v1/membership/campaigns/current` (public) → `{intake, campaign}`; `intake` is `open`, `closed` or `unrestricted`. It also carries the public site's shape: `state` (`open`/`upcoming`/`closed`, null when unrestricted), `id`, `name {en, bn}`, `opensOn`, `closesOn`, `nextOpensOn` (yyyy-MM-dd).
 - **No campaign defined = intake stays open** (`unrestricted`), so nothing breaks before the first season is created. Once any campaign exists, applications need an open one; otherwise `409 INTAKE_CLOSED`. Applications are linked to the open campaign.
 - Admin (`membership.manage`, gateway `/api/v1/admin/membership/...`): `GET/POST /campaigns`, `PUT /campaigns/{id}`, `POST /campaigns/{id}/close`. Changes are audited (`GET /api/v1/admin/membership/audit`, `audit.view`).
 

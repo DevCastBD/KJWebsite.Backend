@@ -62,6 +62,27 @@ public sealed class MembershipCampaignTests : IDisposable
     }
 
     [Fact]
+    public async Task TheCurrentEndpointAlsoSpeaksTheSitesShape()
+    {
+        var unrestricted = await Json(await _client.GetAsync("/api/v1/membership/campaigns/current"));
+        unrestricted.GetProperty("state").ValueKind.Should().Be(JsonValueKind.Null, "the site then keeps its static form");
+
+        var id = await CreateCampaign("shape", DateTimeOffset.UtcNow.AddDays(-1), new DateTimeOffset(2099, 3, 4, 0, 0, 0, TimeSpan.Zero));
+        var open = await Json(await _client.GetAsync("/api/v1/membership/campaigns/current"));
+        open.GetProperty("state").GetString().Should().Be("open");
+        open.GetProperty("id").GetString().Should().Be(id);
+        open.GetProperty("name").GetProperty("en").GetString().Should().Be("Spring");
+        open.GetProperty("closesOn").GetString().Should().Be("2099-03-04");
+
+        (await Send(HttpMethod.Post, $"{Admin}/{id}/close")).Dispose();
+        await CreateCampaign("next", DateTimeOffset.UtcNow.AddDays(10), null);
+        var upcoming = await Json(await _client.GetAsync("/api/v1/membership/campaigns/current"));
+        upcoming.GetProperty("state").GetString().Should().Be("upcoming");
+        upcoming.GetProperty("opensOn").GetString().Should().MatchRegex(@"^\d{4}-\d{2}-\d{2}$");
+        upcoming.GetProperty("intake").GetString().Should().Be("closed");
+    }
+
+    [Fact]
     public async Task AWindowInThePastOrFutureIsClosed()
     {
         await CreateCampaign("past", DateTimeOffset.UtcNow.AddDays(-30), DateTimeOffset.UtcNow.AddDays(-1));

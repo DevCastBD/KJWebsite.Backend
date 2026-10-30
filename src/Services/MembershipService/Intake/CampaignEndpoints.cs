@@ -28,12 +28,40 @@ public static partial class CampaignEndpoints
         return new IntakeDecision(open is null ? "closed" : "open", open);
     }
 
+    private static async Task<IntakeState> PublicState(MembershipDbContext db, IntakeDecision decision, DateTimeOffset now)
+    {
+        static string Day(DateTimeOffset d) => d.UtcDateTime.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        static LocalizedName Name(CampaignEntity c) => new(c.NameEn, c.NameBn);
+
+        if (decision.Intake == "unrestricted")
+        {
+            return new IntakeState(decision.Intake, null);
+        }
+
+        if (decision.Campaign is { } open)
+        {
+            return new IntakeState(decision.Intake, ToPublic(open), "open", open.Id, Name(open), Day(open.OpensAt), open.ClosesAt is { } c ? Day(c) : null);
+        }
+
+        // Closed: the next season that has not been cancelled, if there is one, else the most recent one.
+        var all = await db.Campaigns.AsNoTracking().ToListAsync();
+        var upcoming = all.Where(c => c.ClosedAt is null && c.OpensAt > now).OrderBy(c => c.OpensAt).FirstOrDefault();
+        if (upcoming is not null)
+        {
+            return new IntakeState(decision.Intake, null, "upcoming", upcoming.Id, Name(upcoming), Day(upcoming.OpensAt), null, Day(upcoming.OpensAt));
+        }
+
+        var last = all.OrderByDescending(c => c.OpensAt).First();
+        return new IntakeState(decision.Intake, null, "closed", last.Id, Name(last), Day(last.OpensAt));
+    }
+
     public static void MapCampaignEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/v1/membership/campaigns/current", async (MembershipDbContext db, TimeProvider clock) =>
         {
-            var decision = await DecideIntakeAsync(db, clock.GetUtcNow());
-            return Results.Ok(new IntakeState(decision.Intake, decision.Campaign is { } c ? ToPublic(c) : null));
+            var now = clock.GetUtcNow();
+            var decision = await DecideIntakeAsync(db, now);
+            return Results.Ok(await PublicState(db, decision, now));
         })
         .WithName("GetCurrentCampaign")
         .WithSummary("Is recruitment open, and which season")

@@ -1,7 +1,7 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 4 run: #49, #50, #51, #52 done; next #53; #109, #110 skipped by user)
-- Phase: —
-- Branch: Feature/issue-52-approval-provisioning
+- Active work item: work-items/048-issue-53-member-self-service
+- Phase: PLAN
+- Branch: Feature/issue-53-member-self-service
 - Base SHA: —
 - Next step: start #53 (BE-046 member self-service) on a new branch stacked on Feature/issue-52-approval-provisioning. Then #54, #55, #56 (needs #109), #57, #58. Push/PRs only on request
 - Paused work items:
