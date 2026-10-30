@@ -2062,6 +2062,119 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/content/search:
+    get:
+      tags:
+        - "Content"
+      summary: "Search published content (Bengali-aware)"
+      description: "Prefix match on every query term (AND), in the requested language, weighted title \u003E summary \u003E body. Bengali conjuncts and mixed bn/en queries are supported. Returns \u0060{ q, lang, items, total, limit, offset }\u0060; 503 SEARCH_UNAVAILABLE after \u0060Search:TimeoutMs\u0060 (default 2000)."
+      operationId: "SearchContent"
+      parameters:
+        -
+          name: "q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "type"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /sitemap.xml:
+    get:
+      tags:
+        - "Content"
+      summary: "Sitemap of published content (no drafts), with hreflang alternates"
+      description: "Covers content items only (types from \u0060Site:SitemapTypes\u0060); the frontend keeps its own sitemap for static routes. Needs \u0060Site:BaseUrl\u0060."
+      operationId: "GetSitemap"
+      responses:
+        "200":
+          description: "OK"
+  /feed.rss:
+    get:
+      tags:
+        - "Content"
+      summary: "RSS 2.0 feed of the newest published items, one language"
+      description: "\u0060?lang=bn|en\u0060. Items without a translation in that language are left out (no fallback: a subscriber wants one language). Types from \u0060Site:FeedTypes\u0060 (default news)."
+      operationId: "GetRssFeed"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /feed.atom:
+    get:
+      tags:
+        - "Content"
+      summary: "Atom feed of the newest published items, one language"
+      operationId: "GetAtomFeed"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/og/{type}/{slug}":
+    get:
+      tags:
+        - "Content"
+      summary: "Open Graph metadata for one item, for the frontend to render"
+      description: "\u0060title\u0060, \u0060description\u0060, canonical \u0060url\u0060, absolute \u0060image\u0060, \u0060type\u0060 (article/website), \u0060locale\u0060 (bn_BD/en_US) and alternates. Needs \u0060Site:BaseUrl\u0060."
+      operationId: "GetOpenGraph"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/content/audit:
     get:
       tags:

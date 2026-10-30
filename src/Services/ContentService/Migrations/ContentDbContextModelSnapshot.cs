@@ -282,6 +282,30 @@ namespace ContentService.Migrations
                     b.ToTable("redirects", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.SearchTermEntity", b =>
+                {
+                    b.Property<string>("ContentItemId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Lang")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Term")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Weight")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ContentItemId", "Lang", "Term");
+
+                    b.HasIndex("Lang", "Term");
+
+                    b.ToTable("search_terms", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.SettingEntity", b =>
                 {
                     b.Property<string>("Key")
@@ -495,6 +519,15 @@ namespace ContentService.Migrations
                     b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
                         .WithOne("Project")
                         .HasForeignKey("ContentService.Data.Entities.ProjectEntity", "ContentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.SearchTermEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithMany()
+                        .HasForeignKey("ContentItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

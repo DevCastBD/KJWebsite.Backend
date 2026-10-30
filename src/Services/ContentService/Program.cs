@@ -50,6 +50,7 @@ builder.Services.AddScoped<TaxonomyStore>();
 builder.Services.AddScoped<RedirectStore>();
 builder.Services.AddScoped<GenericContentStore>();
 builder.Services.AddScoped<RevisionStore>();
+builder.Services.AddScoped<SearchIndex>();
 builder.Services.AddScoped<SettingsStore>();
 builder.Services.AddScoped<BackOfficeStore>();
 builder.Services.AddMemoryCache();
@@ -78,6 +79,7 @@ if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenA
     }
 
     await ContentSeeder.SeedAsync(db, scope.ServiceProvider.GetRequiredService<TimeProvider>());
+    await scope.ServiceProvider.GetRequiredService<SearchIndex>().EnsureBuiltAsync();
 }
 
 if (app.Environment.IsDevelopment())
@@ -349,6 +351,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 app.MapGenericContent();
 app.MapSettings();
 app.MapBackOffice();
+app.MapPublicExtras();
 app.MapAuditLog<ContentDbContext>("/api/v1/admin/content/audit", "Content");
 
 app.Run();
