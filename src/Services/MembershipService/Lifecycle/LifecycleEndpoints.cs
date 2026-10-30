@@ -4,6 +4,7 @@ using MembershipService.Committees;
 using MembershipService.Data;
 using MembershipService.Data.Entities;
 using MembershipService.Intake;
+using MembershipService.Privacy;
 using MembershipService.Review;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,7 +33,7 @@ public static class LifecycleEndpoints
         .WithTags("Membership admin")
         .RequirePermission(Permissions.MembershipLifecycle);
 
-        app.MapPost($"{Route}/status", async (HttpContext context, string id, StatusChangeRequest payload, MembershipDbContext db, IFieldProtector protector, IAuthProvisioningClient identity, TimeProvider clock) =>
+        app.MapPost($"{Route}/status", async (HttpContext context, string id, StatusChangeRequest payload, MembershipDbContext db, IFieldProtector protector, IAuthProvisioningClient identity, Microsoft.Extensions.Options.IOptions<PrivacyOptions> privacy, TimeProvider clock) =>
         {
             var member = await db.Members.FirstOrDefaultAsync(m => m.Id == id);
             if (member is null)
@@ -109,7 +110,7 @@ public static class LifecycleEndpoints
 
             if (to == MemberStatuses.Terminated)
             {
-                WithdrawAllConsent(db, member, now);
+                WithdrawAllConsent(db, member, now, actor, privacy.Value.NoticeVersion);
             }
 
             await db.SaveChangesAsync(context.RequestAborted);
@@ -133,21 +134,21 @@ public static class LifecycleEndpoints
         .RequirePermission(Permissions.MembershipLifecycle);
     }
 
-    private static void WithdrawAllConsent(MembershipDbContext db, MemberEntity member, DateTimeOffset now)
+    private static void WithdrawAllConsent(MembershipDbContext db, MemberEntity member, DateTimeOffset now, string actor, string notice)
     {
         void Off(string field, bool was, Action clear)
         {
             if (was)
             {
                 clear();
-                db.ConsentEvents.Add(new MemberConsentEventEntity { MemberId = member.Id, Field = field, Granted = false, At = now });
+                ConsentLedger.Record(db, "member", member.Id, field, false, now, "staff", actor, notice);
             }
         }
 
-        Off("name", member.ConsentName, () => member.ConsentName = false);
-        Off("photograph", member.ConsentPhotograph, () => member.ConsentPhotograph = false);
-        Off("expertise", member.ConsentExpertise, () => member.ConsentExpertise = false);
-        Off("alumni", member.ConsentAlumni, () => member.ConsentAlumni = false);
+        Off(ConsentPurposes.PublishName, member.ConsentName, () => member.ConsentName = false);
+        Off(ConsentPurposes.PublishPhotograph, member.ConsentPhotograph, () => member.ConsentPhotograph = false);
+        Off(ConsentPurposes.PublishExpertise, member.ConsentExpertise, () => member.ConsentExpertise = false);
+        Off(ConsentPurposes.PublishAlumni, member.ConsentAlumni, () => member.ConsentAlumni = false);
     }
 
     public static async Task<LifecycleView> View(MembershipDbContext db, IFieldProtector protector, MemberEntity member, bool showReasons, TimeProvider clock)

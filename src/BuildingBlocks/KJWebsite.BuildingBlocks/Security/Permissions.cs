@@ -22,6 +22,8 @@ public static class Permissions
     public const string MembershipLifecycle = "membership.lifecycle";
     /// <summary>Terminate a member, reactivate a terminated one, and read termination reasons: tighter than ordinary profile access.</summary>
     public const string MembershipTerminate = "membership.terminate";
+    /// <summary>Run retention purges and carry out erasure requests: deletion of personal data, so held back from day-to-day officers.</summary>
+    public const string MembershipPrivacy = "membership.privacy";
     public const string EventsManage = "events.manage";
     public const string FinanceView = "finance.view";
     public const string FinanceExpenseSubmit = "finance.expense.submit";
@@ -67,6 +69,7 @@ public static class PermissionCatalog
         new("membership", Permissions.MembershipProvision, "Create the login for an approved applicant"),
         new("membership", Permissions.MembershipLifecycle, "Change a member's status: leave, inactive, alumni, reactivation"),
         new("membership", Permissions.MembershipTerminate, "Terminate or reinstate a member and read termination reasons"),
+        new("membership", Permissions.MembershipPrivacy, "Run retention purges and carry out erasure requests"),
         new("membership", Permissions.MemberProfileView, "View member profiles"),
         new("membership", Permissions.MemberProfileEdit, "Edit a member profile (members: their own only)"),
         new("events", Permissions.EventsManage, "Manage events"),

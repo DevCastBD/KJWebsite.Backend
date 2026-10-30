@@ -125,8 +125,9 @@ public sealed class MemberSelfServiceTests : IDisposable
         await Send(token, HttpMethod.Put, $"{Me}/consents", new { name = false, photograph = true, expertise = false });
 
         using var scope = _membership.Services.CreateScope();
-        var log = (await scope.ServiceProvider.GetRequiredService<MembershipDbContext>().ConsentEvents.ToListAsync()).OrderBy(e => e.Id).ToList();
-        log.Select(e => (e.Field, e.Granted)).Should().Equal(("name", true), ("name", false), ("photograph", true));
+        var log = (await scope.ServiceProvider.GetRequiredService<MembershipDbContext>().ConsentRecords.Where(c => c.SubjectKind == "member").ToListAsync()).OrderBy(e => e.Id).ToList();
+        log.Select(e => (e.Purpose, e.Granted)).Should().Equal(("publish_name", true), ("publish_name", false), ("publish_photograph", true));
+        log.Should().OnlyContain(e => e.Source == "portal" && e.ActorId == log[0].ActorId && e.ActorId.StartsWith("usr_"));
     }
 
     [Fact]
@@ -228,7 +229,7 @@ public sealed class MemberSelfServiceTests : IDisposable
         export.GetProperty("application").GetProperty("history").EnumerateArray().Select(h => h.GetProperty("status").GetString())
             .Should().Equal("awaiting", "under_review", "shortlisted", "interview_scheduled", "approved");
         export.GetProperty("application").GetProperty("reviewerNotes")[0].GetProperty("text").GetString().Should().Contain("NOTE-MARKER");
-        export.GetProperty("consentHistory").GetArrayLength().Should().Be(1);
+        export.GetProperty("consentHistory").EnumerateArray().Select(c => c.GetProperty("purpose").GetString()).Should().Equal("application_processing", "publish_name");
         export.GetProperty("profileChanges")[0].GetProperty("value").GetString().Should().Be("Begum");
         export.GetProperty("messagesSent").EnumerateArray().Select(m => m.GetProperty("template").GetString()).Should().Contain("member.welcome");
         export.GetProperty("audit").GetArrayLength().Should().BeGreaterThan(0);

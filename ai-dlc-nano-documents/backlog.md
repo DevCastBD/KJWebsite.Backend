@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] privacy — #110 windows still undecided (nothing purges until set); backups must expire within the published window; donor/analytics retention (P4, #111, #114); frontend privacy statement (F2-6) must read GET /membership/privacy (found: 052-issue-58)
+- [2026-10-31] privacy — one AuditLogTests PATCH case failed once on PG (connection), passed on 3 reruns; erasure of an in-flight Identity failure leaves an anonymised login until retried (found: 052-issue-58)
 - [2026-10-31] lifecycle — reinstating: if the DB commit fails after Identity enabled the login, a terminated record could have a live login (rare); no automatic inactive/lapse (needs dues #56); lifecycle migration backfill SQL only run on an empty table (found: 051-issue-57)
 - [2026-10-31] lifecycle — member export includes the termination reason (right of access): confirm with the core members/legal (#114); no admin UI contract exists for lifecycle (found: 051-issue-57)
 - [2026-10-31] committees — admin UI sends free-text chair; needs a member picker + term form; a member's chapter is just a chapter-committee term (no separate home chapter); "today" is UTC (BD is UTC+6) (found: 050-issue-55)

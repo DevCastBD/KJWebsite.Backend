@@ -130,6 +130,33 @@ public static class AuditPostgres
             """);
     }
 
+    /// <summary>
+    /// For a migration's Up, after <see cref="AddImmutability"/>: lets an UPDATE through only when every column except the three that
+    /// identify the actor (`ActorEmail`, `Ip`, `UserAgent`) is unchanged and those three are being set to NULL. This is how an erasure
+    /// removes a person from the audit log without being able to rewrite what happened (ADR-014). No effect on other providers.
+    /// </summary>
+    public static void AllowActorRedaction(this Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder migration, string schema)
+    {
+        if (migration.ActiveProvider?.Contains("Npgsql", StringComparison.Ordinal) != true)
+        {
+            return;
+        }
+
+        migration.Sql($$"""
+            CREATE OR REPLACE FUNCTION "{{schema}}".audit_events_refuse_change() RETURNS trigger LANGUAGE plpgsql AS $fn$
+            BEGIN
+                IF TG_OP = 'UPDATE' THEN
+                    IF (to_jsonb(NEW) - 'ActorEmail' - 'Ip' - 'UserAgent') = (to_jsonb(OLD) - 'ActorEmail' - 'Ip' - 'UserAgent')
+                       AND NEW."ActorEmail" IS NULL AND NEW."Ip" IS NULL AND NEW."UserAgent" IS NULL THEN
+                        RETURN NEW;
+                    END IF;
+                END IF;
+                RAISE EXCEPTION 'audit_events is append-only: % is not allowed', TG_OP USING ERRCODE = '42501';
+            END;
+            $fn$;
+            """);
+    }
+
     public static void RemoveImmutability(this Microsoft.EntityFrameworkCore.Migrations.MigrationBuilder migration, string schema)
     {
         if (migration.ActiveProvider?.Contains("Npgsql", StringComparison.Ordinal) != true)

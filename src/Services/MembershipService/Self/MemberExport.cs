@@ -19,7 +19,7 @@ public static class MemberExport
                 var profile = await SelfEndpoints.Profile(db, protector, member);
                 var application = await db.Applications.AsNoTracking().Include(a => a.Notes).Include(a => a.StatusEvents).Include(a => a.Attachments).FirstOrDefaultAsync(a => a.Id == member.ApplicationId);
                 var changes = (await db.ProfileChanges.AsNoTracking().Where(c => c.MemberId == member.Id).ToListAsync()).OrderBy(c => c.SubmittedAt).ToList();
-                var consents = (await db.ConsentEvents.AsNoTracking().Where(c => c.MemberId == member.Id).ToListAsync()).OrderBy(c => c.Id).ToList();
+                var consents = (await db.ConsentRecords.AsNoTracking().Where(c => c.SubjectId == member.Id || c.SubjectId == member.ApplicationId).ToListAsync()).OrderBy(c => c.Id).ToList();
                 var notices = (await db.NotificationOutbox.AsNoTracking().Where(o => o.ApplicationId == member.ApplicationId).ToListAsync()).OrderBy(o => o.Id).ToList();
 
                 // Audit rows are about this member when their entity is one of the member's own records.
@@ -76,7 +76,7 @@ public static class MemberExport
                     },
                     // The member's own right of access covers the whole record, termination reason included.
                     lifecycle = await LifecycleEndpoints.View(db, protector, member, showReasons: true, clock),
-                    consentHistory = consents.Select(c => new { c.Field, c.Granted, c.At }),
+                    consentHistory = consents.Select(c => new { c.Purpose, c.Granted, c.At, c.Source, c.ActorId, c.NoticeVersion }),
                     profileChanges = changes.Select(c => new { c.Field, value = protector.Unprotect(c.ValueProtected), c.Status, c.Reason, c.SubmittedAt, c.DecidedAt }),
                     application = snapshot,
                     messagesSent = notices.Select(o => new { o.Template, o.Language, o.CreatedAt, o.SentAt }),

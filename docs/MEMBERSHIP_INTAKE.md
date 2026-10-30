@@ -126,3 +126,7 @@ Side effects, all inside one transaction so a failure changes nothing:
 - **Directory**: only `active` members are listed, plus `alumni` who gave the separate `alumni` consent (`PUT /members/me/consents`, optional field; omitted leaves it unchanged). Entries carry `alumni: true`. `on_leave`, `inactive` and `terminated` never appear.
 
 **Tenure** (`tenure` in the lifecycle view): the days spent `active`, summed over every stretch of service in effective-date order. Leave, lapses, alumni years and terminations do not count; a returning member's earlier service is kept; an open stretch runs to today. `totalDays` and each period's `days` are exact; `years`/`months` are derived (365.25 / 30.44 days) and approximate.
+
+## Privacy (BE-052, #58)
+
+Retention windows, the consent ledger, export, erasure and the audit-log rules are described in [`PRIVACY_BEHAVIOUR.md`](PRIVACY_BEHAVIOUR.md). New permission `membership.privacy` (Admin and SuperAdmin) covers purges and erasure; an existing database must grant it to a custom role by hand. Identity gains `POST /api/v1/admin/auth/members/{userId}/erase` (`membership.privacy`).

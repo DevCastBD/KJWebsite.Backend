@@ -227,3 +227,6 @@
 - 2026-10-30T21:00Z [claude] 051-issue-57-membership-lifecycle CREATED @b9bd255: stacked on #55 branch; #56 skipped (user); plan awaiting approval
 - 2026-10-30T21:05Z [claude] 051-issue-57-membership-lifecycle PHASE PLAN→CONSTRUCT @b9bd255: plan approved (policy calls: tenure=active time, terminate disables login, alumni opt-in)
 - 2026-10-30T21:05Z [claude] 051-issue-57-membership-lifecycle DONE @b9bd255: lifecycle, tenure, restricted reasons; 359 tests green incl PG; not pushed
+- 2026-10-30T21:11Z [claude] 052-issue-58-retention-consent-erasure CREATED @33222a9: stacked on #57 branch; plan awaiting approval
+- 2026-10-30T21:21Z [claude] 052-issue-58-retention-consent-erasure PHASE PLAN→CONSTRUCT @33222a9: plan approved; audit=null actor fields only; applicants export on ref+email, erasure queued (user)
+- 2026-10-30T21:21Z [claude] 052-issue-58-retention-consent-erasure DONE @33222a9: retention, consent ledger, erasure, applicant rights; 369 tests green incl PG; not pushed
