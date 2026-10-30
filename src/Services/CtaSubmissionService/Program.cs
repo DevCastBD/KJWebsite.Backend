@@ -2,6 +2,7 @@ using CtaSubmissionService.Contracts;
 using CtaSubmissionService.Data;
 using CtaSubmissionService.Data.Entities;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Security;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -24,6 +25,8 @@ builder.Services.AddDbContext<CtaDbContext>((services, options) =>
         ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=cta" : throw new InvalidOperationException("ConnectionStrings:CtaDb is required."));
     options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "cta"));
 });
+
+builder.Services.AddKjJwtAuthentication();
 
 var app = builder.Build();
 
@@ -61,13 +64,16 @@ if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenA
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("CTA Submission Service API")
                .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
-    });
+    }).AllowAnonymous();
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 var allowedForms = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "registration", "contact", "footer-contact", "project-involved" };
 var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "join", "donate", "partnership", "get-involved", "contact" };
@@ -76,7 +82,8 @@ var allowedLangs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bn",
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmissionService" }))
    .WithName("CtaHealth")
    .WithSummary("CTA service health check")
-   .WithTags("System");
+   .WithTags("System")
+.AllowAnonymous();
 
 app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db) =>
 {
@@ -123,7 +130,8 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
 .WithName("CreateCtaSubmission")
 .WithSummary("Submit a CTA form")
 .WithDescription("Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact.")
-.WithTags("CTA");
+.WithTags("CTA")
+.AllowAnonymous();
 
 app.Run();
 

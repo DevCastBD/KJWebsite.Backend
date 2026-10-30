@@ -147,7 +147,7 @@ public sealed class ContentContractTests : IDisposable
 
     private static HttpRequestMessage AdminRequest(string path) => new(HttpMethod.Get, path)
     {
-        Headers = { Authorization = new("Bearer", "dev-admin-token") }
+        Headers = { Authorization = new("Bearer", TestTokens.ContentAdmin()) }
     };
 
     public void Dispose()

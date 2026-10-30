@@ -174,3 +174,7 @@
 - 2026-10-30T16:46Z [claude] 023-issue-23-jwt CREATED @9cb1c73: from #23 (closes #16)
 - 2026-10-30T16:46Z [claude] 023-issue-23-jwt PHASE PLAN→CONSTRUCT @9cb1c73: plan approved with #22 run (user confirmed)
 - 2026-10-30T16:46Z [claude] 023-issue-23-jwt DONE @9cb1c73: RS256 JWT, hashed rotating refresh, sessions; 75 tests green
+- 2026-10-30T16:46Z [claude] 024-issue-24-authorization BRANCH @300f3d0: feature/issue-24-authorization stacked on feature/issue-23-jwt
+- 2026-10-30T16:50Z [claude] 024-issue-24-authorization CREATED @300f3d0: from #24 (closes #17)
+- 2026-10-30T16:50Z [claude] 024-issue-24-authorization PHASE PLAN→CONSTRUCT @300f3d0: plan approved with #22 run (user confirmed)
+- 2026-10-30T16:50Z [claude] 024-issue-24-authorization DONE @300f3d0: permission policies, deny-by-default, seed migration; 86 tests green

@@ -92,13 +92,13 @@ if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenA
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("Auth Identity Service API")
                .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
                .AddHttpAuthentication("Bearer", bearer => { bearer.Token = string.Empty; });
-    });
+    }).AllowAnonymous();
 }
 
 app.UseAuthentication();
@@ -107,7 +107,8 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "AuthIdentityService" }))
    .WithName("AuthHealth")
    .WithSummary("Auth service health check")
-   .WithTags("System");
+   .WithTags("System")
+.AllowAnonymous();
 
 var requireConfirmedEmail = app.Configuration.GetValue("Identity:RequireConfirmedEmail", true);
 const string ResetMessage = "If the account exists, an email has been sent.";
@@ -171,9 +172,10 @@ app.MapPost("/api/v1/auth/register", async (HttpContext context, LegacyRegistrat
 .WithName("Register")
 .WithSummary("Register a new user account")
 .WithDescription("Creates a new member account with a hashed password and sends an email-confirmation message. The requested role is ignored: new accounts are `Member`. Includes optional legacy profile fields (name, gender, address, etc.).")
-.WithTags("Auth");
+.WithTags("Auth")
+.AllowAnonymous();
 
-app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
+app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
 {
     var email = payload.Email?.Trim() ?? string.Empty;
     var user = string.IsNullOrEmpty(email) ? null : await users.FindByEmailAsync(email);
@@ -206,14 +208,15 @@ app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest paylo
     var (refresh, row) = sessions.StartSession(user.Id, context.Request.Headers.UserAgent.ToString());
     await db.SaveChangesAsync();
 
-    return await TokenResponse(users, issuer, user, row.FamilyId, refresh);
+    return await TokenResponse(users, roleManager, issuer, user, row.FamilyId, refresh);
 })
 .WithName("Login")
 .WithSummary("Login and receive tokens")
 .WithDescription("Authenticates a user and returns an `access_token` (RS256 JWT, 15 min) and a `refresh_token` (opaque, stored hashed, 30 days). Repeated failures lock the account (423). Unconfirmed emails are rejected (403) unless `Identity:RequireConfirmedEmail` is off.")
-.WithTags("Auth");
+.WithTags("Auth")
+.AllowAnonymous();
 
-app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequest payload, UserManager<AuthUserEntity> users, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
+app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequest payload, UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
 {
     var rotation = await sessions.RotateAsync(payload.RefreshToken ?? string.Empty, context.Request.Headers.UserAgent.ToString());
     if (rotation.Outcome != RotationOutcome.Rotated)
@@ -229,12 +232,13 @@ app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequ
         return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid refresh token.");
     }
 
-    return await TokenResponse(users, issuer, user, rotation.Row.FamilyId, rotation.Token!);
+    return await TokenResponse(users, roleManager, issuer, user, rotation.Row.FamilyId, rotation.Token!);
 })
 .WithName("RefreshToken")
 .WithSummary("Refresh an expired access token")
 .WithDescription("Rotates the refresh token and issues a new access token. The old refresh token is single-use; presenting it again ends the whole session.")
-.WithTags("Auth");
+.WithTags("Auth")
+.AllowAnonymous();
 
 app.MapPost("/api/v1/auth/logout", async (HttpContext context, RefreshTokenRequest payload, RefreshTokenService sessions) =>
 {
@@ -248,7 +252,8 @@ app.MapPost("/api/v1/auth/logout", async (HttpContext context, RefreshTokenReque
 .WithName("Logout")
 .WithSummary("Logout and revoke refresh token")
 .WithDescription("Ends the session the given refresh token belongs to. Returns 204 No Content on success.")
-.WithTags("Auth");
+.WithTags("Auth")
+.AllowAnonymous();
 
 app.MapPost("/api/v1/auth/confirm-email", async (HttpContext context, ConfirmEmailRequest payload, UserManager<AuthUserEntity> users) =>
 {
@@ -263,7 +268,8 @@ app.MapPost("/api/v1/auth/confirm-email", async (HttpContext context, ConfirmEma
 .WithName("ConfirmEmail")
 .WithSummary("Confirm an email address")
 .WithDescription("Confirms the address using the token from the confirmation email. Returns 204 on success.")
-.WithTags("Auth");
+.WithTags("Auth")
+.AllowAnonymous();
 
 app.MapPost("/api/v1/auth/resend-confirmation", async (ResendConfirmationRequest payload, UserManager<AuthUserEntity> users, IAuthEmailSender mail) =>
 {
@@ -278,7 +284,8 @@ app.MapPost("/api/v1/auth/resend-confirmation", async (ResendConfirmationRequest
 .WithName("ResendConfirmation")
 .WithSummary("Resend the confirmation email")
 .WithDescription("Always returns 202, whether or not the account exists.")
-.WithTags("Auth");
+.WithTags("Auth")
+.AllowAnonymous();
 
 app.MapPost("/api/v1/auth/forgot-password", async (ForgotPasswordRequest payload, UserManager<AuthUserEntity> users, IAuthEmailSender mail) =>
 {
@@ -293,7 +300,8 @@ app.MapPost("/api/v1/auth/forgot-password", async (ForgotPasswordRequest payload
 .WithName("ForgotPassword")
 .WithSummary("Request a password-reset email")
 .WithDescription("Always returns 202, whether or not the account exists, so it cannot be used to discover accounts.")
-.WithTags("Auth");
+.WithTags("Auth")
+.AllowAnonymous();
 
 app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPasswordRequest payload, UserManager<AuthUserEntity> users, RefreshTokenService sessions) =>
 {
@@ -322,7 +330,8 @@ app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPass
 .WithName("ResetPassword")
 .WithSummary("Set a new password with a reset token")
 .WithDescription("Sets the password using the emailed token, lifts any lockout and revokes all refresh tokens. Returns 204 on success.")
-.WithTags("Auth");
+.WithTags("Auth")
+.AllowAnonymous();
 
 app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db, UserManager<AuthUserEntity> users) =>
 {
@@ -373,7 +382,8 @@ app.MapGet("/.well-known/jwks.json", (AuthSigningKey signingKey) => Results.Json
     .WithName("Jwks")
     .WithSummary("Public signing keys")
     .WithDescription("The public keys that verify access tokens (JSON Web Key Set). Contains no secrets.")
-    .WithTags("System");
+    .WithTags("System")
+.AllowAnonymous();
 
 app.MapGet("/api/v1/auth/sessions", async (ClaimsPrincipal principal, RefreshTokenService sessions) =>
 {
@@ -420,12 +430,22 @@ app.MapPost("/api/v1/auth/logout-all", async (ClaimsPrincipal principal, Refresh
 .WithTags("Auth")
 .RequireAuthorization();
 
-static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, AccessTokenIssuer issuer, AuthUserEntity user, string sessionId, string refreshToken)
+static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager, AccessTokenIssuer issuer, AuthUserEntity user, string sessionId, string refreshToken)
 {
     var roles = await users.GetRolesAsync(user);
+    var permissions = new List<string>();
+    foreach (var name in roles)
+    {
+        var role = await roleManager.FindByNameAsync(name);
+        if (role is not null)
+        {
+            permissions.AddRange((await roleManager.GetClaimsAsync(role)).Where(c => c.Type == KjClaims.Permission).Select(c => c.Value));
+        }
+    }
+
     return Results.Ok(new
     {
-        access_token = issuer.Issue(user, sessionId, roles, []),
+        access_token = issuer.Issue(user, sessionId, roles, permissions),
         refresh_token = refreshToken,
         expires_in = 900,
         token_type = "Bearer",

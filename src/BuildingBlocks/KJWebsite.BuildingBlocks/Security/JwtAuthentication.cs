@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 
 namespace KJWebsite.BuildingBlocks.Security;
@@ -32,6 +33,26 @@ public sealed record KjJwtSettings(string Issuer, string Audience, TimeSpan Acce
 
 public static class KjJwtKeys
 {
+    /// <summary>
+    /// Where Development keeps its generated signing key, so the Auth service (private key) and the other services (its public half)
+    /// agree without configuration. Never used outside Development.
+    /// </summary>
+    public static string DevKeyPath { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KJWebsite", "dev-jwt-private.pem");
+
+    /// <summary>The public half of the Development key, if the Auth service has created one on this machine.</summary>
+    public static SecurityKey? DevPublicKey()
+    {
+        if (!File.Exists(DevKeyPath))
+        {
+            return null;
+        }
+
+        using var rsa = RSA.Create();
+        rsa.ImportFromPem(File.ReadAllText(DevKeyPath));
+        return new RsaSecurityKey(rsa.ExportParameters(includePrivateParameters: false)) { KeyId = KeyId(rsa) };
+    }
+
     /// <summary>A stable id so verifiers can pick the right key after a rotation.</summary>
     public static string KeyId(RSA rsa) =>
         Base64UrlEncoder.Encode(SHA256.HashData(rsa.ExportSubjectPublicKeyInfo()))[..16];
@@ -101,7 +122,7 @@ public static class JwtAuthenticationExtensions
             {
                 ValidIssuer = settings.Issuer,
                 ValidAudience = settings.Audience,
-                IssuerSigningKeys = (keys?.Invoke(provider) ?? KjJwtKeys.PublicKeysFromConfiguration(configuration)).ToList(),
+                IssuerSigningKeys = (keys?.Invoke(provider) ?? ConfiguredKeys(configuration, provider.GetRequiredService<IHostEnvironment>())).ToList(),
                 ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
                 ValidateIssuerSigningKey = true,
                 RequireSignedTokens = true,
@@ -111,7 +132,18 @@ public static class JwtAuthenticationExtensions
                 RoleClaimType = KjClaims.Role
             };
         });
-        services.AddAuthorization();
+        services.AddKjPermissionPolicies();
         return services;
+    }
+
+    private static IEnumerable<SecurityKey> ConfiguredKeys(IConfiguration configuration, IHostEnvironment environment)
+    {
+        var keys = KjJwtKeys.PublicKeysFromConfiguration(configuration);
+        if (keys.Count == 0 && environment.IsDevelopment() && KjJwtKeys.DevPublicKey() is { } devKey)
+        {
+            return [devKey];
+        }
+
+        return keys;
     }
 }

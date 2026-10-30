@@ -155,7 +155,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "List projects with all translations"
-      description: "Returns every translation of every project, grouped per slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Returns every translation of every project, grouped per slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "ListAdminProjects"
       parameters:
         -
@@ -183,7 +183,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Create or replace a project"
-      description: "Creates a project with all provided language translations. Replaces any existing project with the same slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Creates a project with all provided language translations. Replaces any existing project with the same slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "CreateProject"
       requestBody:
         content:
@@ -199,7 +199,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Get a project with all translations"
-      description: "Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Requires the \u0060content.view\u0060 permission."
       operationId: "GetAdminProject"
       parameters:
         -
@@ -215,7 +215,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update a project"
-      description: "Replaces all translations for the given project. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Replaces all translations for the given project. Requires the matching \u0060content.*\u0060 permission."
       operationId: "UpdateProject"
       parameters:
         -
@@ -237,7 +237,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Delete a project"
-      description: "Deletes all translations of the given project. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Deletes all translations of the given project. Requires the matching \u0060content.*\u0060 permission."
       operationId: "DeleteProject"
       parameters:
         -
@@ -254,7 +254,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "List news articles with all translations"
-      description: "Returns every translation of every article, grouped per slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Returns every translation of every article, grouped per slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "ListAdminNews"
       parameters:
         -
@@ -282,7 +282,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Create or replace a news article"
-      description: "Creates a news article with all provided language translations. Replaces any existing article with the same slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Creates a news article with all provided language translations. Replaces any existing article with the same slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "CreateNews"
       requestBody:
         content:
@@ -298,7 +298,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Get a news article with all translations"
-      description: "Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Requires the \u0060content.view\u0060 permission."
       operationId: "GetAdminNews"
       parameters:
         -
@@ -314,7 +314,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update a news article"
-      description: "Replaces all translations for the given news article. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Replaces all translations for the given news article. Requires the matching \u0060content.*\u0060 permission."
       operationId: "UpdateNews"
       parameters:
         -
@@ -336,7 +336,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Delete a news article"
-      description: "Deletes all translations of the given news article. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Deletes all translations of the given news article. Requires the matching \u0060content.*\u0060 permission."
       operationId: "DeleteNews"
       parameters:
         -

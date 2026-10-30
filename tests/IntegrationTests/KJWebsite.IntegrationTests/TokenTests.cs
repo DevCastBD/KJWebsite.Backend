@@ -33,7 +33,7 @@ public sealed class TokenTests : IDisposable
         jwt.Kid.Should().NotBeNullOrEmpty();
         jwt.Subject.Should().Be("usr_admin");
         jwt.GetClaim("sid").Value.Should().StartWith("ses_");
-        jwt.Claims.Where(c => c.Type == "role").Select(c => c.Value).Should().Contain("Admin");
+        jwt.Claims.Where(c => c.Type == "role").Select(c => c.Value).Should().Contain("SuperAdmin");
         (jwt.ValidTo - jwt.ValidFrom).Should().BeCloseTo(TimeSpan.FromMinutes(15), TimeSpan.FromSeconds(2));
 
         var jwks = await _client.GetStringAsync("/.well-known/jwks.json");

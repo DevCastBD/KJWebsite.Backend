@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Security;
 using Scalar.AspNetCore;
 
 const int MaxPageSize = 100;
@@ -14,24 +15,29 @@ builder.Services.AddOpenApi(options =>
     {
         document.Info.Title = "Content Service API";
         document.Info.Description = "Serves projects and news items in multiple languages (en/bn). " +
-            "Public read endpoints are unauthenticated. Admin write endpoints require `Authorization: Bearer dev-admin-token`.";
+            "Public read endpoints are unauthenticated. Admin endpoints require a bearer access token (from the Auth service) carrying the matching `content.*` permission.";
         document.Info.Version = "v1";
         return Task.CompletedTask;
     });
 });
 
+builder.Services.AddKjJwtAuthentication();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().AllowAnonymous();
     app.MapScalarApiReference(options =>
     {
         options.WithTitle("Content Service API")
                .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
-               .AddHttpAuthentication("Bearer", bearer => { bearer.Token = "dev-admin-token"; });
-    });
+               .AddHttpAuthentication("Bearer", bearer => { bearer.Token = string.Empty; });
+    }).AllowAnonymous();
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 
 var projects = new List<ProjectItem>
@@ -49,7 +55,8 @@ var news = new List<NewsItem>
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ContentService" }))
    .WithName("ContentHealth")
    .WithSummary("Content service health check")
-   .WithTags("System");
+   .WithTags("System")
+.AllowAnonymous();
 
 app.MapGet("/api/v1/content/projects", (HttpRequest request, string? lang, string? status, int? limit, int? offset) =>
 {
@@ -69,7 +76,8 @@ app.MapGet("/api/v1/content/projects", (HttpRequest request, string? lang, strin
 .WithName("GetProjects")
 .WithSummary("List projects (paginated)")
 .WithDescription("Returns `{ items, total, limit, offset, lang }`. `lang`: en/bn (default en). `status`: active/all (default active). `limit`: 1–100 (default 20). `offset`: default 0. ETag + Cache-Control are set.")
-.WithTags("Content");
+.WithTags("Content")
+.AllowAnonymous();
 
 app.MapGet("/api/v1/content/projects/{id}", (HttpRequest request, string id, string? lang) =>
 {
@@ -82,7 +90,8 @@ app.MapGet("/api/v1/content/projects/{id}", (HttpRequest request, string id, str
 .WithName("GetProjectById")
 .WithSummary("Get project by ID")
 .WithDescription("Returns a single project by slug ID in the requested language (`lang`: en/bn, default en).")
-.WithTags("Content");
+.WithTags("Content")
+.AllowAnonymous();
 
 app.MapGet("/api/v1/content/news", (HttpRequest request, string? lang, int? limit, int? offset) =>
 {
@@ -97,7 +106,8 @@ app.MapGet("/api/v1/content/news", (HttpRequest request, string? lang, int? limi
 .WithName("GetNews")
 .WithSummary("List news articles (paginated)")
 .WithDescription("Returns `{ items, total, limit, offset, lang }`. `lang`: en/bn (default en). `limit`: 1–100 (default 20). `offset`: default 0. ETag + Cache-Control are set.")
-.WithTags("Content");
+.WithTags("Content")
+.AllowAnonymous();
 
 app.MapGet("/api/v1/content/news/{id}", (HttpRequest request, string id, string? lang) =>
 {
@@ -110,7 +120,8 @@ app.MapGet("/api/v1/content/news/{id}", (HttpRequest request, string id, string?
 .WithName("GetNewsById")
 .WithSummary("Get news article by ID")
 .WithDescription("Returns a single news article by slug ID in the requested language (`lang`: en/bn, default en).")
-.WithTags("Content");
+.WithTags("Content")
+.AllowAnonymous();
 
 app.MapGet("/api/v1/content/bootstrap", (HttpRequest request, string? lang) =>
 {
@@ -126,12 +137,11 @@ app.MapGet("/api/v1/content/bootstrap", (HttpRequest request, string? lang) =>
 .WithName("GetContentBootstrap")
 .WithSummary("Cold-start bundle")
 .WithDescription("Returns `{ projects, news, settings, lang }` in one call for the SPA's first render (up to 100 active projects and 100 news items). ETag + Cache-Control are set.")
-.WithTags("Content");
+.WithTags("Content")
+.AllowAnonymous();
 
 app.MapGet("/api/v1/admin/content/projects", (HttpRequest request, int? limit, int? offset) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
     {
@@ -144,13 +154,12 @@ app.MapGet("/api/v1/admin/content/projects", (HttpRequest request, int? limit, i
 })
 .WithName("ListAdminProjects")
 .WithSummary("List projects with all translations")
-.WithDescription("Returns every translation of every project, grouped per slug. Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Returns every translation of every project, grouped per slug. Requires the matching `content.*` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentView);
 
 app.MapGet("/api/v1/admin/content/projects/{id}", (HttpRequest request, string id) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     var rows = projects.Where(p => p.Id == id).ToList();
     request.HttpContext.Response.Headers.CacheControl = "no-store";
@@ -160,13 +169,12 @@ app.MapGet("/api/v1/admin/content/projects/{id}", (HttpRequest request, string i
 })
 .WithName("GetAdminProject")
 .WithSummary("Get a project with all translations")
-.WithDescription("Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Requires the `content.view` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentView);
 
 app.MapGet("/api/v1/admin/content/news", (HttpRequest request, int? limit, int? offset) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
     {
@@ -179,13 +187,12 @@ app.MapGet("/api/v1/admin/content/news", (HttpRequest request, int? limit, int? 
 })
 .WithName("ListAdminNews")
 .WithSummary("List news articles with all translations")
-.WithDescription("Returns every translation of every article, grouped per slug. Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Returns every translation of every article, grouped per slug. Requires the matching `content.*` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentView);
 
 app.MapGet("/api/v1/admin/content/news/{id}", (HttpRequest request, string id) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     var rows = news.Where(n => n.Id == id).ToList();
     request.HttpContext.Response.Headers.CacheControl = "no-store";
@@ -195,13 +202,12 @@ app.MapGet("/api/v1/admin/content/news/{id}", (HttpRequest request, string id) =
 })
 .WithName("GetAdminNews")
 .WithSummary("Get a news article with all translations")
-.WithDescription("Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Requires the `content.view` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentView);
 
 app.MapPost("/api/v1/admin/content/projects", (HttpRequest request, ProjectUpsertRequest payload) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     if (payload.Translations.Count == 0)
     {
@@ -230,13 +236,12 @@ app.MapPost("/api/v1/admin/content/projects", (HttpRequest request, ProjectUpser
 })
 .WithName("CreateProject")
 .WithSummary("Create or replace a project")
-.WithDescription("Creates a project with all provided language translations. Replaces any existing project with the same slug. Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Creates a project with all provided language translations. Replaces any existing project with the same slug. Requires the matching `content.*` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentCreate);
 
 app.MapPut("/api/v1/admin/content/projects/{id}", (HttpRequest request, string id, ProjectUpsertRequest payload) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     if (!projects.Any(p => p.Id == id))
     {
@@ -256,13 +261,12 @@ app.MapPut("/api/v1/admin/content/projects/{id}", (HttpRequest request, string i
 })
 .WithName("UpdateProject")
 .WithSummary("Update a project")
-.WithDescription("Replaces all translations for the given project. Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Replaces all translations for the given project. Requires the matching `content.*` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentUpdate);
 
 app.MapDelete("/api/v1/admin/content/projects/{id}", (HttpRequest request, string id) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     var removed = projects.RemoveAll(p => p.Id == id);
     return removed == 0
@@ -271,13 +275,12 @@ app.MapDelete("/api/v1/admin/content/projects/{id}", (HttpRequest request, strin
 })
 .WithName("DeleteProject")
 .WithSummary("Delete a project")
-.WithDescription("Deletes all translations of the given project. Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Deletes all translations of the given project. Requires the matching `content.*` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentDelete);
 
 app.MapPost("/api/v1/admin/content/news", (HttpRequest request, NewsUpsertRequest payload) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     if (payload.Translations.Count == 0)
     {
@@ -303,13 +306,12 @@ app.MapPost("/api/v1/admin/content/news", (HttpRequest request, NewsUpsertReques
 })
 .WithName("CreateNews")
 .WithSummary("Create or replace a news article")
-.WithDescription("Creates a news article with all provided language translations. Replaces any existing article with the same slug. Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Creates a news article with all provided language translations. Replaces any existing article with the same slug. Requires the matching `content.*` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentCreate);
 
 app.MapPut("/api/v1/admin/content/news/{id}", (HttpRequest request, string id, NewsUpsertRequest payload) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     if (!news.Any(n => n.Id == id))
     {
@@ -334,13 +336,12 @@ app.MapPut("/api/v1/admin/content/news/{id}", (HttpRequest request, string id, N
 })
 .WithName("UpdateNews")
 .WithSummary("Update a news article")
-.WithDescription("Replaces all translations for the given news article. Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Replaces all translations for the given news article. Requires the matching `content.*` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentUpdate);
 
 app.MapDelete("/api/v1/admin/content/news/{id}", (HttpRequest request, string id) =>
 {
-    var authResult = EnsureAdmin(request);
-    if (authResult is not null) return authResult;
 
     var removed = news.RemoveAll(n => n.Id == id);
     return removed == 0
@@ -349,8 +350,9 @@ app.MapDelete("/api/v1/admin/content/news/{id}", (HttpRequest request, string id
 })
 .WithName("DeleteNews")
 .WithSummary("Delete a news article")
-.WithDescription("Deletes all translations of the given news article. Requires `Authorization: Bearer dev-admin-token`.")
-.WithTags("Admin — Content");
+.WithDescription("Deletes all translations of the given news article. Requires the matching `content.*` permission.")
+.WithTags("Admin — Content")
+.RequirePermission(Permissions.ContentDelete);
 
 app.Run();
 
@@ -408,18 +410,6 @@ static NewsAdminView ToNewsAdminView(List<NewsItem> rows)
     var first = rows[0];
     return new NewsAdminView(first.Slug, first.ImageUrl, first.PublishedAt, first.Status,
         [.. rows.Select(r => new NewsTranslationView(r.Lang, r.Title, r.Summary, r.Content))]);
-}
-
-static IResult? EnsureAdmin(HttpRequest request)
-{
-    if (!request.Headers.TryGetValue("Authorization", out var authHeader))
-    {
-        return Results.Unauthorized();
-    }
-
-    return authHeader.ToString() == "Bearer dev-admin-token"
-        ? null
-        : ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid token.");
 }
 
 sealed record ProjectItem(
