@@ -12,11 +12,11 @@
 - gateway (`src/Services/ApiGateway/**`)
   purpose: YARP routes public and admin API paths to services; entry: `Program.cs`; verify: `dotnet build KJWebsite.Backend.slnx`
 - content (`src/Services/ContentService/**`)
-  purpose: public projects/news and admin content endpoints; in-memory data; entry: `Program.cs`; docs: `PROJECT_CONTEXT.md`
+  purpose: public projects/news and admin content endpoints; PostgreSQL `content` schema via `Data/ContentStore.cs`; seed JSON in `Data/Seed/`; entry: `Program.cs`; docs: `docs/CONTENT_CONTRACT.md`
 - CTA (`src/Services/CtaSubmissionService/**`)
   purpose: public CTA submission endpoint with PostgreSQL/EF Core; entry: `Program.cs`; migrations: `Migrations/`
 - auth (`src/Services/AuthIdentityService/**`)
-  purpose: registration and token endpoints with PostgreSQL/EF Core; entry: `Program.cs`; migrations: `Migrations/`
+  purpose: ASP.NET Core Identity accounts, RS256 JWT + hashed rotating refresh tokens (`Tokens/`), sessions, password reset; entry: `Program.cs`; migrations: `Migrations/`; docs: `docs/AUTH_TOKENS.md`
 - shared (`src/BuildingBlocks/**`)
   purpose: Result, paging, language resolution, RFC 9457/legacy-compatible errors, and endpoint-filter base
 - tests (`tests/UnitTests/**`, `tests/IntegrationTests/**`)
@@ -38,7 +38,7 @@
 - OpenAPI is served from each service; Scalar is mapped by its `Program.cs`.
 - Auth, CTA, and Content errors use the shared RFC 9457 factory, preserving the legacy nested `error` object.
 - Content resolves `?lang=`, then `Accept-Language`, then `en`; public list responses echo the result as `lang`.
-- Auth and CTA require PostgreSQL `ConnectionStrings:AuthDb` / `ConnectionStrings:CtaDb`; both call `Database.Migrate()` at startup and own named schemas.
+- Auth, Content and CTA require PostgreSQL `ConnectionStrings:AuthDb` / `CtaDb` / `ContentDb`; each calls `Database.Migrate()` at startup and own named schemas.
 - Gateway destinations are hard-coded localhost addresses.
 - Root `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props` govern the active solution; legacy snapshots are excluded.
 
@@ -47,7 +47,9 @@
   §1 Current state 44–97 · §4 Engineering standards 315–369 · §5 Phase plan 370–674 · §7 Security 691–713 · §8 Operations 714–730
 
 ## Gotchas
-- Current auth stores plain-text passwords, access tokens are process-local, and content admin uses `dev-admin-token`; not production-safe.
+- Endpoints are deny-by-default: declare `.AllowAnonymous()` or `.RequirePermission(Permissions.X)` (BuildingBlocks `Security/`); a test audits every endpoint. Permissions/roles live in `KjRoles.Seed`.
+- Embedded seed files named `*.en.json`/`*.bn.json` need `WithCulture="false"` or MSBuild treats `.en`/`.bn` as a culture and builds satellite assemblies.
+- Not production-safe yet: no rate limiting, no email delivery (#32), refresh token in JSON body (cookie pending).
 - No CI, Dependabot or Docker at this stage (plan v2); run build/format/test/OpenAPI --verify locally. Local .NET 10 SDK may be at ~/.dotnet10 (system SDK can be older).
 - Npgsql `timestamp with time zone` requires UTC; normalize incoming offset timestamps before storing.
 - Never compare DateTimeOffset inside an EF LINQ predicate: SQLite cannot translate it (see RefreshTokenTests).

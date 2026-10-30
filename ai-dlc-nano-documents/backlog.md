@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-30] ContentService — public lists load then page in memory; push paging to SQL when content grows (found: 025-issue-25-content-persistence)
+- [2026-10-30] auth — SuperAdmin cannot-be-deleted guard needs RBAC APIs (P2); refresh token still in JSON body, cookie pending F1-13 (found: 024-issue-24-authorization)
 - [2026-10-30] auth — Identity email/reset tokens use per-instance data-protection keys; persist the key ring before multi-replica (found: 022-issue-22-identity)
 - [2026-10-30] auth — account emails only land in InMemoryAuthEmailSender until #32 delivers them (found: 022-issue-22-identity)
 - [2026-10-13] .github/workflows/ci.yml — needs KJ_TEST_POSTGRES wired in, or Postgres-specific tests silently skip in CI (found: 014-issue-152)

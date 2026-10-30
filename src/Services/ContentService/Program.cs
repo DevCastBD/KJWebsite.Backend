@@ -1,9 +1,11 @@
-using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
-
+using ContentService;
+using ContentService.Data;
+using ContentService.Data.Entities;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Security;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 const int MaxPageSize = 100;
@@ -14,16 +16,42 @@ builder.Services.AddOpenApi(options =>
     options.AddDocumentTransformer((document, context, ct) =>
     {
         document.Info.Title = "Content Service API";
-        document.Info.Description = "Serves projects and news items in multiple languages (en/bn). " +
+        document.Info.Description = "Serves projects and news items in multiple languages (en/bn) from PostgreSQL. " +
             "Public read endpoints are unauthenticated. Admin endpoints require a bearer access token (from the Auth service) carrying the matching `content.*` permission.";
         document.Info.Version = "v1";
         return Task.CompletedTask;
     });
 });
 
+builder.Services.AddDbContext<ContentDbContext>((services, options) =>
+{
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("ContentDb")
+        ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=content" : throw new InvalidOperationException("ConnectionStrings:ContentDb is required."));
+    options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "content"));
+});
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ContentStore>();
 builder.Services.AddKjJwtAuthentication();
 
 var app = builder.Build();
+
+if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ContentDbContext>();
+    // Tests swap in the Sqlite provider, which has no migrations to replay; Postgres keeps its migration history.
+    if (db.Database.IsNpgsql())
+    {
+        db.Database.Migrate();
+    }
+    else
+    {
+        db.Database.EnsureCreated();
+    }
+
+    await ContentSeeder.SeedAsync(db, scope.ServiceProvider.GetRequiredService<TimeProvider>());
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -39,26 +67,13 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
-
-var projects = new List<ProjectItem>
-{
-    new("pathshala", "pathshala", "en", "Pathshala", "Pathshala", "Training project", "Full details", "/img/causes/2.jpg", "Education", "2016", "active", "flaticon-circle", DateTimeOffset.UtcNow),
-    new("pathshala", "pathshala", "bn", "পাঠশালা", "পাঠশালা", "প্রশিক্ষণ প্রকল্প", "বিস্তারিত", "/img/causes/2.jpg", "শিক্ষা", "২০১৬", "active", "flaticon-circle", DateTimeOffset.UtcNow)
-};
-
-var news = new List<NewsItem>
-{
-    new("bauniabadh-mou", "bauniabadh-mou", "en", "MoU signed", "Summary", ["Paragraph 1"], "/img/blog/1.jpg", "February 25, 2017", DateTimeOffset.Parse("2017-02-25", CultureInfo.InvariantCulture), "published"),
-    new("bauniabadh-mou", "bauniabadh-mou", "bn", "সমঝোতা চুক্তি", "সারসংক্ষেপ", ["অনুচ্ছেদ ১"], "/img/blog/1.jpg", "ফেব্রুয়ারি ২৫, ২০১৭", DateTimeOffset.Parse("2017-02-25", CultureInfo.InvariantCulture), "published")
-};
-
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ContentService" }))
    .WithName("ContentHealth")
    .WithSummary("Content service health check")
    .WithTags("System")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/content/projects", (HttpRequest request, string? lang, string? status, int? limit, int? offset) =>
+app.MapGet("/api/v1/content/projects", async (HttpRequest request, ContentStore store, string? lang, string? status, int? limit, int? offset) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
     if (!TryReadStatus(status, out var normalizedStatus))
@@ -71,7 +86,7 @@ app.MapGet("/api/v1/content/projects", (HttpRequest request, string? lang, strin
         return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
     }
 
-    return Cached(request, Page(ProjectsFor(resolvedLanguage, normalizedStatus), safeLimit, safeOffset, resolvedLanguage));
+    return Cached(request, Page(await store.ProjectsAsync(resolvedLanguage, normalizedStatus), safeLimit, safeOffset, resolvedLanguage));
 })
 .WithName("GetProjects")
 .WithSummary("List projects (paginated)")
@@ -79,10 +94,10 @@ app.MapGet("/api/v1/content/projects", (HttpRequest request, string? lang, strin
 .WithTags("Content")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/content/projects/{id}", (HttpRequest request, string id, string? lang) =>
+app.MapGet("/api/v1/content/projects/{id}", async (HttpRequest request, ContentStore store, string id, string? lang) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
-    var item = projects.FirstOrDefault(p => p.Id == id && p.Lang == resolvedLanguage);
+    var item = await store.ProjectAsync(id, resolvedLanguage);
     return item is null
         ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.")
         : Cached(request, item);
@@ -93,7 +108,7 @@ app.MapGet("/api/v1/content/projects/{id}", (HttpRequest request, string id, str
 .WithTags("Content")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/content/news", (HttpRequest request, string? lang, int? limit, int? offset) =>
+app.MapGet("/api/v1/content/news", async (HttpRequest request, ContentStore store, string? lang, int? limit, int? offset) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
     if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
@@ -101,7 +116,7 @@ app.MapGet("/api/v1/content/news", (HttpRequest request, string? lang, int? limi
         return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
     }
 
-    return Cached(request, Page(NewsFor(resolvedLanguage), safeLimit, safeOffset, resolvedLanguage));
+    return Cached(request, Page(await store.NewsAsync(resolvedLanguage), safeLimit, safeOffset, resolvedLanguage));
 })
 .WithName("GetNews")
 .WithSummary("List news articles (paginated)")
@@ -109,10 +124,10 @@ app.MapGet("/api/v1/content/news", (HttpRequest request, string? lang, int? limi
 .WithTags("Content")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/content/news/{id}", (HttpRequest request, string id, string? lang) =>
+app.MapGet("/api/v1/content/news/{id}", async (HttpRequest request, ContentStore store, string id, string? lang) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
-    var item = news.FirstOrDefault(n => n.Id == id && n.Lang == resolvedLanguage);
+    var item = await store.NewsItemAsync(id, resolvedLanguage);
     return item is null
         ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.")
         : Cached(request, item);
@@ -123,13 +138,13 @@ app.MapGet("/api/v1/content/news/{id}", (HttpRequest request, string id, string?
 .WithTags("Content")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/content/bootstrap", (HttpRequest request, string? lang) =>
+app.MapGet("/api/v1/content/bootstrap", async (HttpRequest request, ContentStore store, string? lang) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
     return Cached(request, new
     {
-        projects = Page(ProjectsFor(resolvedLanguage, "active"), MaxPageSize, 0, resolvedLanguage),
-        news = Page(NewsFor(resolvedLanguage), MaxPageSize, 0, resolvedLanguage),
+        projects = Page(await store.ProjectsAsync(resolvedLanguage, "active"), MaxPageSize, 0, resolvedLanguage),
+        news = Page(await store.NewsAsync(resolvedLanguage), MaxPageSize, 0, resolvedLanguage),
         settings = new Dictionary<string, string>(),
         lang = resolvedLanguage
     });
@@ -140,7 +155,7 @@ app.MapGet("/api/v1/content/bootstrap", (HttpRequest request, string? lang) =>
 .WithTags("Content")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/admin/content/projects", (HttpRequest request, int? limit, int? offset) =>
+app.MapGet("/api/v1/admin/content/projects", async (HttpRequest request, ContentStore store, int? limit, int? offset) =>
 {
 
     if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
@@ -149,8 +164,7 @@ app.MapGet("/api/v1/admin/content/projects", (HttpRequest request, int? limit, i
     }
 
     request.HttpContext.Response.Headers.CacheControl = "no-store";
-    var all = projects.GroupBy(p => p.Id).Select(g => ToProjectAdminView(g.ToList())).ToList();
-    return Results.Ok(PageAll(all, safeLimit, safeOffset));
+    return Results.Ok(PageAll(await store.AdminProjectsAsync(), safeLimit, safeOffset));
 })
 .WithName("ListAdminProjects")
 .WithSummary("List projects with all translations")
@@ -158,14 +172,14 @@ app.MapGet("/api/v1/admin/content/projects", (HttpRequest request, int? limit, i
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
-app.MapGet("/api/v1/admin/content/projects/{id}", (HttpRequest request, string id) =>
+app.MapGet("/api/v1/admin/content/projects/{id}", async (HttpRequest request, ContentStore store, string id) =>
 {
 
-    var rows = projects.Where(p => p.Id == id).ToList();
+    var view = await store.AdminProjectAsync(id);
     request.HttpContext.Response.Headers.CacheControl = "no-store";
-    return rows.Count == 0
+    return view is null
         ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.")
-        : Results.Ok(ToProjectAdminView(rows));
+        : Results.Ok(view);
 })
 .WithName("GetAdminProject")
 .WithSummary("Get a project with all translations")
@@ -173,7 +187,7 @@ app.MapGet("/api/v1/admin/content/projects/{id}", (HttpRequest request, string i
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
-app.MapGet("/api/v1/admin/content/news", (HttpRequest request, int? limit, int? offset) =>
+app.MapGet("/api/v1/admin/content/news", async (HttpRequest request, ContentStore store, int? limit, int? offset) =>
 {
 
     if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
@@ -182,8 +196,7 @@ app.MapGet("/api/v1/admin/content/news", (HttpRequest request, int? limit, int? 
     }
 
     request.HttpContext.Response.Headers.CacheControl = "no-store";
-    var all = news.GroupBy(n => n.Id).Select(g => ToNewsAdminView(g.ToList())).ToList();
-    return Results.Ok(PageAll(all, safeLimit, safeOffset));
+    return Results.Ok(PageAll(await store.AdminNewsAsync(), safeLimit, safeOffset));
 })
 .WithName("ListAdminNews")
 .WithSummary("List news articles with all translations")
@@ -191,14 +204,14 @@ app.MapGet("/api/v1/admin/content/news", (HttpRequest request, int? limit, int? 
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
-app.MapGet("/api/v1/admin/content/news/{id}", (HttpRequest request, string id) =>
+app.MapGet("/api/v1/admin/content/news/{id}", async (HttpRequest request, ContentStore store, string id) =>
 {
 
-    var rows = news.Where(n => n.Id == id).ToList();
+    var view = await store.AdminNewsItemAsync(id);
     request.HttpContext.Response.Headers.CacheControl = "no-store";
-    return rows.Count == 0
+    return view is null
         ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.")
-        : Results.Ok(ToNewsAdminView(rows));
+        : Results.Ok(view);
 })
 .WithName("GetAdminNews")
 .WithSummary("Get a news article with all translations")
@@ -206,58 +219,28 @@ app.MapGet("/api/v1/admin/content/news/{id}", (HttpRequest request, string id) =
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
-app.MapPost("/api/v1/admin/content/projects", (HttpRequest request, ProjectUpsertRequest payload) =>
+app.MapPost("/api/v1/admin/content/projects", async (HttpRequest request, ContentStore store, ProjectUpsertRequest payload) =>
 {
-
-    if (payload.Translations.Count == 0)
-    {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "At least one translation is required.");
-    }
-
-    var created = payload.Translations.Select(t => new ProjectItem(
-        payload.Slug,
-        payload.Slug,
-        t.Lang,
-        t.Title,
-        t.ShortTitle ?? t.Title,
-        t.ShortDescription ?? string.Empty,
-        t.FullDescription ?? string.Empty,
-        payload.ImageUrl ?? string.Empty,
-        payload.Category ?? string.Empty,
-        payload.Year ?? string.Empty,
-        payload.Status,
-        payload.Icon ?? string.Empty,
-        DateTimeOffset.UtcNow)).ToList();
-
-    projects.RemoveAll(p => p.Id == payload.Slug);
-    projects.AddRange(created);
-
-    return Results.Created($"/api/v1/content/projects/{payload.Slug}", created.First());
+    var result = await store.UpsertProjectAsync(payload.Slug, payload, mustExist: false);
+    return result.Outcome == UpsertOutcome.Invalid
+        ? ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!)
+        : Results.Created($"/api/v1/content/projects/{payload.Slug}", result.Value);
 })
 .WithName("CreateProject")
 .WithSummary("Create or replace a project")
-.WithDescription("Creates a project with all provided language translations. Replaces any existing project with the same slug. Requires the matching `content.*` permission.")
+.WithDescription("Creates a project with all provided language translations. Replaces (or restores) any existing project with the same slug. Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentCreate);
 
-app.MapPut("/api/v1/admin/content/projects/{id}", (HttpRequest request, string id, ProjectUpsertRequest payload) =>
+app.MapPut("/api/v1/admin/content/projects/{id}", async (HttpRequest request, ContentStore store, string id, ProjectUpsertRequest payload) =>
 {
-
-    if (!projects.Any(p => p.Id == id))
+    var result = await store.UpsertProjectAsync(id, payload, mustExist: true);
+    return result.Outcome switch
     {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.");
-    }
-
-    projects.RemoveAll(p => p.Id == id);
-    var updated = payload.Translations.Select(t => new ProjectItem(
-        id, id, t.Lang, t.Title, t.ShortTitle ?? t.Title,
-        t.ShortDescription ?? string.Empty, t.FullDescription ?? string.Empty,
-        payload.ImageUrl ?? string.Empty, payload.Category ?? string.Empty,
-        payload.Year ?? string.Empty, payload.Status, payload.Icon ?? string.Empty,
-        DateTimeOffset.UtcNow)).ToList();
-    projects.AddRange(updated);
-
-    return Results.Ok(updated.First());
+        UpsertOutcome.NotFound => ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found."),
+        UpsertOutcome.Invalid => ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!),
+        _ => Results.Ok(result.Value)
+    };
 })
 .WithName("UpdateProject")
 .WithSummary("Update a project")
@@ -265,74 +248,38 @@ app.MapPut("/api/v1/admin/content/projects/{id}", (HttpRequest request, string i
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentUpdate);
 
-app.MapDelete("/api/v1/admin/content/projects/{id}", (HttpRequest request, string id) =>
-{
-
-    var removed = projects.RemoveAll(p => p.Id == id);
-    return removed == 0
-        ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.")
-        : Results.NoContent();
-})
+app.MapDelete("/api/v1/admin/content/projects/{id}", async (HttpRequest request, ContentStore store, string id) =>
+    await store.DeleteAsync(ContentTypes.Project, id)
+        ? Results.NoContent()
+        : ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found."))
 .WithName("DeleteProject")
 .WithSummary("Delete a project")
-.WithDescription("Deletes all translations of the given project. Requires the matching `content.*` permission.")
+.WithDescription("Soft-deletes the project (the slug stays reserved). Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentDelete);
 
-app.MapPost("/api/v1/admin/content/news", (HttpRequest request, NewsUpsertRequest payload) =>
+app.MapPost("/api/v1/admin/content/news", async (HttpRequest request, ContentStore store, NewsUpsertRequest payload) =>
 {
-
-    if (payload.Translations.Count == 0)
-    {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "At least one translation is required.");
-    }
-
-    var created = payload.Translations.Select(t => new NewsItem(
-        payload.Slug,
-        payload.Slug,
-        t.Lang,
-        t.Title,
-        t.Summary ?? string.Empty,
-        t.Content ?? [],
-        payload.ImageUrl ?? string.Empty,
-        payload.PublishedAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
-        payload.PublishedAt ?? DateTimeOffset.UtcNow,
-        payload.Status)).ToList();
-
-    news.RemoveAll(n => n.Id == payload.Slug);
-    news.AddRange(created);
-
-    return Results.Created($"/api/v1/content/news/{payload.Slug}", created.First());
+    var result = await store.UpsertNewsAsync(payload.Slug, payload, mustExist: false);
+    return result.Outcome == UpsertOutcome.Invalid
+        ? ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!)
+        : Results.Created($"/api/v1/content/news/{payload.Slug}", result.Value);
 })
 .WithName("CreateNews")
 .WithSummary("Create or replace a news article")
-.WithDescription("Creates a news article with all provided language translations. Replaces any existing article with the same slug. Requires the matching `content.*` permission.")
+.WithDescription("Creates a news article with all provided language translations. Replaces (or restores) any existing article with the same slug. Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentCreate);
 
-app.MapPut("/api/v1/admin/content/news/{id}", (HttpRequest request, string id, NewsUpsertRequest payload) =>
+app.MapPut("/api/v1/admin/content/news/{id}", async (HttpRequest request, ContentStore store, string id, NewsUpsertRequest payload) =>
 {
-
-    if (!news.Any(n => n.Id == id))
+    var result = await store.UpsertNewsAsync(id, payload, mustExist: true);
+    return result.Outcome switch
     {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.");
-    }
-
-    news.RemoveAll(n => n.Id == id);
-    var updated = payload.Translations.Select(t => new NewsItem(
-        id,
-        id,
-        t.Lang,
-        t.Title,
-        t.Summary ?? string.Empty,
-        t.Content ?? [],
-        payload.ImageUrl ?? string.Empty,
-        payload.PublishedAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
-        payload.PublishedAt ?? DateTimeOffset.UtcNow,
-        payload.Status)).ToList();
-    news.AddRange(updated);
-
-    return Results.Ok(updated.First());
+        UpsertOutcome.NotFound => ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found."),
+        UpsertOutcome.Invalid => ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!),
+        _ => Results.Ok(result.Value)
+    };
 })
 .WithName("UpdateNews")
 .WithSummary("Update a news article")
@@ -340,26 +287,17 @@ app.MapPut("/api/v1/admin/content/news/{id}", (HttpRequest request, string id, N
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentUpdate);
 
-app.MapDelete("/api/v1/admin/content/news/{id}", (HttpRequest request, string id) =>
-{
-
-    var removed = news.RemoveAll(n => n.Id == id);
-    return removed == 0
-        ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.")
-        : Results.NoContent();
-})
+app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, ContentStore store, string id) =>
+    await store.DeleteAsync(ContentTypes.News, id)
+        ? Results.NoContent()
+        : ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found."))
 .WithName("DeleteNews")
 .WithSummary("Delete a news article")
-.WithDescription("Deletes all translations of the given news article. Requires the matching `content.*` permission.")
+.WithDescription("Soft-deletes the article (the slug stays reserved). Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentDelete);
 
 app.Run();
-
-List<ProjectItem> ProjectsFor(string language, string status) =>
-    projects.Where(p => p.Lang == language && (status == "all" || p.Status == "active")).ToList();
-
-List<NewsItem> NewsFor(string language) => news.Where(n => n.Lang == language).ToList();
 
 static bool TryReadStatus(string? status, out string normalized)
 {
@@ -397,75 +335,6 @@ static IResult Cached(HttpRequest request, object body)
         ? Results.StatusCode(StatusCodes.Status304NotModified)
         : Results.Bytes(json, "application/json");
 }
-
-static ProjectAdminView ToProjectAdminView(List<ProjectItem> rows)
-{
-    var first = rows[0];
-    return new ProjectAdminView(first.Slug, first.ImageUrl, first.Category, first.Year, first.Status, first.Icon,
-        [.. rows.Select(r => new ProjectTranslationView(r.Lang, r.Title, r.ShortTitle, r.ShortDescription, r.FullDescription))]);
-}
-
-static NewsAdminView ToNewsAdminView(List<NewsItem> rows)
-{
-    var first = rows[0];
-    return new NewsAdminView(first.Slug, first.ImageUrl, first.PublishedAt, first.Status,
-        [.. rows.Select(r => new NewsTranslationView(r.Lang, r.Title, r.Summary, r.Content))]);
-}
-
-sealed record ProjectItem(
-    string Id,
-    string Slug,
-    string Lang,
-    string Title,
-    string ShortTitle,
-    string ShortDescription,
-    string FullDescription,
-    string ImageUrl,
-    string Category,
-    string Year,
-    string Status,
-    string Icon,
-    DateTimeOffset UpdatedAt);
-
-sealed record NewsItem(
-    string Id,
-    string Slug,
-    string Lang,
-    string Title,
-    string Summary,
-    List<string> Content,
-    string ImageUrl,
-    string Date,
-    DateTimeOffset PublishedAt,
-    string Status);
-
-sealed record ProjectTranslationView(string Lang, string Title, string ShortTitle, string ShortDescription, string FullDescription);
-
-sealed record ProjectAdminView(string Slug, string ImageUrl, string Category, string Year, string Status, string Icon, List<ProjectTranslationView> Translations);
-
-sealed record NewsTranslationView(string Lang, string Title, string Summary, List<string> Content);
-
-sealed record NewsAdminView(string Slug, string ImageUrl, DateTimeOffset PublishedAt, string Status, List<NewsTranslationView> Translations);
-
-sealed record ProjectUpsertRequest(
-    string Slug,
-    string? ImageUrl,
-    string? Category,
-    string? Year,
-    string Status,
-    string? Icon,
-    List<ProjectTranslationInput> Translations);
-
-sealed record ProjectTranslationInput(string Lang, string Title, string? ShortTitle, string? ShortDescription, string? FullDescription);
-
-sealed record NewsUpsertRequest(
-    string Slug,
-    string? ImageUrl,
-    DateTimeOffset? PublishedAt,
-    string Status,
-    List<NewsTranslationInput> Translations);
-
-sealed record NewsTranslationInput(string Lang, string Title, string? Summary, List<string>? Content);
 
 namespace ContentService
 {

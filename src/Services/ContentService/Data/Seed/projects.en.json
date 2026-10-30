@@ -1,0 +1,74 @@
+[
+  {
+    "id": "pathshala",
+    "title": "Pathshala",
+    "shortTitle": "Pathshala",
+    "image": "/img/causes/2.jpg",
+    "shortDescription": "Pathshala is a training project run by Kolpojontro Foundation. Alongside formal academic learning, the project follows a structured curriculum to train underprivileged and low-resource children from schools, madrasas, and missions in practical science and technology topics.",
+    "fullDescription": "Pathshala is a training project operated by Kolpojontro Foundation. The project aims to train underprivileged and low-resource children from schools, madrasas, and missions through a structured curriculum focused on practical science and technology topics, alongside their formal academic education.\n\nOur mission is to empower disadvantaged children through ICT training and practical science education, making them self-reliant and competent. The Pathshala project is actively working in multiple schools and madrasas, providing training to hundreds of students daily.\n\nProject Objectives:\n- Develop technology-based skills\n- Provide practical knowledge\n- Increase self-reliance\n- Build social responsibility",
+    "category": "Education",
+    "year": "2016",
+    "status": "Active",
+    "icon": "coin"
+  },
+  {
+    "id": "engineers-talk",
+    "title": "Engineer's Talk",
+    "shortTitle": "Engineer's Talk",
+    "image": "/img/causes/1.jpg",
+    "shortDescription": "Engineer's Talk is a Bangla science and technology talk-show project. Through expert discussions and practical insights, we inspire young learners to explore technology and innovation.",
+    "fullDescription": "Engineer's Talk is a Bengali-language talk show focused on science and technology topics. Through this project, we discuss various aspects of technology with experienced professionals and inspire young people to develop an interest in science and technology.\n\nThe project mainly aims to raise awareness among the youth about various modern innovations in science and technology and inspire them to build their careers in these fields.\n\nProject Features:\n- Technology discussions in Bengali language\n- Interviews with industry experts\n- Inspirational content for youth\n- Promotion of innovative thinking",
+    "category": "Awareness",
+    "year": "2017",
+    "status": "Active",
+    "icon": "envelope"
+  },
+  {
+    "id": "women-education",
+    "title": "Women Education",
+    "shortTitle": "Women Education",
+    "image": "/img/causes/3.jpg",
+    "shortDescription": "Women Education focuses on confidence, equal rights awareness, and stronger participation of women in socio-economic development.",
+    "fullDescription": "Women Education is a key project of our organization that plays an important role in women's empowerment and development. We believe that women's education is essential for the progress of society.\n\nUnder this project, we:\n- Ensure regular school attendance for girls\n- Employ female teachers\n- Provide scholarships\n- Conduct awareness programs\n\nOur Goals:\n- Establish women's freedom and equality\n- Increase women's skills and confidence\n- Increase women's participation in society's development\n- Eliminate gender discrimination",
+    "category": "Social Development",
+    "year": "2015",
+    "status": "Active",
+    "icon": "people"
+  },
+  {
+    "id": "probinchaya",
+    "title": "ProbinChaya",
+    "shortTitle": "ProbinChaya",
+    "image": "/img/causes/4.jpg",
+    "shortDescription": "ProbinChaya is a humanitarian project focused on elder care through companionship, wellbeing support, and access to essential community services.",
+    "fullDescription": "ProbinChaya is a social support initiative by Kolpojontro Foundation designed to stand beside senior citizens. Many elderly people face loneliness, limited mobility, and difficulty accessing basic services. This project addresses those gaps through regular engagement, guidance, and referral-based support.\n\nUnder this project, we:\n- Arrange elder-focused health awareness and basic checkup support\n- Maintain regular communication and emotional wellbeing support\n- Organize social engagement opportunities\n- Provide urgent assistance and service referrals\n\nOur Goals:\n- Reduce loneliness among senior citizens\n- Improve health and wellbeing outcomes\n- Strengthen family and community connection\n- Ensure dignified and supported aging",
+    "category": "Social Service",
+    "year": "2018",
+    "status": "Active",
+    "icon": "heart"
+  },
+  {
+    "id": "bayanno",
+    "title": "Bayanno",
+    "shortTitle": "Bayanno",
+    "image": "/img/causes/b1.jpg",
+    "shortDescription": "Bayanno is a cultural and educational initiative that promotes language heritage, history, and critical thinking among young learners.",
+    "fullDescription": "Bayanno is designed to carry forward the spirit of the language movement by making history and cultural identity more engaging for students. Through workshops, discussions, quizzes, and creative activities, the project helps young people connect with language, heritage, and civic values.\n\nCore activities include:\n- Educational sessions on language and history\n- School-based discussions and quiz programs\n- Creative writing and presentation exercises\n- Cultural awareness and value-based learning\n\nOur Goals:\n- Build deeper awareness of language movement history\n- Strengthen cultural identity in the next generation\n- Encourage research-oriented and critical thinking\n- Foster responsible and positive social consciousness",
+    "category": "Culture & Education",
+    "year": "2019",
+    "status": "Active",
+    "icon": "envelope"
+  },
+  {
+    "id": "ongona",
+    "title": "Ongona",
+    "shortTitle": "Ongona",
+    "image": "/img/causes/clist-1.jpg",
+    "shortDescription": "Ongona is a women-centered empowerment project that builds confidence and independence through skill development and practical livelihood training.",
+    "fullDescription": "Ongona aims to create an inclusive platform where women can build practical skills, improve leadership, and become economically self-reliant. The project combines training, mentorship, and community support so participants can pursue sustainable personal and professional growth.\n\nUnder this project, we:\n- Provide ICT and communication skill training\n- Deliver livelihood-oriented practical courses\n- Run awareness and leadership development sessions\n- Build women-led peer support networks\n\nOur Goals:\n- Increase confidence and decision-making ability\n- Develop employability and income-focused skills\n- Strengthen social safety and participation\n- Create sustainable pathways to empowerment",
+    "category": "Women Empowerment",
+    "year": "2020",
+    "status": "Active",
+    "icon": "people"
+  }
+]

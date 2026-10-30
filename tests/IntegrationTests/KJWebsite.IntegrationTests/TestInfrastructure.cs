@@ -1,4 +1,5 @@
 using AuthIdentityService.Data;
+using ContentService.Data;
 using CtaSubmissionService.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -152,11 +153,22 @@ public sealed class PostgresAuthApiFactory(string connectionString)
 public sealed class PostgresCtaApiFactory(string connectionString)
     : PostgresWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint>(connectionString, "CtaDb");
 
-public sealed class ContentApiFactory : WebApplicationFactory<ContentService.ContentServiceTestEntryPoint>
+public sealed class ContentApiFactory : SqliteWebApplicationFactory<ContentService.ContentServiceTestEntryPoint, ContentDbContext>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+    }
+}
+
+public sealed class PostgresContentApiFactory(string connectionString)
+    : PostgresWebApplicationFactory<ContentService.ContentServiceTestEntryPoint>(connectionString, "ContentDb")
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
     }

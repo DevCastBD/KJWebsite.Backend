@@ -1,0 +1,41 @@
+[
+  {
+    "id": "bauniabadh-mou",
+    "title": "MoU signed with Bauniabadh Model High School",
+    "date": "February 25, 2017",
+    "image": "/img/blog/1.jpg",
+    "summary": "Kolpojontro Foundation and Bauniabadh Model High School signed an agreement to expand Pathshala activities.",
+    "content": [
+      "To expand the reach of Pathshala, Kolpojontro Foundation signed a formal MoU with Bauniabadh Model High School. Under this partnership, students will receive regular science and technology-based vocational training.",
+      "Through this collaboration, Kolpojontro volunteers will deliver hands-on ICT sessions, practical science learning, and activities focused on creative skill development.",
+      "Both organizations expect the initiative to improve confidence, practical capability, and long-term opportunities for underprivileged students."
+    ],
+    "tags": ["Pathshala", "Partnerships"]
+  },
+  {
+    "id": "kalidesh-high-school",
+    "title": "Pathshala now includes Kalidesh Kolim Uddin High School, Tangail",
+    "date": "October 16, 2016",
+    "image": "/img/blog/2.jpg",
+    "summary": "A new Pathshala program has started at Kalidesh Kolim Uddin High School in Tangail.",
+    "content": [
+      "As part of Pathshala expansion, Kalidesh Kolim Uddin High School in Tangail has been onboarded. This new partnership brings technology-oriented learning opportunities to more students.",
+      "The program plan includes foundational computer literacy, digital awareness, and practical science sessions tailored to student needs.",
+      "With participation from teachers and guardians, the initiative will be implemented through a collaborative local model for long-term sustainability."
+    ],
+    "tags": ["Pathshala", "Schools"]
+  },
+  {
+    "id": "talimuddin-madrasa",
+    "title": "Talimuddin Madrasa in Dhaka joined under Project Pathshala",
+    "date": "June 12, 2016",
+    "image": "/img/blog/3.jpg",
+    "summary": "Pathshala vocational training has been extended to Talimuddin Madrasa in Dhaka.",
+    "content": [
+      "Talimuddin Madrasa in Dhaka has joined Kolpojontro Foundation’s Pathshala project. The goal is to include madrasa students in practical science and technology learning opportunities.",
+      "The training team will run sessions on ICT skills, problem-solving ability, and modern learning practices that students can apply in real life.",
+      "Kolpojontro believes this integrated approach will strengthen self-reliance and build applicable skills for students’ future."
+    ],
+    "tags": ["Pathshala", "Madrasas"]
+  }
+]
