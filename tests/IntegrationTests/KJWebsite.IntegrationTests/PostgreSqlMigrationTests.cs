@@ -22,7 +22,8 @@ public sealed class PostgreSqlMigrationTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
-        db.Database.GetAppliedMigrations().Should().HaveCount(4);
+        db.Database.GetAppliedMigrations().Should().HaveCount(5).And.Contain(m => m.Contains("AddAuditLog"));
+        db.Database.GetPendingMigrations().Should().BeEmpty();
         (await TableExists(connectionString, "auth", "users")).Should().BeTrue();
         (await TableExists(connectionString, "auth", "member_profiles")).Should().BeTrue();
         (await TableExists(connectionString, "auth", "roles")).Should().BeTrue();

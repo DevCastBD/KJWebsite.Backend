@@ -23,7 +23,8 @@ public sealed class ContentPostgresTests
             {
                 using var scope = first.Services.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<ContentDbContext>();
-                db.Database.GetAppliedMigrations().Should().ContainSingle().Which.Should().Contain("InitialContent");
+                db.Database.GetAppliedMigrations().Should().Contain(m => m.Contains("InitialContent")).And.Contain(m => m.Contains("AddAuditLog"));
+                db.Database.GetPendingMigrations().Should().BeEmpty();
 
                 using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/content/projects") { Content = JsonContent.Create(new { slug = "pg-survivor", status = "active", translations = new[] { new { lang = "bn", title = "পিজি" } } }) };
                 request.Headers.Authorization = new("Bearer", TestTokens.ContentAdmin());
@@ -54,5 +55,35 @@ public sealed class ContentPostgresTests
         await connection.OpenAsync();
         await using var command = new NpgsqlCommand(sql, connection);
         return Convert.ToInt64(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
+    }
+    [RequiresPostgresFact]
+    public async Task TheDatabaseItselfRefusesToChangeOrRemoveAuditRows()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("content_audit_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            using (var factory = new PostgresContentApiFactory(connectionString))
+            using (var client = factory.CreateClient())
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/content/pages") { Content = JsonContent.Create(new { slug = "audited", status = "draft", translations = new[] { new { lang = "en", title = "Audited" } } }) };
+                request.Headers.Authorization = new("Bearer", TestTokens.ContentAdmin());
+                (await client.SendAsync(request)).StatusCode.Should().Be(HttpStatusCode.Created);
+            }
+
+            (await Scalar(connectionString, "SELECT count(*) FROM content.audit_events")).Should().BeGreaterThan(0);
+            foreach (var statement in new[] { "UPDATE content.audit_events SET \"Action\"='x'", "DELETE FROM content.audit_events", "TRUNCATE content.audit_events" })
+            {
+                var attempt = async () => await Scalar(connectionString, statement.StartsWith("SELECT", StringComparison.Ordinal) ? statement : statement + "; SELECT 1");
+                (await attempt.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("42501", statement);
+            }
+
+            (await Scalar(connectionString, "SELECT count(*) FROM content.audit_events WHERE \"Action\"='x'")).Should().Be(0);
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await TestPostgres.DropDatabaseAsync(databaseName);
+        }
     }
 }

@@ -29,7 +29,15 @@ public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebAp
         {
             services.RemoveAll<DbContextOptions<TContext>>();
             services.RemoveAll<IDbContextOptionsConfiguration<TContext>>();
-            services.AddDbContext<TContext>(options => options.UseSqlite($"Data Source={_dbPath}"));
+            services.AddDbContext<TContext>((provider, options) =>
+            {
+                options.UseSqlite($"Data Source={_dbPath}");
+                // The service's own registration was removed above; keep its audit interceptor so tests exercise the real write path.
+                if (provider.GetService<KJWebsite.BuildingBlocks.Auditing.AuditInterceptor>() is { } audit)
+                {
+                    options.AddInterceptors(audit);
+                }
+            });
         });
     }
 

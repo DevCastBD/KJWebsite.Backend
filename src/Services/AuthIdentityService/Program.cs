@@ -6,6 +6,7 @@ using AuthIdentityService.Data.Entities;
 using AuthIdentityService.Identity;
 using AuthIdentityService.Tokens;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,14 @@ builder.Services.AddDbContext<AuthDbContext>((services, options) =>
     var connectionString = configuration.GetConnectionString("AuthDb")
         ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=auth" : throw new InvalidOperationException("ConnectionStrings:AuthDb is required."));
     options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "auth"));
+    options.AddInterceptors(services.GetRequiredService<AuditInterceptor>());
 });
+builder.Services.AddKjAuditing("auth", audit => audit
+    .Audit<AuthUserEntity>("PasswordHash", "SecurityStamp", "ConcurrencyStamp")
+    .Audit<AuthRoleEntity>("ConcurrencyStamp")
+    .Audit<IdentityRoleClaim<string>>()
+    .Audit<IdentityUserRole<string>>()
+    .Audit<MemberProfileEntity>());
 
 // Confirmation and reset tokens are protected by the data-protection key ring (see backlog: share it across replicas).
 builder.Services.AddDataProtection();
@@ -459,6 +467,7 @@ static async Task<string> RoleOf(UserManager<AuthUserEntity> users, AuthUserEnti
     (await users.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
 
 app.MapAdminAuth();
+app.MapAuditLog<AuthDbContext>("/api/v1/admin/auth/audit", "Auth");
 
 app.Run();
 

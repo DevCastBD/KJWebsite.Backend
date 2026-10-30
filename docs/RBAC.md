@@ -19,7 +19,7 @@ Nine built-in roles (plan §3.1) are created on first start with the permissions
 - **No escalation:** you can only grant, or change, permissions you hold yourself (`403 FORBIDDEN`). Editing a role needs every permission it holds before or after.
 - Built-in roles cannot be deleted (`SYSTEM_ROLE`); a role with members cannot be deleted (`ROLE_IN_USE`).
 - Any role or user-role change **ends the affected users' sessions**, so a stale token cannot keep a revoked permission; they sign in again to get the new set.
-- Every change is logged (`EventId 4101`) with actor, target and before/after. Persisting these in the immutable audit log is BE-033.
+- Every change is logged (`EventId 4101`) and written to the immutable audit log (`IdentityUserRole`, `IdentityRoleClaim`, `AuthRole` rows, see `docs/AUDIT_LOG.md`), read at `GET /api/v1/admin/auth/audit` with `audit.view`.
 
 ## Object-level ownership
 A key says what a caller may do, not to whom. `ResourceOwnership.CanAccess(principal, ownerId, managerPermission)` is true for the owner or for a holder of the manager permission. Member self-service endpoints (P3) must call it: `member.profile.edit` lets a member edit **their own** profile; `membership.manage` lifts the restriction. Tested in `PermissionTests`.

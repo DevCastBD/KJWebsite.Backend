@@ -4,6 +4,7 @@ using ContentService;
 using ContentService.Data;
 using ContentService.Data.Entities;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Security;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -28,7 +29,18 @@ builder.Services.AddDbContext<ContentDbContext>((services, options) =>
     var connectionString = configuration.GetConnectionString("ContentDb")
         ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=content" : throw new InvalidOperationException("ConnectionStrings:ContentDb is required."));
     options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "content"));
+    options.AddInterceptors(services.GetRequiredService<AuditInterceptor>());
 });
+builder.Services.AddKjAuditing("content", audit => audit
+    .Audit<ContentItemEntity>()
+    .Audit<ContentTranslationEntity>()
+    .Audit<ProjectEntity>()
+    .Audit<NewsArticleEntity>()
+    .Audit<TagEntity>()
+    .Audit<TagNameEntity>()
+    .Audit<ContentItemTagEntity>()
+    .Audit<ContentRelationEntity>()
+    .Audit<RedirectEntity>());
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ContentStore>();
 builder.Services.AddScoped<TaxonomyStore>();
@@ -321,6 +333,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 .RequirePermission(Permissions.ContentDelete);
 
 app.MapGenericContent();
+app.MapAuditLog<ContentDbContext>("/api/v1/admin/content/audit", "Content");
 
 app.Run();
 

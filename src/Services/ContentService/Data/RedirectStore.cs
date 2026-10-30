@@ -129,9 +129,11 @@ public sealed class RedirectStore(ContentDbContext db, TimeProvider time)
     }
 
     /// <summary>Drops a redirect whose source is about to become a live path again (an item renamed back to its old slug).</summary>
-    public Task<int> RemoveFromAsync(string path)
+    public async Task RemoveFromAsync(string path)
     {
         var from = NormalizePath(path);
-        return db.Redirects.Where(r => r.FromPath == from).ExecuteDeleteAsync();
+        // Tracked (not ExecuteDelete) so the audit log sees it; saved at once so the chain walk that follows no longer finds the row.
+        db.Redirects.RemoveRange(await db.Redirects.Where(r => r.FromPath == from).ToListAsync());
+        await db.SaveChangesAsync();
     }
 }
