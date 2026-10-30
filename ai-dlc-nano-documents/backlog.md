@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-30] auth — Identity email/reset tokens use per-instance data-protection keys; persist the key ring before multi-replica (found: 022-issue-22-identity)
+- [2026-10-30] auth — account emails only land in InMemoryAuthEmailSender until #32 delivers them (found: 022-issue-22-identity)
 - [2026-10-13] .github/workflows/ci.yml — needs KJ_TEST_POSTGRES wired in, or Postgres-specific tests silently skip in CI (found: 014-issue-152)
 - [2026-10-13] database — automate old Compose `EnsureCreated` PostgreSQL data transfer if needed (found: 012-issue-21)
 - [2026-09-30] legacy/ — both kj-registration snapshots are identical but for one README; keep one (found: 010-issue-13)

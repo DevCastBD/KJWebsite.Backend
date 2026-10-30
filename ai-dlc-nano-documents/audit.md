@@ -166,3 +166,7 @@
 - 2026-10-15T12:10Z [claude] 021-issue-21-audit DONE @9294699: criteria audited; Auth/CTA ok, Content has no DB (#25); 9 PG tests pass on local PG 18.6
 - 2026-10-15T12:30Z [claude] 017-issue-27-cors SIDE-EFFECT @5e026d9: pushed feature/issue-27-cors, opened PR #159 to develop (user requested)
 - 2026-10-15T12:30Z [claude] 019-issue-26-content-contract SIDE-EFFECT @5e026d9: pushed feature/issue-26-content-contract, opened PR #160 based on #27 branch (user requested)
+- 2026-10-30T16:33Z [claude] 022-issue-22-identity SIDE-EFFECT @37ad15c: added FHShubho as assignee on #15-20,#22-25 (user confirmed)
+- 2026-10-30T16:36Z [claude] 022-issue-22-identity PHASE PLAN→CONSTRUCT @37ad15c: plan approved; branch feature/issue-22-identity off origin/develop (user confirmed)
+- 2026-10-30T16:41Z [claude] 022-issue-22-identity DECISION @37ad15c: retired SqliteToPostgres auth import (plain-text source); dev admin re-hashed in Development only
+- 2026-10-30T16:41Z [claude] 022-issue-22-identity DONE @37ad15c: Identity, migration 20261030163840, 63 tests green incl. PG

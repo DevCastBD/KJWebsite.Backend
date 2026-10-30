@@ -1,11 +1,11 @@
 # AI-DLC Nano State
-- Active work item: none  (all 5 issues processed; branch feature/issue-26-content-contract has #26+#20 local, #27 branch local)
-- Phase: —
-- Branch: feature/issue-26-content-contract
-- Base SHA: —
-- Next step: PRs #159 (#27) and #160 (#26+#20, based on #27 branch) open; retarget #160 to develop after #159 merges
+- Active work item: work-items/022-issue-22-identity  (stack: #22 → #23 → #24 → #25; #15-#18 closed by these)
+- Phase: CONSTRUCT
+- Branch: feature/issue-22-identity
+- Base SHA: 37ad15c
+- Next step: add Identity packages/entities, migration, rewrite endpoints
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY, blocked on #30/#27 next; #12 done)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
-- Uncommitted code: yes
-- Last updated: 2026-10-15T09:00Z by claude
+- Uncommitted code: no
+- Last updated: 2026-10-30 by claude

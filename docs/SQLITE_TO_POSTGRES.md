@@ -31,17 +31,15 @@ In PowerShell, use `$env:ConnectionStrings__AuthDb = '...'` and `$env:Connection
 Run the importer **before** starting Auth or CTA. Starting in Development seeds rows, and the importer deliberately refuses a non-empty target. The connection string goes in an environment variable to keep it out of the process command line.
 
 ```bash
-export KJ_MIGRATION_PG="$ConnectionStrings__AuthDb"
-dotnet run --project tools/SqliteToPostgres -- auth auth.backup.db
 export KJ_MIGRATION_PG="$ConnectionStrings__CtaDb"
 dotnet run --project tools/SqliteToPostgres -- cta cta.backup.db
 ```
 
-In PowerShell, set `$env:KJ_MIGRATION_PG = $env:ConnectionStrings__AuthDb` (and later `CtaDb`). The importer copies `users` and `refresh_tokens` for Auth and `cta_submissions` for CTA in one transaction per database. It checks the target column set, requires empty tables, preserves Bengali text, normalizes timestamps to UTC, and verifies row counts before committing. No SQLite row is changed. If it fails, correct the cause and retry against a fresh empty target.
+In PowerShell, set `$env:KJ_MIGRATION_PG = $env:ConnectionStrings__AuthDb` (and later `CtaDb`). The importer copies `cta_submissions` for CTA in one transaction. **Auth data is no longer imported** (issue #22): the old SQLite `users` table held plain-text passwords, which must not be carried into PostgreSQL. Recreate Auth accounts and have users set a password through `/api/v1/auth/forgot-password`. It checks the target column set, requires empty tables, preserves Bengali text, normalizes timestamps to UTC, and verifies row counts before committing. No SQLite row is changed. If it fails, correct the cause and retry against a fresh empty target.
 
 ## 4. Verify and cut over
 
-Compare the importer's counts with `SELECT COUNT(*)` from each SQLite source table. In PostgreSQL, inspect `auth.users`, `auth.refresh_tokens`, and `cta.cta_submissions`, plus each schema's `__EFMigrationsHistory`. Check a sample Bengali `FirstName` and `ValuesJson` value. Then start the services with `docker compose up --build` or local `dotnet run` using the PostgreSQL connection strings. Exercise registration/login, token refresh, and a CTA submission through the gateway.
+Compare the importer's counts with `SELECT COUNT(*)` from each SQLite source table. In PostgreSQL, inspect `cta.cta_submissions`, plus each schema's `__EFMigrationsHistory`. Check a sample Bengali `FirstName` and `ValuesJson` value. Then start the services with `docker compose up --build` or local `dotnet run` using the PostgreSQL connection strings. Exercise registration/login, token refresh, and a CTA submission through the gateway.
 
 For rollback **before accepting new PostgreSQL writes**, stop the new services and run the previous SQLite-backed release against the untouched original files. Keep the previous Compose volume as a separate backup. If PostgreSQL has accepted new writes, reconcile them before reverting; switching the old application back without reconciliation would lose those writes. Later PostgreSQL schema changes must use expand → migrate → contract over at least one release; do not drop fields still used by the previous release.
 
