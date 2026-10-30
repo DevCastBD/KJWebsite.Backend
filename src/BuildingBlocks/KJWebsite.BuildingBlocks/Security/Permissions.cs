@@ -12,6 +12,8 @@ public static class Permissions
     public const string ContentDelete = "content.delete";
     public const string ContentPublish = "content.publish";
     public const string CtaView = "cta.view";
+    public const string CtaManage = "cta.manage";
+    public const string CtaExport = "cta.export";
     public const string UsersView = "users.view";
     public const string UsersManage = "users.manage";
     public const string RolesManage = "roles.manage";
@@ -25,7 +27,7 @@ public static class Permissions
     public static readonly IReadOnlyList<string> All =
     [
         ContentView, ContentCreate, ContentUpdate, ContentDelete, ContentPublish,
-        CtaView, UsersView, UsersManage, RolesManage, MembershipManage, EventsManage,
+        CtaView, CtaManage, CtaExport, UsersView, UsersManage, RolesManage, MembershipManage, EventsManage,
         FinanceView, FinanceExpenseSubmit, FinanceExpenseApprove, AuditView
     ];
 }
@@ -47,7 +49,7 @@ public static class KjRoles
     {
         [SuperAdmin] = Permissions.All,
         [Admin] = [.. Permissions.All.Where(p => p != Permissions.RolesManage)],
-        [Moderator] = [Permissions.ContentView, Permissions.ContentUpdate, Permissions.CtaView],
+        [Moderator] = [Permissions.ContentView, Permissions.ContentUpdate, Permissions.CtaView, Permissions.CtaManage],
         [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate],
         [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],

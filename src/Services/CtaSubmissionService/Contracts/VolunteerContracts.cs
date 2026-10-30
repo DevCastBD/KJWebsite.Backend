@@ -6,7 +6,9 @@ public sealed record CtaSubmissionRequest(
     string Language,
     string SourcePath,
     Dictionary<string, object?> Values,
-    DateTimeOffset SubmittedAt);
+    DateTimeOffset SubmittedAt,
+    DateTimeOffset? FormOpenedAt = null,
+    string? TurnstileToken = null);
 
 public sealed record CtaSubmissionRecord(
     string Id,

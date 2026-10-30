@@ -364,6 +364,192 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/cta/submissions:
+    get:
+      tags:
+        - "Admin \u2014 CTA"
+      summary: "List submissions (paged, filterable)"
+      description: "Filters: status, formName, ctaType, language, assigneeId, q (id or name), from, to. Newest first. Requires \u0060cta.view\u0060; the read is audited."
+      operationId: "ListCtaSubmissions"
+      parameters:
+        -
+          name: "Status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "FormName"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "CtaType"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "Language"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "AssigneeId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "Q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "From"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "To"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "Limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "Offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/cta/submissions/export:
+    get:
+      tags:
+        - "Admin \u2014 CTA"
+      summary: "Export submissions as CSV"
+      description: "UTF-8 with a byte-order mark so Excel shows Bengali correctly; at most 5000 rows; same filters as the list. Requires \u0060cta.export\u0060; the export is audited."
+      operationId: "ExportCtaSubmissions"
+      parameters:
+        -
+          name: "Status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "FormName"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "CtaType"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "Language"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "AssigneeId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "Q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "From"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "To"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "Limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "Offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            text/csv:
+              schema:
+                type: "string"
+                format: "byte"
+  "/api/v1/admin/cta/submissions/{id}":
+    get:
+      tags:
+        - "Admin \u2014 CTA"
+      summary: "Get one submission"
+      description: "Full submission with its update history. Requires \u0060cta.view\u0060; the read is audited."
+      operationId: "GetCtaSubmission"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    patch:
+      tags:
+        - "Admin \u2014 CTA"
+      summary: "Update status, assignee or notes"
+      description: "Omitted fields are unchanged; an empty assigneeId or notes clears it. Requires \u0060cta.manage\u0060; every change is audited."
+      operationId: "UpdateCtaSubmission"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmissionPatchRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/auth/register:
     post:
       tags:
@@ -559,6 +745,8 @@ tags:
   -
     name: "CTA"
   -
+    name: "Admin \u2014 CTA"
+  -
     name: "Auth"
 components:
   schemas:
@@ -711,6 +899,34 @@ components:
         submittedAt:
           type: "string"
           format: "date-time"
+        formOpenedAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        turnstileToken:
+          type:
+            - "null"
+            - "string"
+    SubmissionPatchRequest:
+      required:
+        - "status"
+        - "assigneeId"
+        - "notes"
+      type: "object"
+      properties:
+        status:
+          type:
+            - "null"
+            - "string"
+        assigneeId:
+          type:
+            - "null"
+            - "string"
+        notes:
+          type:
+            - "null"
+            - "string"
     ConfirmEmailRequest:
       required:
         - "userId"

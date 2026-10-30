@@ -1,3 +1,5 @@
+using CtaSubmissionService.Admin;
+using CtaSubmissionService.AntiSpam;
 using CtaSubmissionService.Contracts;
 using CtaSubmissionService.Data;
 using CtaSubmissionService.Data.Entities;
@@ -37,6 +39,9 @@ builder.Services.AddDbContext<CtaDbContext>((services, options) =>
 
 builder.Services.AddKjJwtAuthentication();
 builder.Services.AddKjBackgroundJobs<CtaDbContext>(builder.Configuration, "CtaDb");
+builder.Services.Configure<AntiSpamOptions>(builder.Configuration.GetSection(AntiSpamOptions.SectionName));
+builder.Services.AddHttpClient<ITurnstileVerifier, TurnstileVerifier>(client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.AddSingleton<SubmissionGuard>();
 builder.Services.AddKjEmail(builder.Configuration, builder.Environment);
 builder.Services.AddOutboxHandler<CtaEmailHandler>();
 
@@ -97,8 +102,16 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmis
    .WithTags("System")
 .AllowAnonymous();
 
-app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db, IOutboxSignal outbox, IOptions<EmailOptions> email) =>
+app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db, IOutboxSignal outbox, IOptions<EmailOptions> email, SubmissionGuard guard) =>
 {
+    var verdict = await guard.CheckAsync(payload.Values, payload.FormOpenedAt is { } opened ? payload.SubmittedAt - opened : null,
+        payload.TurnstileToken, context.Connection.RemoteIpAddress?.ToString(), context.RequestAborted);
+    if (verdict != SpamVerdict.Accepted)
+    {
+        // One generic answer for every reason, so a bot learns nothing about which check caught it.
+        return ApiError.Create(context, StatusCodes.Status400BadRequest, "SUBMISSION_REJECTED", "The submission could not be accepted. Please reload the form and try again.");
+    }
+
     var valuesJson = System.Text.Json.JsonSerializer.Serialize(payload.Values);
     var id = $"subm_{Guid.NewGuid():N}";
     var createdAt = DateTimeOffset.UtcNow;
@@ -141,6 +154,7 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
 .WithValidation<CtaSubmissionRequest>()
 .AllowAnonymous();
 
+app.MapSubmissionAdmin();
 app.MapKjBackgroundJobs<CtaDbContext>();
 
 app.Run();
