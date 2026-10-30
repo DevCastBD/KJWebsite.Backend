@@ -8,7 +8,7 @@ namespace ContentService.Data;
 /// Reads and writes every content type in the one generic shape: translations, tags, related items and slug changes.
 /// Deleting is soft and a deleted slug stays reserved, as for projects and news.
 /// </summary>
-public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, TaxonomyStore taxonomy, RedirectStore redirects)
+public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, TaxonomyStore taxonomy, RedirectStore redirects, RevisionStore revisions)
 {
     private static readonly string[] Languages = ["en", "bn"];
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -66,7 +66,7 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         return updatedAt is null ? null : ContentETag.For(updatedAt.Value);
     }
 
-    public async Task<UpsertResult<ContentItemAdminView>> UpsertAsync(string type, string slug, ContentUpsertRequest request, bool mustExist, IReadOnlyCollection<string>? ifMatch)
+    public async Task<UpsertResult<ContentItemAdminView>> UpsertAsync(string type, string slug, ContentUpsertRequest request, bool mustExist, IReadOnlyCollection<string>? ifMatch, bool canPublish = true)
     {
         if (Validate(slug, request) is { } error)
         {
@@ -98,6 +98,11 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
             return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict);
         }
 
+        if (StatusRules.GuardUpsert(created ? null : item.Status, request.Status, canPublish) is { } guard)
+        {
+            return new UpsertResult<ContentItemAdminView>(guard.Outcome, Error: guard.Error);
+        }
+
         var related = await ResolveRelatedAsync(item, request.Related ?? []);
         if (related.Error is not null)
         {
@@ -106,6 +111,7 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
 
         item.DeletedAt = null;
         item.Status = request.Status;
+        item.ScheduledPublishAt = request.Status == StatusRules.Scheduled ? item.ScheduledPublishAt : null;
         item.ImageUrl = request.ImageUrl ?? string.Empty;
         item.SortOrder = request.SortOrder ?? item.SortOrder;
         item.PublishedAt = request.Status == "published" ? request.PublishedAt ?? item.PublishedAt ?? time.GetUtcNow() : request.PublishedAt ?? item.PublishedAt;
@@ -117,6 +123,7 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
             return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict);
         }
 
+        await revisions.RecordAsync(item.Id, created ? "create" : "update");
         return new UpsertResult<ContentItemAdminView>(created ? UpsertOutcome.Created : UpsertOutcome.Updated, ToAdminView(item), ETag: ContentETag.For(item.UpdatedAt));
     }
 
@@ -135,7 +142,7 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         }
 
         ReplaceTags(item, tags);
-        return await SaveTaxonomyAsync(item);
+        return await SaveTaxonomyAsync(item, "tags");
     }
 
     public async Task<UpsertResult<ContentItemAdminView>> SetRelatedAsync(string type, string slug, List<RelatedRef> references)
@@ -153,7 +160,7 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         }
 
         ReplaceRelated(item, related.Items);
-        return await SaveTaxonomyAsync(item);
+        return await SaveTaxonomyAsync(item, "related");
     }
 
     /// <summary>Changes the public slug and, in the same transaction, leaves a redirect from the old path so inbound links keep working.</summary>
@@ -196,6 +203,7 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         }
 
         await transaction.CommitAsync();
+        await revisions.RecordAsync(item.Id, "rename");
         return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Updated, ToAdminView(item), ETag: ContentETag.For(item.UpdatedAt));
     }
 
@@ -213,15 +221,145 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         return true;
     }
 
+    // ---- history, trash and preview
+
+    /// <summary>Applies a stored revision to the item as a new revision. The slug, status and publication date are not rolled back.</summary>
+    public async Task<UpsertResult<ContentItemAdminView>> RestoreRevisionAsync(string type, string slug, int number, IReadOnlyCollection<string>? ifMatch)
+    {
+        var detail = await revisions.GetAsync(type, slug, number);
+        var item = await Full().Include(i => i.Project).Include(i => i.News).FirstOrDefaultAsync(i => i.Type == type && i.Slug == slug && i.DeletedAt == null);
+        if (detail is null || item is null)
+        {
+            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.NotFound);
+        }
+
+        if (ifMatch is not null && !ContentETag.Satisfies(ifMatch, item.UpdatedAt))
+        {
+            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict);
+        }
+
+        var snapshot = detail.Snapshot;
+        item.ImageUrl = snapshot.ImageUrl;
+        item.SortOrder = snapshot.SortOrder;
+        if (type == ContentTypes.Project)
+        {
+            item.Project ??= new ProjectEntity();
+            item.Project.ImageUrl = snapshot.ProjectImageUrl ?? string.Empty;
+            item.Project.Icon = snapshot.ProjectIcon ?? string.Empty;
+        }
+        else if (type == ContentTypes.News)
+        {
+            item.News ??= new NewsArticleEntity();
+            item.News.ImageUrl = snapshot.NewsImageUrl ?? string.Empty;
+        }
+
+        foreach (var gone in item.Translations.Where(t => snapshot.Translations.All(n => n.Lang != t.Lang)).ToList())
+        {
+            item.Translations.Remove(gone);
+            db.Translations.Remove(gone);
+        }
+
+        foreach (var old in snapshot.Translations)
+        {
+            var current = item.Translations.FirstOrDefault(t => t.Lang == old.Lang);
+            if (current is null)
+            {
+                item.Translations.Add(new ContentTranslationEntity { ContentItemId = item.Id, Lang = old.Lang, Title = old.Title, Summary = old.Summary, Body = old.Body, AttributesJson = old.AttributesJson });
+            }
+            else
+            {
+                current.Title = old.Title;
+                current.Summary = old.Summary;
+                current.Body = old.Body;
+                current.AttributesJson = old.AttributesJson;
+            }
+        }
+
+        // Tags and related items that have since been deleted are skipped rather than failing the restore.
+        var tags = new List<TagEntity>();
+        foreach (var tag in snapshot.Tags)
+        {
+            var (found, error) = await taxonomy.ResolveAsync([tag]);
+            if (error is null)
+            {
+                tags.AddRange(found);
+            }
+        }
+
+        var related = new List<ContentItemEntity>();
+        foreach (var reference in snapshot.Related)
+        {
+            var resolved = await ResolveRelatedAsync(item, [reference]);
+            if (resolved.Error is null)
+            {
+                related.AddRange(resolved.Items);
+            }
+        }
+
+        ReplaceTags(item, tags);
+        ReplaceRelated(item, related);
+        if (!await SaveAsync(item, created: false))
+        {
+            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict);
+        }
+
+        await revisions.RecordAsync(item.Id, $"restore:{number}");
+        return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Updated, ToAdminView(item), ETag: ContentETag.For(item.UpdatedAt));
+    }
+
+    public async Task<List<TrashItemView>> TrashAsync(string? type)
+    {
+        var query = db.Items.AsNoTracking().Include(i => i.Translations).Where(i => i.DeletedAt != null);
+        if (type is not null)
+        {
+            query = query.Where(i => i.Type == type);
+        }
+
+        return [.. (await query.ToListAsync()).OrderByDescending(i => i.DeletedAt)
+            .Select(i => new TrashItemView(i.Type, i.Slug, i.DeletedAt!.Value, i.Translations.OrderBy(t => t.Lang, StringComparer.Ordinal).Select(t => t.Title).FirstOrDefault() ?? i.Slug))];
+    }
+
+    /// <summary>Brings a soft-deleted item back as a draft: restoring must never publish anything by itself.</summary>
+    public async Task<UpsertResult<ContentItemAdminView>> UndeleteAsync(string type, string slug)
+    {
+        var item = await Full().FirstOrDefaultAsync(i => i.Type == type && i.Slug == slug && i.DeletedAt != null);
+        if (item is null)
+        {
+            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.NotFound);
+        }
+
+        item.DeletedAt = null;
+        item.Status = StatusRules.Draft;
+        item.ScheduledPublishAt = null;
+        if (!await SaveAsync(item, created: false))
+        {
+            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict);
+        }
+
+        await revisions.RecordAsync(item.Id, "undelete");
+        return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Updated, ToAdminView(item), ETag: ContentETag.For(item.UpdatedAt));
+    }
+
+    public async Task<string?> ItemIdAsync(string type, string slug) =>
+        await db.Items.AsNoTracking().Where(i => i.Type == type && i.Slug == slug && i.DeletedAt == null).Select(i => i.Id).FirstOrDefaultAsync();
+
+    /// <summary>The item in any status (for a preview link), in the requested language or else the first one it has.</summary>
+    public async Task<ContentItemView?> PreviewAsync(string itemId, string lang)
+    {
+        var item = await Full().AsNoTracking().FirstOrDefaultAsync(i => i.Id == itemId && i.DeletedAt == null);
+        return item is null ? null : ToView(item, lang) ?? ToView(item, item.Translations.OrderBy(t => t.Lang, StringComparer.Ordinal).First().Lang);
+    }
+
     // ---- internals
 
-    private async Task<UpsertResult<ContentItemAdminView>> SaveTaxonomyAsync(ContentItemEntity item)
+    private async Task<UpsertResult<ContentItemAdminView>> SaveTaxonomyAsync(ContentItemEntity item, string reason)
     {
         if (!await SaveAsync(item, created: false))
         {
             return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict);
         }
 
+        await revisions.RecordAsync(item.Id, reason);
         return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Updated, ToAdminView(item), ETag: ContentETag.For(item.UpdatedAt));
     }
 
@@ -385,7 +523,7 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
     }
 
     private static ContentItemAdminView ToAdminView(ContentItemEntity item) => new(
-        item.Type, item.Slug, item.Status, item.ImageUrl, item.SortOrder, item.PublishedAt,
+        item.Type, item.Slug, item.Status, item.ImageUrl, item.SortOrder, item.PublishedAt, item.ScheduledPublishAt,
         [.. item.Translations.OrderBy(t => t.Lang, StringComparer.Ordinal).Select(t => new ContentTranslationView(t.Lang, t.Title, t.Summary, t.Body, ReadAttributes(t)))],
         [.. item.TagLinks.Select(l => l.Tag?.Slug).OfType<string>().OrderBy(s => s, StringComparer.Ordinal)],
         [.. item.RelatedLinks.OrderBy(r => r.SortOrder).Where(r => r.To is not null).Select(r => new RelatedRef(r.To!.Type, r.To.Slug))]);

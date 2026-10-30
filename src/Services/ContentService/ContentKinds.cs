@@ -1,3 +1,4 @@
+using ContentService.Data;
 using ContentService.Data.Entities;
 
 namespace ContentService;
@@ -7,7 +8,7 @@ public sealed record ContentKind(string Type, string Segment, string Pascal);
 
 public static class ContentKinds
 {
-    public static readonly string[] Statuses = ["draft", "published", "archived"];
+    public static readonly string[] Statuses = StatusRules.Workflow;
 
     public static readonly ContentKind[] All =
     [

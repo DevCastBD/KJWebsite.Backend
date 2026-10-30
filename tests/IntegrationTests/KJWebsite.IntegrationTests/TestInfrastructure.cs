@@ -32,6 +32,7 @@ public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebAp
             services.AddDbContext<TContext>((provider, options) =>
             {
                 options.UseSqlite($"Data Source={_dbPath}");
+                ConfigureDbContext(options, provider);
                 // The service's own registration was removed above; keep its audit interceptor so tests exercise the real write path.
                 if (provider.GetService<KJWebsite.BuildingBlocks.Auditing.AuditInterceptor>() is { } audit)
                 {
@@ -39,6 +40,11 @@ public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebAp
                 }
             });
         });
+    }
+
+    /// <summary>Lets a test add its own interceptors or options to the service's DbContext.</summary>
+    protected virtual void ConfigureDbContext(DbContextOptionsBuilder options, IServiceProvider provider)
+    {
     }
 
     protected override void Dispose(bool disposing)
@@ -108,10 +114,16 @@ public static class TestTokens
         });
     }
 
-    /// <summary>A token holding every content permission.</summary>
+    /// <summary>A token holding every content permission, publishing included.</summary>
     public static string ContentAdmin() => Issue(
         [KJWebsite.BuildingBlocks.Security.Permissions.ContentView, KJWebsite.BuildingBlocks.Security.Permissions.ContentCreate,
-         KJWebsite.BuildingBlocks.Security.Permissions.ContentUpdate, KJWebsite.BuildingBlocks.Security.Permissions.ContentDelete]);
+         KJWebsite.BuildingBlocks.Security.Permissions.ContentUpdate, KJWebsite.BuildingBlocks.Security.Permissions.ContentDelete,
+         KJWebsite.BuildingBlocks.Security.Permissions.ContentPublish]);
+
+    /// <summary>An editor: can create and edit but not publish (the role ContentEditor holds).</summary>
+    public static string ContentEditor() => Issue(
+        [KJWebsite.BuildingBlocks.Security.Permissions.ContentView, KJWebsite.BuildingBlocks.Security.Permissions.ContentCreate,
+         KJWebsite.BuildingBlocks.Security.Permissions.ContentUpdate]);
 }
 
 public sealed class AuthApiFactory : SqliteWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint, AuthDbContext>

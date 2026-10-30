@@ -63,7 +63,8 @@ public sealed class AuditInterceptor(IHttpContextAccessor accessor, AuditOptions
 
         var http = accessor.HttpContext;
         var actor = http?.User.FindFirstValue(KjClaims.Subject);
-        if (http is null || string.IsNullOrEmpty(actor))
+        var system = AuditActor.Current;
+        if (string.IsNullOrEmpty(actor) && system is null)
         {
             return;
         }
@@ -79,17 +80,17 @@ public sealed class AuditInterceptor(IHttpContextAccessor accessor, AuditOptions
             {
                 At = time.GetUtcNow().UtcDateTime,
                 Service = options.Service,
-                ActorId = actor,
-                ActorEmail = http.User.FindFirstValue(KjClaims.Email),
+                ActorId = actor ?? system!.Id,
+                ActorEmail = actor is null ? null : http?.User.FindFirstValue(KjClaims.Email),
                 Action = entry.State switch { EntityState.Added => "create", EntityState.Deleted => "delete", _ => "update" },
                 Entity = EntityName(entry.Metadata.ClrType),
                 EntityId = change.EntityId,
                 Before = change.Before,
                 After = change.After,
-                Operation = Truncate($"{http.Request.Method} {http.Request.Path}", 300),
-                RequestId = Truncate(http.TraceIdentifier, 64),
-                Ip = Truncate(ClientIp(http), 64),
-                UserAgent = Truncate(http.Request.Headers.UserAgent.ToString(), 256)
+                Operation = actor is null || http is null ? Truncate(system!.Operation, 300) : Truncate($"{http.Request.Method} {http.Request.Path}", 300),
+                RequestId = http is null ? null : Truncate(http.TraceIdentifier, 64),
+                Ip = http is null || actor is null ? null : Truncate(ClientIp(http), 64),
+                UserAgent = http is null || actor is null ? null : Truncate(http.Request.Headers.UserAgent.ToString(), 256)
             });
         }
     }
@@ -136,6 +137,29 @@ public sealed class AuditInterceptor(IHttpContextAccessor accessor, AuditOptions
     }
 
     private static string? Truncate(string? value, int max) => value is null || value.Length <= max ? value : value[..max];
+}
+
+/// <summary>
+/// A non-request actor for background work (the scheduled publisher): changes saved inside <see cref="Begin"/> are audited as that actor
+/// instead of being skipped for lack of a caller.
+/// </summary>
+public sealed record AuditActor(string Id, string Operation)
+{
+    private static readonly AsyncLocal<AuditActor?> Ambient = new();
+
+    public static AuditActor? Current => Ambient.Value;
+
+    public static IDisposable Begin(string id, string operation)
+    {
+        var previous = Ambient.Value;
+        Ambient.Value = new AuditActor(id, operation);
+        return new Restore(previous);
+    }
+
+    private sealed class Restore(AuditActor? previous) : IDisposable
+    {
+        public void Dispose() => Ambient.Value = previous;
+    }
 }
 
 public static class AuditServiceExtensions

@@ -46,6 +46,9 @@ namespace ContentService.Migrations
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset?>("ScheduledPublishAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -113,6 +116,45 @@ namespace ContentService.Migrations
                     b.HasIndex("ToItemId");
 
                     b.ToTable("content_relations", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.ContentRevisionEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ContentItemId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentItemId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("content_revisions", "content");
                 });
 
             modelBuilder.Entity("ContentService.Data.Entities.ContentTranslationEntity", b =>
@@ -375,6 +417,15 @@ namespace ContentService.Migrations
                         .IsRequired();
 
                     b.Navigation("To");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.ContentRevisionEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithMany()
+                        .HasForeignKey("ContentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("ContentService.Data.Entities.ContentTranslationEntity", b =>

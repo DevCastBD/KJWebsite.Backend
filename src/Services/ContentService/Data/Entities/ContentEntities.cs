@@ -31,6 +31,10 @@ public sealed class ContentItemEntity
     public string ImageUrl { get; set; } = string.Empty;
 
     public DateTimeOffset? PublishedAt { get; set; }
+
+    /// <summary>When a `scheduled` item goes live. Null for every other status.</summary>
+    public DateTimeOffset? ScheduledPublishAt { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
@@ -69,4 +73,19 @@ public sealed class NewsArticleEntity
 {
     public string ContentItemId { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
+}
+
+/// <summary>A snapshot of everything editable about an item, taken after each content change. Numbered per item, never edited.</summary>
+public sealed class ContentRevisionEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string ContentItemId { get; set; } = string.Empty;
+    public int Number { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public string ActorId { get; set; } = string.Empty;
+
+    /// <summary>Why it was taken: `create`, `update`, `tags`, `related`, `rename`, `workflow:published`, `scheduled-publish`, `restore:3`, `undelete`.</summary>
+    public string Reason { get; set; } = string.Empty;
+
+    public string SnapshotJson { get; set; } = "{}";
 }

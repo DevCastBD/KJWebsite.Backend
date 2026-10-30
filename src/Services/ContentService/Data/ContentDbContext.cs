@@ -15,6 +15,7 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<ContentItemTagEntity> ItemTags => Set<ContentItemTagEntity>();
     public DbSet<ContentRelationEntity> Relations => Set<ContentRelationEntity>();
     public DbSet<RedirectEntity> Redirects => Set<RedirectEntity>();
+    public DbSet<ContentRevisionEntity> Revisions => Set<ContentRevisionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -128,6 +129,19 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.Source).HasMaxLength(32).IsRequired();
             entity.HasIndex(x => x.FromPath).IsUnique();
             entity.HasIndex(x => x.ToPath);
+        });
+
+        modelBuilder.Entity<ContentRevisionEntity>(entity =>
+        {
+            entity.ToTable("content_revisions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ContentItemId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ActorId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SnapshotJson).IsRequired();
+            entity.HasIndex(x => new { x.ContentItemId, x.Number }).IsUnique();
+            entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

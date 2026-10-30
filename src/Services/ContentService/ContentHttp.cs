@@ -20,6 +20,19 @@ public static class ContentHttp
     public static IResult ConflictResponse(HttpRequest request) =>
         ApiError.Create(request.HttpContext, StatusCodes.Status409Conflict, "CONFLICT", "The item was changed by someone else. Reload it and apply your edit again.");
 
+    public static IResult Forbidden(HttpRequest request, string message) =>
+        ApiError.Create(request.HttpContext, StatusCodes.Status403Forbidden, "FORBIDDEN", message);
+
+    /// <summary>The problem response for a failed upsert outcome that carries an error message.</summary>
+    public static IResult Failure(HttpRequest request, ContentService.Data.UpsertOutcome outcome, string? error) => outcome switch
+    {
+        ContentService.Data.UpsertOutcome.Forbidden => Forbidden(request, error ?? "Not allowed."),
+        ContentService.Data.UpsertOutcome.Conflict when error is null => ConflictResponse(request),
+        ContentService.Data.UpsertOutcome.Conflict => ApiError.Create(request.HttpContext, StatusCodes.Status409Conflict, "CONFLICT", error!),
+        ContentService.Data.UpsertOutcome.NotFound => NotFound(request, "Item not found."),
+        _ => Invalid(request, error ?? "Invalid request.")
+    };
+
     public static IResult Invalid(HttpRequest request, string message) =>
         ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", message);
 
