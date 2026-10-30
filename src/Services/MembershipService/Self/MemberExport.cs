@@ -3,6 +3,7 @@ using KJWebsite.BuildingBlocks.Auditing;
 using MembershipService.Data;
 using MembershipService.Data.Entities;
 using MembershipService.Intake;
+using MembershipService.Lifecycle;
 using MembershipService.Review;
 using Microsoft.EntityFrameworkCore;
 
@@ -73,6 +74,8 @@ public static class MemberExport
                         member.JoinedAt,
                         photo = member.PhotoKey is null ? null : new { fileName = member.PhotoFileName, contentType = member.PhotoContentType, bytes = member.PhotoBytes, scanStatus = member.PhotoScanStatus }
                     },
+                    // The member's own right of access covers the whole record, termination reason included.
+                    lifecycle = await LifecycleEndpoints.View(db, protector, member, showReasons: true, clock),
                     consentHistory = consents.Select(c => new { c.Field, c.Granted, c.At }),
                     profileChanges = changes.Select(c => new { c.Field, value = protector.Unprotect(c.ValueProtected), c.Status, c.Reason, c.SubmittedAt, c.DecidedAt }),
                     application = snapshot,

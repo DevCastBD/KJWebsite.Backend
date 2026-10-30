@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] lifecycle — reinstating: if the DB commit fails after Identity enabled the login, a terminated record could have a live login (rare); no automatic inactive/lapse (needs dues #56); lifecycle migration backfill SQL only run on an empty table (found: 051-issue-57)
+- [2026-10-31] lifecycle — member export includes the termination reason (right of access): confirm with the core members/legal (#114); no admin UI contract exists for lifecycle (found: 051-issue-57)
 - [2026-10-31] committees — admin UI sends free-text chair; needs a member picker + term form; a member's chapter is just a chapter-committee term (no separate home chapter); "today" is UTC (BD is UTC+6) (found: 050-issue-55)
 - [2026-10-31] directory — #41 must set photo scan status "clean" (and strip EXIF) or no photo is ever published; internal member-facing directory is a policy call (found: 049-issue-54)
 - [2026-10-31] directory — prerendered/cached copies of the public list on the frontend side must honour no-store; sitemap/OG must not expose directory members (found: 049-issue-54)

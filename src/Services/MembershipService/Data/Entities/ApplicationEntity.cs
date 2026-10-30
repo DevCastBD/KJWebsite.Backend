@@ -164,6 +164,9 @@ public sealed class MemberEntity
     public bool ConsentPhotograph { get; set; }
     public bool ConsentExpertise { get; set; }
 
+    /// <summary>Former members are listed publicly only if they say so, separately from the other consents.</summary>
+    public bool ConsentAlumni { get; set; }
+
     public bool NotifyNews { get; set; } = true;
     public bool NotifyEvents { get; set; } = true;
     public bool NotifyMembership { get; set; } = true;
@@ -213,4 +216,32 @@ public sealed class DeletionRequestEntity
     public string MemberId { get; set; } = string.Empty;
     public string Reference { get; set; } = string.Empty;
     public DateTimeOffset RequestedAt { get; set; }
+}
+
+public static class MemberStatuses
+{
+    public const string Active = "active";
+    public const string OnLeave = "on_leave";
+    public const string Inactive = "inactive";
+    public const string Alumni = "alumni";
+    public const string Terminated = "terminated";
+
+    public static readonly IReadOnlyList<string> All = [Active, OnLeave, Inactive, Alumni, Terminated];
+}
+
+/// <summary>
+/// One step in a member's life with the organisation. `EffectiveOn` is when the change took effect (it may be a few days
+/// before it was recorded); `At` is when it was recorded. The termination reason is data-protected and read only with `membership.terminate`.
+/// </summary>
+public sealed class MemberStatusEventEntity
+{
+    public long Id { get; set; }
+    public string MemberId { get; set; } = string.Empty;
+    public string? FromStatus { get; set; }
+    public string ToStatus { get; set; } = string.Empty;
+    public DateOnly EffectiveOn { get; set; }
+    public DateTimeOffset At { get; set; }
+    public string ActorId { get; set; } = string.Empty;
+    public string? Note { get; set; }
+    public string? ReasonProtected { get; set; }
 }

@@ -224,3 +224,6 @@
 - 2026-10-30T20:53Z [claude] 050-issue-55-committees-org-chart CREATED @d104994: stacked on #54 branch; plan awaiting approval
 - 2026-10-30T20:58Z [claude] 050-issue-55-committees-org-chart PHASE PLAN→CONSTRUCT @d104994: plan approved (chair derived, consent-gated chart, directory chapters)
 - 2026-10-30T20:58Z [claude] 050-issue-55-committees-org-chart DONE @d104994: committees, terms, org chart, chapters; 331 tests green incl PG; not pushed
+- 2026-10-30T21:00Z [claude] 051-issue-57-membership-lifecycle CREATED @b9bd255: stacked on #55 branch; #56 skipped (user); plan awaiting approval
+- 2026-10-30T21:05Z [claude] 051-issue-57-membership-lifecycle PHASE PLAN→CONSTRUCT @b9bd255: plan approved (policy calls: tenure=active time, terminate disables login, alumni opt-in)
+- 2026-10-30T21:05Z [claude] 051-issue-57-membership-lifecycle DONE @b9bd255: lifecycle, tenure, restricted reasons; 359 tests green incl PG; not pushed

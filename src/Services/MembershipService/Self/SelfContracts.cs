@@ -15,13 +15,15 @@ public sealed record PortalProfile(
     string Expertise,
     IReadOnlyDictionary<string, PendingChange> Pending,
     DeletionRequestView? DeletionRequest,
-    bool HasPhoto);
+    bool HasPhoto,
+    string Status);
 
 public sealed record PendingChange(string Value, string Status, string? Reason, DateTimeOffset SubmittedAt);
 
 public sealed record ProfilePatch(Dictionary<string, string?>? Changes);
 
-public sealed record Consents(bool Name, bool Photograph, bool Expertise);
+/// <summary>`Alumni` is the separate opt-in for being listed after leaving; sent as null (as the site does today) it leaves the stored choice alone.</summary>
+public sealed record Consents(bool Name, bool Photograph, bool Expertise, bool? Alumni = null);
 
 public sealed record NotificationPrefs(bool News, bool Events, bool Membership);
 

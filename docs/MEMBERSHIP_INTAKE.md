@@ -112,3 +112,17 @@ A **committee** has a `kind` (`executive`, `advisory`, `project`, `chapter`), a 
 **Public** (anonymous, never cached): `GET /api/v1/committees` is the org chart as a tree with current seats; `GET /api/v1/committees/{slug}` adds past seats. A seat is listed only for members who consented to publish their name (the directory's consent), are active and have no erasure request; the SQL selects nothing about anyone else, and a member who withdraws consent leaves the chart on the next request. Archived committees are not public.
 
 **Directory**: `chapters` now lists the chapter committees, and `chapter=<English name>` filters to current members of that chapter who agreed to be named.
+
+## Membership lifecycle (BE-050, #57)
+
+`Member.Status` is `active`, `on_leave`, `inactive`, `alumni` or `terminated`. Moves (`Lifecycle/MemberLifecycle.cs`): `active` to any other; `on_leave` and `inactive` back to `active` or on to `alumni`/`terminated` (`on_leave` also to `inactive`); `alumni` to `active` or `terminated`; `terminated` to `active`. Every departure can be reversed. A bad move is `409 INVALID_TRANSITION`.
+
+`POST /api/v1/admin/membership/members/{id}/status {to, effectiveOn?, note?, reason?}` (`membership.lifecycle`, held by `MembershipOfficer`). `effectiveOn` defaults to today, may not be in the future or before the previous change. Terminating, and lifting a termination, additionally need **`membership.terminate`** (Admin and SuperAdmin; add it to a custom role by hand on an existing database), and terminating needs a `reason`. Every change appends to `member_status_events` (nothing is ever deleted) and is audited; the termination reason is data-protected, kept out of the audit log, and returned by `GET .../members/{id}/lifecycle` only to callers with `membership.terminate` (others get `reasonRestricted: true`). A member's own export includes their full lifecycle, reason included.
+
+Side effects, all inside one transaction so a failure changes nothing:
+- **Terminate** switches the Identity login off and ends every session (`PUT /api/v1/admin/auth/members/{userId}/status`, `membership.terminate`, only for accounts made by approving an application); reinstating switches it on. If Identity cannot be reached the move is refused with `502 IDENTITY_UNAVAILABLE`.
+- **Alumni, inactive, terminated** end the member's open committee terms on the effective date (the terms stay as history).
+- **Terminated** withdraws every publication consent (logged). Reactivation re-publishes nothing: the member opts in again.
+- **Directory**: only `active` members are listed, plus `alumni` who gave the separate `alumni` consent (`PUT /members/me/consents`, optional field; omitted leaves it unchanged). Entries carry `alumni: true`. `on_leave`, `inactive` and `terminated` never appear.
+
+**Tenure** (`tenure` in the lifecycle view): the days spent `active`, summed over every stretch of service in effective-date order. Leave, lapses, alumni years and terminations do not count; a returning member's earlier service is kept; an open stretch runs to today. `totalDays` and each period's `days` are exact; `years`/`months` are derived (365.25 / 30.44 days) and approximate.

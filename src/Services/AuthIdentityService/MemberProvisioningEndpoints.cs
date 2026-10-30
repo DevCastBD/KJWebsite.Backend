@@ -24,6 +24,8 @@ public sealed record ProvisionMemberRequest(
     string? VolunteeringExperience);
 
 /// <summary>`SetupToken` lets the new member choose a password (POST /api/v1/auth/reset-password with `UserId`).</summary>
+public sealed record MemberAccountStatusRequest(string? Status);
+
 public sealed record ProvisionedMember(string UserId, string SetupToken, bool Created);
 
 /// <summary>Creates the login for an approved membership application (BE-045). Called by the Membership service with the approver's token.</summary>
@@ -112,5 +114,40 @@ public static class MemberProvisioningEndpoints
         .WithDescription("Creates a password-less, email-confirmed Member account with the applicant's profile and returns a one-time setup token. Idempotent per `applicationId`: a repeat returns the same account with a fresh token. 409 EMAIL_TAKEN when another account already uses the email.")
         .WithTags("Admin — Roles and users")
         .RequirePermission(Permissions.MembershipProvision);
+
+        // Terminating a member must end their access, and reinstating restores it. Only the terminate permission may do either.
+        app.MapPut("/api/v1/admin/auth/members/{userId}/status", async (HttpContext context, string userId, MemberAccountStatusRequest payload, UserManager<AuthUserEntity> users, AuthIdentityService.Tokens.RefreshTokenService sessions) =>
+        {
+            if (payload.Status is not ("active" or "disabled"))
+            {
+                return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid fields: status (active or disabled).");
+            }
+
+            var user = await users.FindByIdAsync(userId);
+            if (user is null || user.ProvisionedFor is null)
+            {
+                // Only accounts made by approving an application can be switched here: staff accounts are managed through roles and users.
+                return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Member account not found.");
+            }
+
+            user.Status = payload.Status;
+            var updated = await users.UpdateAsync(user);
+            if (!updated.Succeeded)
+            {
+                return ApiError.Create(context, StatusCodes.Status500InternalServerError, "UPDATE_FAILED", "The account could not be updated.");
+            }
+
+            if (payload.Status == "disabled")
+            {
+                await sessions.RevokeAllAsync(user.Id);
+            }
+
+            return Results.Ok(new { userId = user.Id, status = user.Status });
+        })
+        .WithName("SetMemberAccountStatus")
+        .WithSummary("Disable or re-enable a member's login")
+        .WithDescription("Disabling blocks sign-in and refresh at once and ends every session. Only accounts created by approving an application are accepted.")
+        .WithTags("Admin — Roles and users")
+        .RequirePermission(Permissions.MembershipTerminate);
     }
 }
