@@ -14,6 +14,7 @@ using Scalar.AspNetCore;
 const int MaxPageSize = ListQueryValidator.MaxPageSize;
 
 var builder = WebApplication.CreateBuilder(args);
+var health = builder.AddKjObservability("ContentService");
 builder.Services.AddKjValidation<ContentService.Validation.ListQueryValidator>();
 builder.Services.AddOpenApi(options =>
 {
@@ -38,7 +39,10 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ContentStore>();
 builder.Services.AddKjJwtAuthentication();
 
+health.AddDbContextCheck<ContentDbContext>("database", tags: [KjObservability.ReadyTag, KjObservability.StartupTag]);
+
 var app = builder.Build();
+app.UseKjObservability();
 
 if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
 {
@@ -71,6 +75,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapKjObservability();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ContentService" }))
    .WithName("ContentHealth")
    .WithSummary("Content service health check")

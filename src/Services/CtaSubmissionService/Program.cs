@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var health = builder.AddKjObservability("CtaSubmissionService");
 builder.Services.AddKjValidation<CtaSubmissionRequestValidator>();
 builder.Services.AddOpenApi(options =>
 {
@@ -31,7 +32,10 @@ builder.Services.AddDbContext<CtaDbContext>((services, options) =>
 
 builder.Services.AddKjJwtAuthentication();
 
+health.AddDbContextCheck<CtaDbContext>("database", tags: [KjObservability.ReadyTag, KjObservability.StartupTag]);
+
 var app = builder.Build();
+app.UseKjObservability();
 
 if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
 {
@@ -78,6 +82,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapKjObservability();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmissionService" }))
    .WithName("CtaHealth")
    .WithSummary("CTA service health check")

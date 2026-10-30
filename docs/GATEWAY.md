@@ -11,7 +11,7 @@ Add a second destination to a cluster (`…Destinations__second__Address`) and t
 
 ## Health-driven availability
 
-Every cluster is probed actively (`GET /health` every 10 s, 5 s timeout, `ConsecutiveFailures`) and passively (transport failures). A destination that fails stays out of rotation until a probe succeeds again, so a rolling deploy does not fail requests. `/health/ready` replaces the probe path once observability (#31) lands.
+Every cluster is probed actively (`GET /health/ready` every 10 s, 5 s timeout, `ConsecutiveFailures`) and passively (transport failures). A destination that fails stays out of rotation until a probe succeeds again, so a rolling deploy does not fail requests.
 
 ## Correlation ID
 

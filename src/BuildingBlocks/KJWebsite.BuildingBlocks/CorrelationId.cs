@@ -6,7 +6,7 @@ namespace KJWebsite.BuildingBlocks;
 
 /// <summary>
 /// One id per request, shared by every hop. The caller may supply it (the frontend does, F1-6); otherwise the first
-/// service to see the request creates it. It is echoed on the response and exposed to logging as a scope.
+/// service to see the request creates it. It is echoed on the response; <see cref="KjObservability"/> adds it to every log event.
 /// </summary>
 public static partial class CorrelationId
 {
@@ -36,8 +36,6 @@ public static partial class CorrelationId
             return Task.CompletedTask;
         });
 
-        var logger = context.RequestServices.GetService(typeof(Microsoft.Extensions.Logging.ILoggerFactory)) as Microsoft.Extensions.Logging.ILoggerFactory;
-        using var scope = logger?.CreateLogger("Correlation").BeginScope(new Dictionary<string, object> { ["CorrelationId"] = id });
         await next();
     });
 }
