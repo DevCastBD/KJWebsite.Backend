@@ -16,6 +16,8 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<ContentRelationEntity> Relations => Set<ContentRelationEntity>();
     public DbSet<RedirectEntity> Redirects => Set<RedirectEntity>();
     public DbSet<ContentRevisionEntity> Revisions => Set<ContentRevisionEntity>();
+    public DbSet<SettingEntity> Settings => Set<SettingEntity>();
+    public DbSet<FeatureFlagEntity> FeatureFlags => Set<FeatureFlagEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +144,23 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.SnapshotJson).IsRequired();
             entity.HasIndex(x => new { x.ContentItemId, x.Number }).IsUnique();
             entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SettingEntity>(entity =>
+        {
+            entity.ToTable("settings");
+            entity.HasKey(x => x.Key);
+            entity.Property(x => x.Key).HasMaxLength(100);
+            entity.Property(x => x.ValueJson).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsConcurrencyToken();
+        });
+
+        modelBuilder.Entity<FeatureFlagEntity>(entity =>
+        {
+            entity.ToTable("feature_flags");
+            entity.HasKey(x => x.Key);
+            entity.Property(x => x.Key).HasMaxLength(100);
+            entity.Property(x => x.Description).HasMaxLength(500).IsRequired();
         });
     }
 }

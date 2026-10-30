@@ -49,3 +49,24 @@ public sealed class RedirectEntity
 
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+/// <summary>A site setting. Catalog keys hold typed JSON in which every visible text is `{ "bn": "...", "en": "..." }`.</summary>
+public sealed class SettingEntity
+{
+    public string Key { get; set; } = string.Empty;
+    public string ValueJson { get; set; } = "null";
+
+    /// <summary>Secret settings are never returned by a public endpoint, and their value is hidden in admin lists.</summary>
+    public bool IsSecret { get; set; }
+
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+/// <summary>A runtime switch changed from the back office without a deploy. Not the frontend's build-time VITE_ENABLE_* flags.</summary>
+public sealed class FeatureFlagEntity
+{
+    public string Key { get; set; } = string.Empty;
+    public bool Enabled { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public DateTimeOffset UpdatedAt { get; set; }
+}

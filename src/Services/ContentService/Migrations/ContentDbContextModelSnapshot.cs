@@ -189,6 +189,28 @@ namespace ContentService.Migrations
                     b.ToTable("content_translations", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.FeatureFlagEntity", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("feature_flags", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.NewsArticleEntity", b =>
                 {
                     b.Property<string>("ContentItemId")
@@ -258,6 +280,28 @@ namespace ContentService.Migrations
                     b.HasIndex("ToPath");
 
                     b.ToTable("redirects", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.SettingEntity", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsSecret")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValueJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("settings", "content");
                 });
 
             modelBuilder.Entity("ContentService.Data.Entities.TagEntity", b =>
