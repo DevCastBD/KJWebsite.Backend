@@ -3,10 +3,10 @@
 The .NET 10 backend scaffold for Kolpojontro Foundation's public site and future back office. It currently serves development APIs and is not a production deployment.
 
 > [!WARNING]
-> ## Development-only security — do not deploy
-> This implementation is **not production-safe**: passwords are stored in plain text, access tokens are held only in process memory, and content administration accepts the hard-coded `dev-admin-token`. Hardening is P1 work.
+> ## Development account and keys — read before deploying
+> Passwords are hashed (ASP.NET Core Identity), access tokens are signed JWTs and content administration needs a permission claim. Still **do not expose this backend publicly** until the remaining P1 items are done (rate limiting, secrets and backups, a first deployment runbook).
 >
-> The development seed account is `admin@site.org` / `admin123`. Use it only on an isolated local machine and **never reuse these credentials or the admin token** in another environment. Do not expose the current backend publicly.
+> The development seed account `admin@site.org` / `admin123` exists **only in Development** and is disabled at startup anywhere else. Outside Development the Auth service refuses to start without `Jwt__PrivateKeyPem` (see [docs/AUTH_TOKENS.md](docs/AUTH_TOKENS.md)). Account emails (confirmation, password reset) are not delivered until the email work in #32 lands; in Development the tokens are written to the Auth log.
 
 ## Overview
 
@@ -42,7 +42,7 @@ flowchart LR
     Gateway --> Content[Content Service :7001]
     Gateway --> CTA[CTA Submission Service :7002]
     Gateway --> Auth[Auth Identity Service :7003]
-    Content --> Memory[(In-memory content)]
+    Content --> ContentDb[(PostgreSQL: content / content schema)]
     CTA --> CtaDb[(PostgreSQL: cta / cta schema)]
     Auth --> AuthDb[(PostgreSQL: auth / auth schema)]
 ```
@@ -50,9 +50,9 @@ flowchart LR
 | Service | Port | Responsibility | Database | Exposure |
 |---|---:|---|---|---|
 | `ApiGateway` | 7000 | Routes content, CTA, auth, and admin-content APIs | None | Public entry point |
-| `ContentService` | 7001 | Public projects/news and admin mutations | In-memory; resets on restart | Internal |
+| `ContentService` | 7001 | Public projects/news and admin mutations | PostgreSQL (`content` database/schema) | Internal |
 | `CtaSubmissionService` | 7002 | CTA and registration-form submissions | PostgreSQL (`cta` database/schema) | Internal |
-| `AuthIdentityService` | 7003 | Registration, login, refresh, logout, and profile | PostgreSQL (`auth` database/schema) | Internal |
+| `AuthIdentityService` | 7003 | Identity, JWT login/refresh/logout, sessions, and profile | PostgreSQL (`auth` database/schema) | Internal |
 
 ## Getting started
 
@@ -72,7 +72,7 @@ On Windows, use `dotnet` from a terminal with the SDK on `PATH`; do not hard-cod
 
 ### Run all services locally
 
-Set `ConnectionStrings__AuthDb` and `ConnectionStrings__CtaDb` to PostgreSQL connection strings (see [database and migrations](#database-and-migrations)), then open four terminals from the repository root:
+Set `ConnectionStrings__AuthDb`, `ConnectionStrings__CtaDb` and `ConnectionStrings__ContentDb` to PostgreSQL connection strings (see [database and migrations](#database-and-migrations)), then open four terminals from the repository root:
 
 ```bash
 dotnet run --project src/Services/ApiGateway --launch-profile http
@@ -91,20 +91,23 @@ The gateway at `http://localhost:7000` expects the downstream services on their 
 | `ASPNETCORE_URLS` | No | `launchSettings.json` port | Overrides a listener. |
 | `ConnectionStrings__AuthDb` | Yes, for Auth | None | Auth PostgreSQL connection string. |
 | `ConnectionStrings__CtaDb` | Yes, for CTA | None | CTA PostgreSQL connection string. |
+| `ConnectionStrings__ContentDb` | Yes, for Content | None | Content PostgreSQL connection string. An empty database is migrated and seeded with the site's current projects and news. |
+| `Jwt__PrivateKeyPem` | Yes, for Auth outside Development | Dev key file | PKCS#8 RSA signing key. Never commit it. |
+| `Jwt__PublicKeyPem` | Yes, for Content/CTA outside Development | Auth's dev key | The Auth service's public key, for verifying access tokens. |
 | `Services__{Content,Cta,Auth}__Url` | No | Localhost service ports | Gateway downstream destination overrides. |
 
-No production secret configuration exists. P1 must use environment/vault configuration, secure auth, and restrictive CORS.
+Secrets (signing key, connection strings) are read only from environment variables or a vault; none is committed. See [docs/SECRET_SCAN.md](docs/SECRET_SCAN.md).
 
 ## Database and migrations
 
-Auth and CTA use Npgsql and apply their PostgreSQL EF Core migrations at startup. Each has a named schema and its own migration-history table. To create and apply a new Auth migration, set `ConnectionStrings__AuthDb` first and run:
+Auth, Content and CTA use Npgsql and apply their PostgreSQL EF Core migrations at startup. Each has a named schema and its own migration-history table. To create and apply a new Auth migration, set `ConnectionStrings__AuthDb` first and run:
 
 ```bash
 dotnet ef migrations add <MigrationName> --project src/Services/AuthIdentityService --startup-project src/Services/AuthIdentityService
 dotnet ef database update --project src/Services/AuthIdentityService --startup-project src/Services/AuthIdentityService
 ```
 
-Use the equivalent CTA paths and `ConnectionStrings__CtaDb` for CTA migrations. The [SQLite to PostgreSQL guide](docs/SQLITE_TO_POSTGRES.md) covers backups, baselines, data import, verification, and rollback. Content has no database yet and resets on restart.
+Use the equivalent CTA paths and `ConnectionStrings__CtaDb` for CTA migrations. The [SQLite to PostgreSQL guide](docs/SQLITE_TO_POSTGRES.md) covers backups, baselines, data import, verification, and rollback. Content is persisted in PostgreSQL (`content` schema); its seed data lives in `src/Services/ContentService/Data/Seed/`.
 
 ## API contract
 

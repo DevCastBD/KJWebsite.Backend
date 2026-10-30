@@ -37,8 +37,18 @@ The frontend's internal shape is `{ projects: { bn, en }, news: { bn, en } }` (`
 
 For lazy loading, call `/bootstrap` once for the active language and the other only when the user switches. Items carry `slug` as their public identifier; ignore `total`/`limit`/`offset` on bootstrap unless `total` exceeds the page size, in which case page through the list endpoints.
 
+## Persistence
+
+Content lives in PostgreSQL (`content` schema; `ContentItem` + `ContentTranslation` with `Project` and `NewsArticle` extension tables, `ContentService/Data`). Notes that affect clients:
+
+- **Slugs** are lowercase letters, digits and hyphens, unique per type and never change. Deleting is soft: the item disappears from reads but its slug stays reserved, and `POST` with that slug restores it.
+- **News** is public only while `status` is `published` (`draft` and `archived` are admin-only); projects are public while `active` (`status=all` on the list also returns drafts/archived). News is ordered newest first, projects in curated order.
+- **Translations** are `en` and `bn`, at most one of each. An update replaces the whole translation set.
+- **Additive fields** (existing fields are unchanged): `tags` on public news; `category` and `year` per project translation, `date` and `tags` per news translation in admin views and inputs. The frontend snapshot keeps these per language (Bengali numerals in `year`).
+- News `content` is stored as paragraphs separated by a blank line; empty paragraphs are dropped.
+- First start on an empty database imports the frontend's snapshots (`Data/Seed/`). It never runs against a database that already has content.
+
 ## Not yet in place
 
-- Content is in memory and resets on restart (persistence: #25).
 - `settings` is empty.
 - Generated types and contract tests against the frontend (#37).

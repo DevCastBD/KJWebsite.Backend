@@ -217,7 +217,7 @@ static class RuntimeOpenApiExporter
         startInfo.ArgumentList.Add($"http://127.0.0.1:{port}");
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
-        if (definition.Name is "AuthIdentityService" or "CtaSubmissionService")
+        if (definition.Name is "AuthIdentityService" or "CtaSubmissionService" or "ContentService")
         {
             startInfo.Environment["OpenApi__Export"] = "true";
         }

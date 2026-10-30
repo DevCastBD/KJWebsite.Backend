@@ -183,7 +183,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Create or replace a project"
-      description: "Creates a project with all provided language translations. Replaces any existing project with the same slug. Requires the matching \u0060content.*\u0060 permission."
+      description: "Creates a project with all provided language translations. Replaces (or restores) any existing project with the same slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "CreateProject"
       requestBody:
         content:
@@ -237,7 +237,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Delete a project"
-      description: "Deletes all translations of the given project. Requires the matching \u0060content.*\u0060 permission."
+      description: "Soft-deletes the project (the slug stays reserved). Requires the matching \u0060content.*\u0060 permission."
       operationId: "DeleteProject"
       parameters:
         -
@@ -282,7 +282,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Create or replace a news article"
-      description: "Creates a news article with all provided language translations. Replaces any existing article with the same slug. Requires the matching \u0060content.*\u0060 permission."
+      description: "Creates a news article with all provided language translations. Replaces (or restores) any existing article with the same slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "CreateNews"
       requestBody:
         content:
@@ -336,7 +336,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Delete a news article"
-      description: "Deletes all translations of the given news article. Requires the matching \u0060content.*\u0060 permission."
+      description: "Soft-deletes the article (the slug stays reserved). Requires the matching \u0060content.*\u0060 permission."
       operationId: "DeleteNews"
       parameters:
         -
@@ -584,6 +584,16 @@ components:
             - "array"
           items:
             type: "string"
+        date:
+          type:
+            - "null"
+            - "string"
+        tags:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
     NewsUpsertRequest:
       required:
         - "slug"
@@ -632,6 +642,14 @@ components:
             - "null"
             - "string"
         fullDescription:
+          type:
+            - "null"
+            - "string"
+        category:
+          type:
+            - "null"
+            - "string"
+        year:
           type:
             - "null"
             - "string"

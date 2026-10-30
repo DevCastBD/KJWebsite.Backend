@@ -178,3 +178,7 @@
 - 2026-10-30T16:50Z [claude] 024-issue-24-authorization CREATED @300f3d0: from #24 (closes #17)
 - 2026-10-30T16:50Z [claude] 024-issue-24-authorization PHASE PLAN→CONSTRUCT @300f3d0: plan approved with #22 run (user confirmed)
 - 2026-10-30T16:50Z [claude] 024-issue-24-authorization DONE @300f3d0: permission policies, deny-by-default, seed migration; 86 tests green
+- 2026-10-30T16:50Z [claude] 025-issue-25-content-persistence BRANCH @b917190: feature/issue-25-content-persistence stacked on feature/issue-24-authorization
+- 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence CREATED @b917190: from #25 (closes #18)
+- 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence PHASE PLAN→CONSTRUCT @b917190: plan approved with #22 run (user confirmed)
+- 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence DONE @b917190: content persisted + seeded; 94 tests green incl. PG
