@@ -36,7 +36,7 @@
 
 ## Cross-cutting
 - OpenAPI is served from each service; Scalar is mapped by its `Program.cs`.
-- Auth, CTA, and Content errors use the shared RFC 9457 factory, preserving the legacy nested `error` object.
+- Auth, CTA, and Content errors use the shared RFC 9457 factory, preserving the legacy nested `error` object. Bodies and list queries validate with FluentValidation (`docs/VALIDATION.md`); new endpoints add a validator + `.WithValidation<T>()`.
 - Content resolves `?lang=`, then `Accept-Language`, then `en`; public list responses echo the result as `lang`.
 - Auth, Content and CTA require PostgreSQL `ConnectionStrings:AuthDb` / `CtaDb` / `ContentDb`; each calls `Database.Migrate()` at startup and own named schemas.
 - Gateway destinations are hard-coded localhost addresses.
