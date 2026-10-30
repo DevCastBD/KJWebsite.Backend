@@ -57,3 +57,15 @@ Back office, all under `/api/v1/admin/membership/applications` with `membership.
 **History is append-only**: EF refuses to modify an event, and PostgreSQL refuses `UPDATE` on `application_status_events` (SQLSTATE 42501). Deleting an application (retention, erasure) still removes its history.
 
 Not built here: provisioning a member on `approved` (#52), a reviewers list (needs Identity data), a multi-criteria rubric, calendar (.ics) invites.
+
+## Approval provisions the member (BE-045, #52)
+
+Moving an application to `approved` (the transition API above) does five things as one action, per application:
+
+1. **Identity creates the login.** Membership calls `POST /api/v1/admin/auth/members` on the Auth service (config `Services:Auth:Url`, default `http://localhost:7003/`) with the **approver's own access token**, so Identity checks the new permission `membership.provision` (seeded into `MembershipOfficer`, and so into `Admin`/`SuperAdmin`; an existing database must grant it to a custom role by hand). The account has the `Member` role and the profile from the application, no password, and a confirmed email: nobody can sign in until its owner uses the setup link. Idempotent per application id (`auth.users.ProvisionedFor`); `409 EMAIL_TAKEN` if another account uses the email.
+2. **Membership commits once**: the `Member` row (`membership.members`), its code `KJ-<year>-<nnnn>` (unique, numbered from 0001 per year, retried on a race), the `approved` history event and the welcome message.
+3. The welcome message is `member.welcome` in `notification_outbox` (applicant's language; instead of, not in addition to, the generic status message). Its payload carries the member code and the password-setup token, so **every outbox payload is data-protected**. The setup link is `POST /api/v1/auth/reset-password` with the applicant's email and that token.
+
+**Failure handling.** Identity unreachable, refusing, or the email taken ends that item with `provisioning_failed`, `forbidden` or `email_taken`, and the application stays `interview_scheduled` with no member, event or message. If the local commit fails after Identity succeeded, the passwordless account is left behind (it cannot be used) and a retry of the approval reuses it. There is no compensating delete; a cross-service transaction is not possible (ADR-001). The result for a success carries `memberCode`.
+
+The profile stays in Identity's `member_profiles` (its interim home); the Member row keeps only the code, link and name. Service-to-service credentials (BE-093) replace token forwarding later.

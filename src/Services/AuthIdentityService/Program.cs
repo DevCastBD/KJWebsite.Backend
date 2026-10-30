@@ -467,6 +467,7 @@ static async Task<string> RoleOf(UserManager<AuthUserEntity> users, AuthUserEnti
     (await users.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
 
 app.MapAdminAuth();
+app.MapMemberProvisioning();
 app.MapAuditLog<AuthDbContext>("/api/v1/admin/auth/audit", "Auth");
 
 app.Run();

@@ -144,9 +144,14 @@ public sealed class MembershipApiFactory : SqliteWebApplicationFactory<Membershi
 
     public CapturingLoggerProvider Logs { get; } = new();
 
+    /// <summary>Where the service's calls to Identity go; set before the first client is created. Default: a real network call.</summary>
+    public HttpMessageHandler? AuthHandler { get; set; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
+        builder.ConfigureServices(services =>
+            services.AddHttpClient("auth").ConfigurePrimaryHttpMessageHandler(() => AuthHandler ?? new HttpClientHandler()));
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {

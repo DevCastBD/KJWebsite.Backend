@@ -16,6 +16,8 @@ public static class Permissions
     public const string UsersManage = "users.manage";
     public const string RolesManage = "roles.manage";
     public const string MembershipManage = "membership.manage";
+    /// <summary>Approving an application creates the applicant's login in Identity; held by the officers who may approve.</summary>
+    public const string MembershipProvision = "membership.provision";
     public const string EventsManage = "events.manage";
     public const string FinanceView = "finance.view";
     public const string FinanceExpenseSubmit = "finance.expense.submit";
@@ -58,6 +60,7 @@ public static class PermissionCatalog
         new("users", Permissions.UsersManage, "Assign roles to users"),
         new("users", Permissions.RolesManage, "Create roles and change what a role may do"),
         new("membership", Permissions.MembershipManage, "Handle membership applications"),
+        new("membership", Permissions.MembershipProvision, "Create the login for an approved applicant"),
         new("membership", Permissions.MemberProfileView, "View member profiles"),
         new("membership", Permissions.MemberProfileEdit, "Edit a member profile (members: their own only)"),
         new("events", Permissions.EventsManage, "Manage events"),
@@ -92,7 +95,7 @@ public static class KjRoles
         [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate, Permissions.MediaView, Permissions.MediaUpload, Permissions.DashboardView],
         [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],
-        [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MemberProfileView, Permissions.UsersView],
+        [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MemberProfileView, Permissions.UsersView],
         [Member] = [Permissions.MemberProfileEdit],
         [Volunteer] = []
     };

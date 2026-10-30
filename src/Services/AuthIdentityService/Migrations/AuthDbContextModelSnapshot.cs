@@ -95,6 +95,10 @@ namespace AuthIdentityService.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ProvisionedFor")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
@@ -118,6 +122,9 @@ namespace AuthIdentityService.Migrations
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
+
+                    b.HasIndex("ProvisionedFor")
+                        .IsUnique();
 
                     b.ToTable("users", "auth");
                 });

@@ -11,6 +11,9 @@ public sealed class AuthUserEntity : IdentityUser
     public string Status { get; set; } = "active";
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>Set when the account was created by approving a membership application (its id): makes provisioning idempotent.</summary>
+    public string? ProvisionedFor { get; set; }
+
     public MemberProfileEntity? Profile { get; set; }
 }
 

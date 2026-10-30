@@ -113,7 +113,8 @@ public sealed class NotificationOutboxEntity
     public string Template { get; set; } = string.Empty;
     public string Language { get; set; } = string.Empty;
     public string RecipientProtected { get; set; } = string.Empty;
-    public string PayloadJson { get; set; } = "{}";
+    /// <summary>Data-protected JSON: welcome messages carry a password-setup token, so no payload is stored in the clear.</summary>
+    public string PayloadJson { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? SentAt { get; set; }
 }
@@ -131,4 +132,20 @@ public sealed class CampaignEntity
     public DateTimeOffset CreatedAt { get; set; }
 
     public bool IsOpen(DateTimeOffset now) => ClosedAt is null && OpensAt <= now && (ClosesAt is null || now < ClosesAt);
+}
+
+/// <summary>
+/// A person admitted through an approved application. `UserId` is the Identity account created in the same
+/// approval; `MemberCode` (KJ-yyyy-nnnn, numbered per year) is unique and never changes.
+/// </summary>
+public sealed class MemberEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string MemberCode { get; set; } = string.Empty;
+    public string ApplicationId { get; set; } = string.Empty;
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Status { get; set; } = "active";
+    public DateTimeOffset JoinedAt { get; set; }
 }

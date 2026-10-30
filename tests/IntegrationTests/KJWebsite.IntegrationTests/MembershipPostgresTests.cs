@@ -24,7 +24,7 @@ public sealed class MembershipPostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<MembershipDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(3);
+                db.Database.GetAppliedMigrations().Should().HaveCount(4);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/membership/applications", new

@@ -11,6 +11,7 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<CampaignEntity> Campaigns => Set<CampaignEntity>();
     public DbSet<ApplicationStatusEventEntity> StatusEvents => Set<ApplicationStatusEventEntity>();
     public DbSet<ApplicationNoteEntity> Notes => Set<ApplicationNoteEntity>();
+    public DbSet<MemberEntity> Members => Set<MemberEntity>();
     public DbSet<NotificationOutboxEntity> NotificationOutbox => Set<NotificationOutboxEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -132,6 +133,22 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
             entity.Property(x => x.RecipientProtected).IsRequired();
             entity.HasIndex(x => x.SentAt);
+        });
+
+        modelBuilder.Entity<MemberEntity>(entity =>
+        {
+            entity.ToTable("members");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.UserId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.MemberCode).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.ApplicationId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.LastName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            entity.HasIndex(x => x.MemberCode).IsUnique();
+            entity.HasIndex(x => x.UserId).IsUnique();
+            entity.HasIndex(x => x.ApplicationId).IsUnique();
         });
 
         modelBuilder.Entity<CampaignEntity>(entity =>
