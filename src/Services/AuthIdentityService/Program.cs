@@ -34,11 +34,18 @@ builder.Services.AddDbContext<AuthDbContext>((services, options) =>
     options.AddInterceptors(services.GetRequiredService<AuditInterceptor>());
 });
 builder.Services.AddKjAuditing("auth", audit => audit
-    .Audit<AuthUserEntity>("PasswordHash", "SecurityStamp", "ConcurrencyStamp")
+    // Personal data stays out of the audit log, so an erasure never has to edit it (ADR-014): ids, status and roles are enough.
+    .Audit<AuthUserEntity>("PasswordHash", "SecurityStamp", "ConcurrencyStamp", "Email", "NormalizedEmail", "UserName", "NormalizedUserName", "PhoneNumber")
     .Audit<AuthRoleEntity>("ConcurrencyStamp")
     .Audit<IdentityRoleClaim<string>>()
     .Audit<IdentityUserRole<string>>()
-    .Audit<MemberProfileEntity>());
+    .Audit<MemberProfileEntity>(
+        nameof(MemberProfileEntity.FirstName), nameof(MemberProfileEntity.LastName), nameof(MemberProfileEntity.Gender), nameof(MemberProfileEntity.ReasonForJoining),
+        nameof(MemberProfileEntity.PresentOrganization), nameof(MemberProfileEntity.VolunteeingExperience), nameof(MemberProfileEntity.DateOfBirth),
+        nameof(MemberProfileEntity.CityOfResidence), nameof(MemberProfileEntity.CountryOfResidence), nameof(MemberProfileEntity.PermanentAddress),
+        nameof(MemberProfileEntity.MailingAddress), nameof(MemberProfileEntity.BloodGroup), nameof(MemberProfileEntity.AreasOfExpertise),
+        nameof(MemberProfileEntity.HighestDegree), nameof(MemberProfileEntity.DisabilitiesIfAny), nameof(MemberProfileEntity.Nationality),
+        nameof(MemberProfileEntity.PersonalWebPage), nameof(MemberProfileEntity.SocialMediaLink)));
 
 // Confirmation and reset tokens are protected by the data-protection key ring (see backlog: share it across replicas).
 builder.Services.AddDataProtection();

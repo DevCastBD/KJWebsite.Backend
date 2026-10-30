@@ -22,7 +22,7 @@ public sealed class PostgreSqlMigrationTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
-        db.Database.GetAppliedMigrations().Should().HaveCount(6).And.Contain(m => m.Contains("AddAuditLog"));
+        db.Database.GetAppliedMigrations().Should().HaveCount(7).And.Contain(m => m.Contains("AddAuditLog"));
         db.Database.GetPendingMigrations().Should().BeEmpty();
         (await TableExists(connectionString, "auth", "users")).Should().BeTrue();
         (await TableExists(connectionString, "auth", "member_profiles")).Should().BeTrue();

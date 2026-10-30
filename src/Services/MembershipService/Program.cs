@@ -11,6 +11,7 @@ using MembershipService.Data.Entities;
 using MembershipService.Intake;
 using MembershipService.Lifecycle;
 using MembershipService.MemberDirectory;
+using MembershipService.Privacy;
 using MembershipService.Review;
 using MembershipService.Self;
 using Microsoft.AspNetCore.DataProtection;
@@ -68,7 +69,8 @@ builder.Services.AddKjAuditing("membership", audit => audit
     .Audit<ApplicationStatusEventEntity>()
     .Audit<MemberEntity>(
         nameof(MemberEntity.PhoneProtected), nameof(MemberEntity.AddressProtected), nameof(MemberEntity.DateOfBirthProtected),
-        nameof(MemberEntity.BloodGroupProtected), nameof(MemberEntity.PhotoKey))
+        nameof(MemberEntity.BloodGroupProtected), nameof(MemberEntity.PhotoKey), nameof(MemberEntity.FirstName), nameof(MemberEntity.LastName),
+        nameof(MemberEntity.NameBn), nameof(MemberEntity.Expertise), nameof(MemberEntity.PhotoFileName))
     .Audit<ProfileChangeEntity>(nameof(ProfileChangeEntity.ValueProtected))
     .Audit<DeletionRequestEntity>()
     .Audit<MemberStatusEventEntity>(nameof(MemberStatusEventEntity.ReasonProtected))
@@ -78,6 +80,7 @@ builder.Services.AddKjAuditing("membership", audit => audit
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.Configure<MembershipOptions>(builder.Configuration.GetSection(MembershipOptions.SectionName));
+builder.Services.Configure<PrivacyOptions>(builder.Configuration.GetSection(PrivacyOptions.SectionName));
 // Persist the key ring (DataProtection:KeysPath) in any deployment: rows encrypted by one instance must open on the next.
 var dataProtection = builder.Services.AddDataProtection(o => o.ApplicationDiscriminator = "KJWebsite.Membership");
 if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
@@ -88,6 +91,7 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
 builder.Services.AddSingleton<IFieldProtector, DataProtectionFieldProtector>();
 builder.Services.AddSingleton<ContactHasher>();
 builder.Services.AddSingleton<IAttachmentStore, LocalDiskAttachmentStore>();
+builder.Services.AddHostedService<RetentionWorker>();
 builder.Services.AddHttpClient(AuthProvisioningClient.ClientName, (services, client) =>
 {
     client.BaseAddress = new Uri(services.GetRequiredService<IConfiguration>()["Services:Auth:Url"] ?? "http://localhost:7003/");
@@ -137,7 +141,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Membershi
    .WithTags("System")
    .AllowAnonymous();
 
-app.MapPost("/api/v1/membership/applications", async (HttpContext context, ApplicationRequest payload, MembershipDbContext db, IFieldProtector protector, ContactHasher hasher, TimeProvider clock) =>
+app.MapPost("/api/v1/membership/applications", async (HttpContext context, ApplicationRequest payload, MembershipDbContext db, IFieldProtector protector, ContactHasher hasher, Microsoft.Extensions.Options.IOptions<PrivacyOptions> privacy, TimeProvider clock) =>
 {
     var now = clock.GetUtcNow();
     var invalid = ApplicationValidator.Validate(payload, DateOnly.FromDateTime(now.UtcDateTime));
@@ -187,6 +191,8 @@ app.MapPost("/api/v1/membership/applications", async (HttpContext context, Appli
     {
         entity.Reference = ReferenceNumber.Create(now.Year);
         db.Applications.Add(entity);
+        // Submitting the form is the applicant's consent to have the application processed under the notice in force; keep the proof.
+        ConsentLedger.Record(db, "application", entity.Id, ConsentPurposes.ApplicationProcessing, true, now, "public_form", "applicant", privacy.Value.NoticeVersion);
         try
         {
             await db.SaveChangesAsync();
@@ -195,6 +201,11 @@ app.MapPost("/api/v1/membership/applications", async (HttpContext context, Appli
         catch (DbUpdateException) when (attempt < 5)
         {
             db.Entry(entity).State = EntityState.Detached;
+            foreach (var record in db.ChangeTracker.Entries<ConsentRecordEntity>().Where(e => e.State == EntityState.Added).ToList())
+            {
+                record.State = EntityState.Detached;
+            }
+
             foreach (var ev in entity.StatusEvents)
             {
                 db.Entry(ev).State = EntityState.Detached;
@@ -265,6 +276,7 @@ app.MapSelfEndpoints();
 app.MapDirectory();
 app.MapCommitteeAdmin();
 app.MapLifecycle();
+app.MapPrivacy();
 app.MapPublicCommittees();
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 

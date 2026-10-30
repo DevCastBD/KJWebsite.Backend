@@ -3046,6 +3046,121 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/membership/privacy:
+    get:
+      tags:
+        - "Privacy"
+      summary: "What the platform actually does with personal data"
+      description: "The configured notice version, data location and retention windows, so the published privacy statement can state exactly what runs. A null window means that kind of data is not purged automatically."
+      operationId: "GetPrivacyBehaviour"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/membership/applications/export:
+    post:
+      tags:
+        - "Privacy"
+      summary: "An applicant\u0027s own data (reference and email required)"
+      description: "Same two factors as the status lookup; any mismatch is the same 404. Rate limited at the gateway."
+      operationId: "ExportApplicationData"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DataRequestInput"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/membership/applications/erasure-request:
+    post:
+      tags:
+        - "Privacy"
+      summary: "Ask for an application to be erased (reference and email required)"
+      description: "Records the request and returns 202 with a reference; staff carry it out, so nobody can delete someone else\u0027s application by knowing an email. Repeating returns the same reference."
+      operationId: "RequestApplicationErasure"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DataRequestInput"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/retention/run:
+    post:
+      tags:
+        - "Privacy admin"
+      summary: "Find (dryRun=true, the default) or purge (dryRun=false) applications past their retention window"
+      description: "Windows come from \u0060Privacy:*ApplicationMonths\u0060; a status with no window is never touched. Every run, dry or not, is recorded with the policy used; a purge also records the opaque ids it removed, never anything personal."
+      operationId: "RunRetention"
+      parameters:
+        -
+          name: "dryRun"
+          in: "query"
+          schema:
+            type: "boolean"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/retention/runs:
+    get:
+      tags:
+        - "Privacy admin"
+      summary: "Past retention runs"
+      operationId: "ListRetentionRuns"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/retention/runs/{id}/items":
+    get:
+      tags:
+        - "Privacy admin"
+      summary: "What a run purged: opaque ids, status and the day the status began"
+      operationId: "ListRetentionRunItems"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/erasure-requests:
+    get:
+      tags:
+        - "Privacy admin"
+      summary: "Erasure requests (status=pending, the default, or completed)"
+      operationId: "ListErasureRequests"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/erasure-requests/{id}/execute":
+    post:
+      tags:
+        - "Privacy admin"
+      summary: "Carry out an erasure request"
+      description: "Members: the Identity account is erased first, then in one transaction the application (with files, notes and queued messages), edit requests and profile are removed or blanked, committee terms end, consents are withdrawn and a non-identifying erasure record is written; the actor\u0027s email/IP on their audit rows is nulled. Applicants: the application and its files are deleted. Idempotent on Identity, so a failed run can be repeated; a completed request is 409."
+      operationId: "ExecuteErasure"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/committees:
     get:
       tags:
@@ -3524,6 +3639,23 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/auth/members/{userId}/erase":
+    post:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Erase a member\u0027s login and profile"
+      description: "Replaces the email and user name with a placeholder, removes the password, profile, roles and sessions, and nulls the actor email/IP/browser on the account\u0027s audit rows. The row and its id remain. Idempotent. Only accounts made by approving an application are accepted."
+      operationId: "EraseMemberAccount"
+      parameters:
+        -
+          name: "userId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/admin/auth/members/{userId}/status":
     put:
       tags:
@@ -3705,6 +3837,10 @@ tags:
     name: "Member portal"
   -
     name: "Directory"
+  -
+    name: "Privacy"
+  -
+    name: "Privacy admin"
   -
     name: "Committees"
   -
@@ -4266,6 +4402,20 @@ components:
           type:
             - "null"
             - "boolean"
+    DataRequestInput:
+      required:
+        - "reference"
+        - "email"
+      type: "object"
+      properties:
+        reference:
+          type:
+            - "null"
+            - "string"
+        email:
+          type:
+            - "null"
+            - "string"
     DecisionRequest:
       required:
         - "reason"

@@ -2,6 +2,7 @@ using System.Data;
 using AuthIdentityService.Data;
 using AuthIdentityService.Data.Entities;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -114,6 +115,54 @@ public static class MemberProvisioningEndpoints
         .WithDescription("Creates a password-less, email-confirmed Member account with the applicant's profile and returns a one-time setup token. Idempotent per `applicationId`: a repeat returns the same account with a fresh token. 409 EMAIL_TAKEN when another account already uses the email.")
         .WithTags("Admin — Roles and users")
         .RequirePermission(Permissions.MembershipProvision);
+
+        // Erasure: the account row stays (audit rows and members refer to its id) but everything identifying goes.
+        app.MapPost("/api/v1/admin/auth/members/{userId}/erase", async (HttpContext context, string userId, AuthDbContext db, UserManager<AuthUserEntity> users, AuthIdentityService.Tokens.RefreshTokenService sessions) =>
+        {
+            var user = await db.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.Id == userId);
+            if (user is null || user.ProvisionedFor is null)
+            {
+                return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Member account not found.");
+            }
+
+            if (user.Status != "erased")
+            {
+                await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                if (user.Profile is not null)
+                {
+                    db.MemberProfiles.Remove(user.Profile);
+                }
+
+                var placeholder = $"erased-{user.Id}@erased.invalid";
+                user.Email = placeholder;
+                user.UserName = placeholder;
+                user.PhoneNumber = null;
+                user.PasswordHash = null;
+                user.EmailConfirmed = false;
+                user.Status = "erased";
+                user.SecurityStamp = Guid.NewGuid().ToString("N");
+                var updated = await users.UpdateAsync(user);
+                if (!updated.Succeeded)
+                {
+                    return ApiError.Create(context, StatusCodes.Status500InternalServerError, "ERASURE_FAILED", "The account could not be erased.");
+                }
+
+                await users.RemoveFromRolesAsync(user, await users.GetRolesAsync(user));
+                await sessions.RevokeAllAsync(user.Id);
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+
+            // Their own audit rows keep what happened, but not who they were (the audit table allows exactly this edit).
+            await db.Set<AuditEvent>().Where(a => a.ActorId == userId)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.ActorEmail, (string?)null).SetProperty(a => a.Ip, (string?)null).SetProperty(a => a.UserAgent, (string?)null));
+            return Results.Ok(new { userId, status = "erased" });
+        })
+        .WithName("EraseMemberAccount")
+        .WithSummary("Erase a member's login and profile")
+        .WithDescription("Replaces the email and user name with a placeholder, removes the password, profile, roles and sessions, and nulls the actor email/IP/browser on the account's audit rows. The row and its id remain. Idempotent. Only accounts made by approving an application are accepted.")
+        .WithTags("Admin — Roles and users")
+        .RequirePermission(Permissions.MembershipPrivacy);
 
         // Terminating a member must end their access, and reinstating restores it. Only the terminate permission may do either.
         app.MapPut("/api/v1/admin/auth/members/{userId}/status", async (HttpContext context, string userId, MemberAccountStatusRequest payload, UserManager<AuthUserEntity> users, AuthIdentityService.Tokens.RefreshTokenService sessions) =>

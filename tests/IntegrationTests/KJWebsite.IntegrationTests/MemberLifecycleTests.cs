@@ -232,7 +232,7 @@ public sealed class MemberLifecycleTests : IDisposable
         var db2 = scope2.ServiceProvider.GetRequiredService<MembershipDbContext>();
         var member = await db2.Members.SingleAsync(x => x.Id == m.Id);
         new[] { member.ConsentName, member.ConsentPhotograph, member.ConsentExpertise, member.ConsentAlumni }.Should().AllBeEquivalentTo(false);
-        (await db2.ConsentEvents.Where(c => c.MemberId == m.Id && !c.Granted).Select(c => c.Field).ToListAsync()).Should().Contain(["name", "expertise", "alumni"]);
+        (await db2.ConsentRecords.Where(c => c.SubjectId == m.Id && !c.Granted).Select(c => c.Purpose).ToListAsync()).Should().Contain(["publish_name", "publish_expertise", "publish_alumni"]);
 
         await Status(_admin!, m.Id, "active");
         (await db2.Members.AsNoTracking().SingleAsync(x => x.Id == m.Id)).ConsentName.Should().BeFalse("reactivation does not re-publish anything");

@@ -20,6 +20,9 @@ public sealed record ProvisionAccount(
 
 public interface IAuthProvisioningClient
 {
+    /// <summary>Erases a member's Identity account (idempotent). False when Identity refused or could not be reached.</summary>
+    Task<bool> EraseAccountAsync(string userId, string? bearerToken, CancellationToken cancellationToken);
+
     /// <summary>Disables or re-enables a member's login. False when Identity refused or could not be reached.</summary>
     Task<bool> SetAccountStatusAsync(string userId, bool enabled, string? bearerToken, CancellationToken cancellationToken);
 
@@ -36,6 +39,27 @@ public interface IAuthProvisioningClient
 public sealed partial class AuthProvisioningClient(IHttpClientFactory factory, ILogger<AuthProvisioningClient> logger) : IAuthProvisioningClient
 {
     public const string ClientName = "auth";
+
+    public async Task<bool> EraseAccountAsync(string userId, string? bearerToken, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/admin/auth/members/{Uri.EscapeDataString(userId)}/erase");
+            request.Headers.Authorization = string.IsNullOrEmpty(bearerToken) ? null : new AuthenticationHeaderValue("Bearer", bearerToken);
+            using var response = await factory.CreateClient(ClientName).SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                LogRefused(logger, (int)response.StatusCode);
+            }
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            LogUnreachable(logger, ex.GetType().Name);
+            return false;
+        }
+    }
 
     public async Task<bool> SetAccountStatusAsync(string userId, bool enabled, string? bearerToken, CancellationToken cancellationToken)
     {

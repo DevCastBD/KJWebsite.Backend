@@ -7,6 +7,7 @@ using MembershipService.Contracts;
 using MembershipService.Data;
 using MembershipService.Data.Entities;
 using MembershipService.Intake;
+using MembershipService.Privacy;
 using MembershipService.Review;
 using Microsoft.EntityFrameworkCore;
 
@@ -81,7 +82,7 @@ public static class SelfEndpoints
             await WithMember(context, db, member => Task.FromResult(Results.Ok(ConsentsOf(member)))))
         .WithName("GetMyConsents").WithSummary("What the member has agreed to publish (everything off until they say so)").WithTags(Tag).Own();
 
-        app.MapPut($"{Route}/consents", async (HttpContext context, Consents payload, MembershipDbContext db, TimeProvider clock) =>
+        app.MapPut($"{Route}/consents", async (HttpContext context, Consents payload, MembershipDbContext db, Microsoft.Extensions.Options.IOptions<PrivacyOptions> privacy, TimeProvider clock) =>
             await WithMember(context, db, async member =>
             {
                 var now = clock.GetUtcNow();
@@ -93,13 +94,13 @@ public static class SelfEndpoints
                     }
 
                     write(granted);
-                    db.ConsentEvents.Add(new MemberConsentEventEntity { MemberId = member.Id, Field = field, Granted = granted, At = now });
+                    ConsentLedger.Record(db, "member", member.Id, field, granted, now, "portal", Subject(context) ?? member.UserId, privacy.Value.NoticeVersion);
                 }
 
-                Set("name", member.ConsentName, payload.Name, v => member.ConsentName = v);
-                Set("photograph", member.ConsentPhotograph, payload.Photograph, v => member.ConsentPhotograph = v);
-                Set("expertise", member.ConsentExpertise, payload.Expertise, v => member.ConsentExpertise = v);
-                Set("alumni", member.ConsentAlumni, payload.Alumni ?? member.ConsentAlumni, v => member.ConsentAlumni = v);
+                Set(ConsentPurposes.PublishName, member.ConsentName, payload.Name, v => member.ConsentName = v);
+                Set(ConsentPurposes.PublishPhotograph, member.ConsentPhotograph, payload.Photograph, v => member.ConsentPhotograph = v);
+                Set(ConsentPurposes.PublishExpertise, member.ConsentExpertise, payload.Expertise, v => member.ConsentExpertise = v);
+                Set(ConsentPurposes.PublishAlumni, member.ConsentAlumni, payload.Alumni ?? member.ConsentAlumni, v => member.ConsentAlumni = v);
                 await db.SaveChangesAsync();
                 return Results.Ok(ConsentsOf(member));
             }))

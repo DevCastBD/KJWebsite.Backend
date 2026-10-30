@@ -178,14 +178,35 @@ public sealed class MemberEntity
     public string? PhotoScanStatus { get; set; }
 }
 
-/// <summary>Append-only record of every consent given or withdrawn, with when (the proof ADR-014 and #58 need).</summary>
-public sealed class MemberConsentEventEntity
+/// <summary>
+/// The consent ledger: one row each time a person gives or withdraws consent for a purpose, saying who did it, where from and
+/// which privacy notice applied. Append-only. Subjects are opaque ids (an application or a member), never names.
+/// </summary>
+public sealed class ConsentRecordEntity
 {
     public long Id { get; set; }
-    public string MemberId { get; set; } = string.Empty;
-    public string Field { get; set; } = string.Empty;
+    public string SubjectId { get; set; } = string.Empty;
+    public string SubjectKind { get; set; } = "member";
+    public string Purpose { get; set; } = string.Empty;
     public bool Granted { get; set; }
     public DateTimeOffset At { get; set; }
+
+    /// <summary>public_form, portal, staff or system.</summary>
+    public string Source { get; set; } = "system";
+
+    /// <summary>Who acted: the data subject's own user id for portal changes, a staff id, or "system".</summary>
+    public string ActorId { get; set; } = "system";
+
+    public string? NoticeVersion { get; set; }
+}
+
+public static class ConsentPurposes
+{
+    public const string ApplicationProcessing = "application_processing";
+    public const string PublishName = "publish_name";
+    public const string PublishPhotograph = "publish_photograph";
+    public const string PublishExpertise = "publish_expertise";
+    public const string PublishAlumni = "publish_alumni";
 }
 
 public static class ProfileChangeStatuses
@@ -213,9 +234,50 @@ public sealed class ProfileChangeEntity
 public sealed class DeletionRequestEntity
 {
     public string Id { get; set; } = string.Empty;
-    public string MemberId { get; set; } = string.Empty;
+
+    /// <summary>The member asking, or null when an applicant who was never approved asked (then `ApplicationId` is set).</summary>
+    public string? MemberId { get; set; }
+    public string? ApplicationId { get; set; }
     public string Reference { get; set; } = string.Empty;
     public DateTimeOffset RequestedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
+    public string? CompletedBy { get; set; }
+}
+
+/// <summary>One retention run: when, under which policy, and how many were purged. Holds no personal data.</summary>
+public sealed class RetentionRunEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public DateTimeOffset StartedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+    public bool DryRun { get; set; }
+
+    /// <summary>"worker" or the staff id who started it.</summary>
+    public string StartedBy { get; set; } = "worker";
+    public string PolicyJson { get; set; } = "{}";
+    public int Purged { get; set; }
+}
+
+/// <summary>An application removed by a run: its opaque id, the status it was in and the day that status began. No personal data.</summary>
+public sealed class RetentionItemEntity
+{
+    public long Id { get; set; }
+    public string RunId { get; set; } = string.Empty;
+    public string ApplicationId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public DateOnly StatusSince { get; set; }
+}
+
+/// <summary>Proof an erasure was carried out: whose (opaque id), when, by whom and what was removed. No personal data.</summary>
+public sealed class ErasureRecordEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string SubjectKind { get; set; } = string.Empty;
+    public string SubjectId { get; set; } = string.Empty;
+    public string? RequestId { get; set; }
+    public DateTimeOffset ExecutedAt { get; set; }
+    public string ExecutedBy { get; set; } = string.Empty;
+    public string SummaryJson { get; set; } = "{}";
 }
 
 public static class MemberStatuses
@@ -225,6 +287,9 @@ public static class MemberStatuses
     public const string Inactive = "inactive";
     public const string Alumni = "alumni";
     public const string Terminated = "terminated";
+
+    /// <summary>Set by an erasure, never by a transition: the personal data is gone and only the opaque record remains.</summary>
+    public const string Erased = "erased";
 
     public static readonly IReadOnlyList<string> All = [Active, OnLeave, Inactive, Alumni, Terminated];
 }

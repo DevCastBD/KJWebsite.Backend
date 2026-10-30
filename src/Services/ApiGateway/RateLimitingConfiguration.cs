@@ -173,7 +173,9 @@ public static class RateLimitingConfiguration
             return ("cta", rules.CtaSubmission);
         }
 
-        if (path.Equals("/api/v1/membership/applications/status", StringComparison.OrdinalIgnoreCase))
+        if (path.Equals("/api/v1/membership/applications/status", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/api/v1/membership/applications/export", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/api/v1/membership/applications/erasure-request", StringComparison.OrdinalIgnoreCase))
         {
             return ("membership-status", rules.MembershipStatus);
         }

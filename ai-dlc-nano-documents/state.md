@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 4 run: #49-#55, #57 done; #56 skipped (needs #109); next #58; #109, #110 skipped by user)
+- Active work item: none  (milestone 4 run finished: #49-#55, #57, #58 done; #56 skipped (needs #109); #109, #110 skipped by user)
 - Phase: —
-- Branch: Feature/issue-57-membership-lifecycle
+- Branch: Feature/issue-58-retention-consent-erasure
 - Base SHA: —
-- Next step: start #58 (BE-052 retention, consent records, export, erasure) on a new branch stacked on Feature/issue-57-membership-lifecycle; it leans on decision #110 (retention windows, skipped) so ask. Push/PRs only on request
+- Next step: nothing queued. Branch stack (all local, unpushed): 49>50>51>52>53>54>55>57>58 off origin/develop; PRs only on request, each targeting the previous branch. Open decisions: #109 (dues/member types) blocks #56; #110 (retention windows)
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

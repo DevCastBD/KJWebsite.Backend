@@ -11,7 +11,10 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<CampaignEntity> Campaigns => Set<CampaignEntity>();
     public DbSet<ApplicationStatusEventEntity> StatusEvents => Set<ApplicationStatusEventEntity>();
     public DbSet<ApplicationNoteEntity> Notes => Set<ApplicationNoteEntity>();
-    public DbSet<MemberConsentEventEntity> ConsentEvents => Set<MemberConsentEventEntity>();
+    public DbSet<ConsentRecordEntity> ConsentRecords => Set<ConsentRecordEntity>();
+    public DbSet<RetentionRunEntity> RetentionRuns => Set<RetentionRunEntity>();
+    public DbSet<RetentionItemEntity> RetentionItems => Set<RetentionItemEntity>();
+    public DbSet<ErasureRecordEntity> ErasureRecords => Set<ErasureRecordEntity>();
     public DbSet<ProfileChangeEntity> ProfileChanges => Set<ProfileChangeEntity>();
     public DbSet<DeletionRequestEntity> DeletionRequests => Set<DeletionRequestEntity>();
     public DbSet<CommitteeEntity> Committees => Set<CommitteeEntity>();
@@ -163,13 +166,48 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.HasIndex(x => x.ApplicationId).IsUnique();
         });
 
-        modelBuilder.Entity<MemberConsentEventEntity>(entity =>
+        modelBuilder.Entity<ConsentRecordEntity>(entity =>
         {
-            entity.ToTable("member_consent_events");
+            entity.ToTable("consent_records");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
-            entity.Property(x => x.Field).HasMaxLength(32).IsRequired();
-            entity.HasIndex(x => x.MemberId);
+            entity.Property(x => x.SubjectId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SubjectKind).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Purpose).HasMaxLength(48).IsRequired();
+            entity.Property(x => x.Source).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ActorId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.NoticeVersion).HasMaxLength(48);
+            entity.HasIndex(x => x.SubjectId);
+        });
+
+        modelBuilder.Entity<RetentionRunEntity>(entity =>
+        {
+            entity.ToTable("retention_runs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.StartedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.PolicyJson).IsRequired();
+        });
+
+        modelBuilder.Entity<RetentionItemEntity>(entity =>
+        {
+            entity.ToTable("retention_items");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.RunId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ApplicationId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            entity.HasIndex(x => x.RunId);
+        });
+
+        modelBuilder.Entity<ErasureRecordEntity>(entity =>
+        {
+            entity.ToTable("erasure_records");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.SubjectKind).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.SubjectId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.RequestId).HasMaxLength(64);
+            entity.Property(x => x.ExecutedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SummaryJson).IsRequired();
         });
 
         modelBuilder.Entity<ProfileChangeEntity>(entity =>
@@ -192,9 +230,12 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.ToTable("deletion_requests");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasMaxLength(64);
-            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.MemberId).HasMaxLength(64);
+            entity.Property(x => x.ApplicationId).HasMaxLength(64);
+            entity.Property(x => x.CompletedBy).HasMaxLength(64);
             entity.Property(x => x.Reference).HasMaxLength(32).IsRequired();
             entity.HasIndex(x => x.MemberId);
+            entity.HasIndex(x => x.ApplicationId);
         });
 
         modelBuilder.Entity<CommitteeEntity>(entity =>

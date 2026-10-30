@@ -24,7 +24,7 @@ public sealed class MembershipPostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<MembershipDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(7);
+                db.Database.GetAppliedMigrations().Should().HaveCount(8);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/membership/applications", new
@@ -49,6 +49,13 @@ public sealed class MembershipPostgresTests
 
             await Refused(connectionString, "UPDATE membership.application_status_events SET \"Status\" = 'approved'");
             await Refused(connectionString, "UPDATE membership.audit_events SET \"Action\" = 'x'");
+
+            // Erasure's one allowed edit: actor email, IP and browser may be nulled, and only that.
+            await Exec(connectionString, "UPDATE membership.audit_events SET \"ActorEmail\" = 'who@example.org', \"Ip\" = '1.2.3.4' WHERE FALSE");
+            await Refused(connectionString, "UPDATE membership.audit_events SET \"ActorEmail\" = 'who@example.org'");
+            await Refused(connectionString, "UPDATE membership.audit_events SET \"ActorEmail\" = NULL, \"Action\" = 'x'");
+            await Exec(connectionString, "UPDATE membership.audit_events SET \"ActorEmail\" = NULL, \"Ip\" = NULL, \"UserAgent\" = NULL");
+            await Refused(connectionString, "DELETE FROM membership.audit_events");
         }
         finally
         {
@@ -105,6 +112,14 @@ public sealed class MembershipPostgresTests
             NpgsqlConnection.ClearAllPools();
             await TestPostgres.DropDatabaseAsync(databaseName);
         }
+    }
+
+    private static async Task Exec(string connectionString, string sql)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task Refused(string connectionString, string sql)
