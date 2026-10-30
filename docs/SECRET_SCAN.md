@@ -18,3 +18,11 @@ No private keys, cloud credentials, API tokens or real connection strings were f
 ## Remediation
 
 None needed beyond what shipped: the shared secret is gone from the code, and nothing real was ever committed, so no history rewrite is proposed (a rewrite would also invalidate every clone and open PR). Re-run a proper scanner (gitleaks) before the first public deployment; that is tracked with secrets management in #36.
+
+## 2026-10-31 re-run (issue #36)
+
+Command: `tools/scan-secrets.sh --patterns` (every added line of `git log --all -p`, excluding the read-only `legacy/` snapshots, plus all tracked files). `gitleaks` was not installed on the machine that ran it, so this is still a pattern scan; the script uses gitleaks automatically when it is present, and `.gitleaks.toml` carries the same allowlist.
+
+Result: no private keys, cloud or provider tokens, JWTs or credential assignments beyond the reviewed placeholders in the table above. Nothing real was ever committed, so no remediation and no history rewrite. The shared dev password and token placeholders are public development values; the Development seed account is disabled everywhere else, and `dev-admin-token` authenticates nothing since #24.
+
+Before the first public deployment: install gitleaks (`brew install gitleaks`) and run `tools/scan-secrets.sh` once more. Rotation and the rest of the secrets policy are in [SECRETS.md](SECRETS.md).

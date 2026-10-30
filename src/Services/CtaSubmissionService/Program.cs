@@ -47,6 +47,8 @@ builder.Services.AddOutboxHandler<CtaEmailHandler>();
 
 health.AddDbContextCheck<CtaDbContext>("database", tags: [KjObservability.ReadyTag, KjObservability.StartupTag]);
 
+KjJwtKeys.EnsureVerificationKeyConfigured(builder.Configuration, builder.Environment);
+
 var app = builder.Build();
 app.UseKjObservability();
 

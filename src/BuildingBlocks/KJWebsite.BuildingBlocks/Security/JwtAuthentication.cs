@@ -78,6 +78,23 @@ public static class KjJwtKeys
         return keys;
     }
 
+    /// <summary>
+    /// Verifying services (Content, CTA) outside Development must be given Auth's public key. Without one every token is
+    /// rejected, which looks like an outage rather than a missing secret, so refuse to start instead.
+    /// </summary>
+    public static void EnsureVerificationKeyConfigured(IConfiguration configuration, IHostEnvironment environment)
+    {
+        if (environment.IsDevelopment() || configuration.GetValue<bool>("OpenApi:Export"))
+        {
+            return;
+        }
+
+        if (PublicKeysFromConfiguration(configuration).Count == 0)
+        {
+            throw new InvalidOperationException("Jwt:PublicKeyPem is required outside Development (the Auth service's current public key).");
+        }
+    }
+
     public static IEnumerable<SecurityKey> RetiredPublicKeys(IConfiguration configuration) =>
         configuration.GetSection("Jwt:RetiredPublicKeysPem").GetChildren()
             .Select(c => c.Value)

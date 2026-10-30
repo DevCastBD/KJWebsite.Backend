@@ -47,6 +47,7 @@
   §1 Current state 44–97 · §4 Engineering standards 315–369 · §5 Phase plan 370–674 · §7 Security 691–713 · §8 Operations 714–730
 
 ## Gotchas
+- Secrets: user-secrets locally, env/vault deployed (`docs/SECRETS.md`); `tools/scan-secrets.sh` before releases; a test rejects secrets in settings files.
 - Endpoints are deny-by-default: declare `.AllowAnonymous()` or `.RequirePermission(Permissions.X)` (BuildingBlocks `Security/`); a test audits every endpoint. Permissions/roles live in `KjRoles.Seed`.
 - Embedded seed files named `*.en.json`/`*.bn.json` need `WithCulture="false"` or MSBuild treats `.en`/`.bn` as a culture and builds satellite assemblies.
 - Gateway rate limits per IP (`docs/RATE_LIMITING.md`); set `ForwardedHeaders:*` before going public. Not production-safe yet: no email delivery (#32), refresh token in JSON body (cookie pending).

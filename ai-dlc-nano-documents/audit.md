@@ -190,3 +190,4 @@
 - 2026-10-30T18:05Z [claude] 030-issue-33-outbox-jobs DONE @2ba5ca5: outbox + dispatcher + Hangfire, dead-letter, authenticated dashboard; 146 tests green incl. PostgreSQL, live run on PG verified
 - 2026-10-30T18:08Z [claude] 031-issue-32-email-outbox DONE @4c56000: IEmailSender + Postmark + file sink, bn/en templates via outbox; 164 tests green incl. PostgreSQL; SPF/DKIM/DMARC and client rendering are manual (#107)
 - 2026-10-30T18:13Z [claude] 032-issue-34-cta-read-apis DONE @a557685: admin list/get/patch/export, audit, honeypot+timing+Turnstile; 204 tests green incl. PostgreSQL; openapi regenerated
+- 2026-10-30T18:16Z [claude] 033-issue-36-secrets DONE @f90f1f2: startup guards, rotation rehearsal tests, settings hygiene test, scan script, SECRETS.md; 209 tests green incl. PostgreSQL; gitleaks not installed, pattern scan clean
