@@ -1,12 +1,15 @@
 using CtaSubmissionService.Contracts;
 using CtaSubmissionService.Data;
 using CtaSubmissionService.Data.Entities;
+using CtaSubmissionService.Validation;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Security;
+using KJWebsite.BuildingBlocks.Validation;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddKjValidation<CtaSubmissionRequestValidator>();
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, ct) =>
@@ -75,10 +78,6 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
-var allowedForms = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "registration", "contact", "footer-contact", "project-involved" };
-var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "join", "donate", "partnership", "get-involved", "contact" };
-var allowedLangs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bn", "en" };
-
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmissionService" }))
    .WithName("CtaHealth")
    .WithSummary("CTA service health check")
@@ -87,17 +86,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmis
 
 app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db) =>
 {
-    if (!allowedForms.Contains(payload.FormName) || !allowedTypes.Contains(payload.CtaType) || !allowedLangs.Contains(payload.Language))
-    {
-        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid formName, ctaType, or language.");
-    }
-
     var valuesJson = System.Text.Json.JsonSerializer.Serialize(payload.Values);
-    if (valuesJson.Length > 32_000)
-    {
-        return ApiError.Create(context, StatusCodes.Status413PayloadTooLarge, "PAYLOAD_TOO_LARGE", "values payload exceeds 32KB.");
-    }
-
     var id = $"subm_{Guid.NewGuid():N}";
     var createdAt = DateTimeOffset.UtcNow;
     var awaitingProfile = LegacyAwaitingUserMapper.TryMap(payload.Values);
@@ -131,6 +120,7 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
 .WithSummary("Submit a CTA form")
 .WithDescription("Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact.")
 .WithTags("CTA")
+.WithValidation<CtaSubmissionRequest>()
 .AllowAnonymous();
 
 app.Run();

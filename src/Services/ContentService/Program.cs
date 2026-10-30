@@ -3,14 +3,18 @@ using System.Text.Json;
 using ContentService;
 using ContentService.Data;
 using ContentService.Data.Entities;
+using ContentService.Validation;
+using FluentValidation;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Security;
+using KJWebsite.BuildingBlocks.Validation;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
-const int MaxPageSize = 100;
+const int MaxPageSize = ListQueryValidator.MaxPageSize;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddKjValidation<ContentService.Validation.ListQueryValidator>();
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, ct) =>
@@ -73,18 +77,16 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ContentSe
    .WithTags("System")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/content/projects", async (HttpRequest request, ContentStore store, string? lang, string? status, int? limit, int? offset) =>
+app.MapGet("/api/v1/content/projects", async (HttpRequest request, ContentStore store, string? lang, string? status, int? limit, int? offset, IValidator<ListQuery> listValidator) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
-    if (!TryReadStatus(status, out var normalizedStatus))
+    if (InvalidList(request.HttpContext, listValidator, new ListQuery(limit, offset, status)) is { } invalid)
     {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "status must be active or all.");
+        return invalid;
     }
 
-    if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
-    {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
-    }
+    var normalizedStatus = NormalizeStatus(status);
+    var (safeLimit, safeOffset) = (limit.GetValueOrDefault(20), offset.GetValueOrDefault(0));
 
     return Cached(request, Page(await store.ProjectsAsync(resolvedLanguage, normalizedStatus), safeLimit, safeOffset, resolvedLanguage));
 })
@@ -108,13 +110,15 @@ app.MapGet("/api/v1/content/projects/{id}", async (HttpRequest request, ContentS
 .WithTags("Content")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/content/news", async (HttpRequest request, ContentStore store, string? lang, int? limit, int? offset) =>
+app.MapGet("/api/v1/content/news", async (HttpRequest request, ContentStore store, string? lang, int? limit, int? offset, IValidator<ListQuery> listValidator) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
-    if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
+    if (InvalidList(request.HttpContext, listValidator, new ListQuery(limit, offset)) is { } invalid)
     {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
+        return invalid;
     }
+
+    var (safeLimit, safeOffset) = (limit.GetValueOrDefault(20), offset.GetValueOrDefault(0));
 
     return Cached(request, Page(await store.NewsAsync(resolvedLanguage), safeLimit, safeOffset, resolvedLanguage));
 })
@@ -155,13 +159,15 @@ app.MapGet("/api/v1/content/bootstrap", async (HttpRequest request, ContentStore
 .WithTags("Content")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/admin/content/projects", async (HttpRequest request, ContentStore store, int? limit, int? offset) =>
+app.MapGet("/api/v1/admin/content/projects", async (HttpRequest request, ContentStore store, int? limit, int? offset, IValidator<ListQuery> listValidator) =>
 {
 
-    if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
+    if (InvalidList(request.HttpContext, listValidator, new ListQuery(limit, offset)) is { } invalid)
     {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
+        return invalid;
     }
+
+    var (safeLimit, safeOffset) = (limit.GetValueOrDefault(20), offset.GetValueOrDefault(0));
 
     request.HttpContext.Response.Headers.CacheControl = "no-store";
     return Results.Ok(PageAll(await store.AdminProjectsAsync(), safeLimit, safeOffset));
@@ -187,13 +193,15 @@ app.MapGet("/api/v1/admin/content/projects/{id}", async (HttpRequest request, Co
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
-app.MapGet("/api/v1/admin/content/news", async (HttpRequest request, ContentStore store, int? limit, int? offset) =>
+app.MapGet("/api/v1/admin/content/news", async (HttpRequest request, ContentStore store, int? limit, int? offset, IValidator<ListQuery> listValidator) =>
 {
 
-    if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
+    if (InvalidList(request.HttpContext, listValidator, new ListQuery(limit, offset)) is { } invalid)
     {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid paging values.");
+        return invalid;
     }
+
+    var (safeLimit, safeOffset) = (limit.GetValueOrDefault(20), offset.GetValueOrDefault(0));
 
     request.HttpContext.Response.Headers.CacheControl = "no-store";
     return Results.Ok(PageAll(await store.AdminNewsAsync(), safeLimit, safeOffset));
@@ -230,6 +238,7 @@ app.MapPost("/api/v1/admin/content/projects", async (HttpRequest request, Conten
 .WithSummary("Create or replace a project")
 .WithDescription("Creates a project with all provided language translations. Replaces (or restores) any existing project with the same slug. Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
+.WithValidation<ProjectUpsertRequest>()
 .RequirePermission(Permissions.ContentCreate);
 
 app.MapPut("/api/v1/admin/content/projects/{id}", async (HttpRequest request, ContentStore store, string id, ProjectUpsertRequest payload) =>
@@ -246,6 +255,7 @@ app.MapPut("/api/v1/admin/content/projects/{id}", async (HttpRequest request, Co
 .WithSummary("Update a project")
 .WithDescription("Replaces all translations for the given project. Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
+.WithValidation<ProjectUpsertRequest>()
 .RequirePermission(Permissions.ContentUpdate);
 
 app.MapDelete("/api/v1/admin/content/projects/{id}", async (HttpRequest request, ContentStore store, string id) =>
@@ -269,6 +279,7 @@ app.MapPost("/api/v1/admin/content/news", async (HttpRequest request, ContentSto
 .WithSummary("Create or replace a news article")
 .WithDescription("Creates a news article with all provided language translations. Replaces (or restores) any existing article with the same slug. Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
+.WithValidation<NewsUpsertRequest>()
 .RequirePermission(Permissions.ContentCreate);
 
 app.MapPut("/api/v1/admin/content/news/{id}", async (HttpRequest request, ContentStore store, string id, NewsUpsertRequest payload) =>
@@ -285,6 +296,7 @@ app.MapPut("/api/v1/admin/content/news/{id}", async (HttpRequest request, Conten
 .WithSummary("Update a news article")
 .WithDescription("Replaces all translations for the given news article. Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
+.WithValidation<NewsUpsertRequest>()
 .RequirePermission(Permissions.ContentUpdate);
 
 app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, ContentStore store, string id) =>
@@ -299,17 +311,12 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 
 app.Run();
 
-static bool TryReadStatus(string? status, out string normalized)
-{
-    normalized = string.IsNullOrWhiteSpace(status) ? "active" : status.Trim().ToLowerInvariant();
-    return normalized is "active" or "all";
-}
+static string NormalizeStatus(string? status) => string.IsNullOrWhiteSpace(status) ? "active" : status.Trim().ToLowerInvariant();
 
-static bool TryReadPaging(int? limit, int? offset, out int safeLimit, out int safeOffset)
+static IResult? InvalidList(HttpContext context, IValidator<ListQuery> validator, ListQuery query)
 {
-    safeLimit = limit.GetValueOrDefault(20);
-    safeOffset = offset.GetValueOrDefault(0);
-    return safeLimit is >= 1 and <= MaxPageSize && safeOffset >= 0;
+    var result = validator.Validate(query);
+    return result.IsValid ? null : ValidationProblem.Create(context, result.Errors);
 }
 
 static object Page<T>(List<T> rows, int limit, int offset, string language)

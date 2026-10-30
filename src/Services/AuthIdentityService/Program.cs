@@ -4,13 +4,16 @@ using AuthIdentityService.Data;
 using AuthIdentityService.Data.Entities;
 using AuthIdentityService.Identity;
 using AuthIdentityService.Tokens;
+using AuthIdentityService.Validation;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Security;
+using KJWebsite.BuildingBlocks.Validation;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddKjValidation<AuthIdentityService.Validation.LoginRequestValidator>();
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, context, ct) =>
@@ -115,15 +118,10 @@ const string ResetMessage = "If the account exists, an email has been sent.";
 
 app.MapPost("/api/v1/auth/register", async (HttpContext context, LegacyRegistrationRequest payload, UserManager<AuthUserEntity> users, IAuthEmailSender mail) =>
 {
-    if (string.IsNullOrWhiteSpace(payload.Email) || string.IsNullOrWhiteSpace(payload.Password))
-    {
-        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "email and password are required.");
-    }
-
     var email = payload.Email.Trim().ToLowerInvariant();
     if (await users.FindByEmailAsync(email) is not null)
     {
-        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "email already exists.");
+        return ValidationProblem.Create(context, "email", ValidationMessages.Taken);
     }
 
     // The requested `roles` value is ignored: letting a public caller pick "admin" is a privilege escalation.
@@ -161,7 +159,7 @@ app.MapPost("/api/v1/auth/register", async (HttpContext context, LegacyRegistrat
     var created = await users.CreateAsync(user, payload.Password);
     if (!created.Succeeded)
     {
-        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", string.Join(" ", created.Errors.Select(e => e.Description)));
+        return ValidationProblem.Create(context, "password", ValidationMessages.WeakPassword);
     }
 
     await users.AddToRoleAsync(user, "Member");
@@ -173,6 +171,7 @@ app.MapPost("/api/v1/auth/register", async (HttpContext context, LegacyRegistrat
 .WithSummary("Register a new user account")
 .WithDescription("Creates a new member account with a hashed password and sends an email-confirmation message. The requested role is ignored: new accounts are `Member`. Includes optional legacy profile fields (name, gender, address, etc.).")
 .WithTags("Auth")
+.WithValidation<LegacyRegistrationRequest>()
 .AllowAnonymous();
 
 app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
@@ -214,6 +213,7 @@ app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest paylo
 .WithSummary("Login and receive tokens")
 .WithDescription("Authenticates a user and returns an `access_token` (RS256 JWT, 15 min) and a `refresh_token` (opaque, stored hashed, 30 days). Repeated failures lock the account (423). Unconfirmed emails are rejected (403) unless `Identity:RequireConfirmedEmail` is off.")
 .WithTags("Auth")
+.WithValidation<LoginRequest>()
 .AllowAnonymous();
 
 app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequest payload, UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
@@ -238,6 +238,7 @@ app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequ
 .WithSummary("Refresh an expired access token")
 .WithDescription("Rotates the refresh token and issues a new access token. The old refresh token is single-use; presenting it again ends the whole session.")
 .WithTags("Auth")
+.WithValidation<RefreshTokenRequest>()
 .AllowAnonymous();
 
 app.MapPost("/api/v1/auth/logout", async (HttpContext context, RefreshTokenRequest payload, RefreshTokenService sessions) =>
@@ -253,6 +254,7 @@ app.MapPost("/api/v1/auth/logout", async (HttpContext context, RefreshTokenReque
 .WithSummary("Logout and revoke refresh token")
 .WithDescription("Ends the session the given refresh token belongs to. Returns 204 No Content on success.")
 .WithTags("Auth")
+.WithValidation<RefreshTokenRequest>()
 .AllowAnonymous();
 
 app.MapPost("/api/v1/auth/confirm-email", async (HttpContext context, ConfirmEmailRequest payload, UserManager<AuthUserEntity> users) =>
@@ -269,6 +271,7 @@ app.MapPost("/api/v1/auth/confirm-email", async (HttpContext context, ConfirmEma
 .WithSummary("Confirm an email address")
 .WithDescription("Confirms the address using the token from the confirmation email. Returns 204 on success.")
 .WithTags("Auth")
+.WithValidation<ConfirmEmailRequest>()
 .AllowAnonymous();
 
 app.MapPost("/api/v1/auth/resend-confirmation", async (ResendConfirmationRequest payload, UserManager<AuthUserEntity> users, IAuthEmailSender mail) =>
@@ -285,6 +288,7 @@ app.MapPost("/api/v1/auth/resend-confirmation", async (ResendConfirmationRequest
 .WithSummary("Resend the confirmation email")
 .WithDescription("Always returns 202, whether or not the account exists.")
 .WithTags("Auth")
+.WithValidation<ResendConfirmationRequest>()
 .AllowAnonymous();
 
 app.MapPost("/api/v1/auth/forgot-password", async (ForgotPasswordRequest payload, UserManager<AuthUserEntity> users, IAuthEmailSender mail) =>
@@ -301,6 +305,7 @@ app.MapPost("/api/v1/auth/forgot-password", async (ForgotPasswordRequest payload
 .WithSummary("Request a password-reset email")
 .WithDescription("Always returns 202, whether or not the account exists, so it cannot be used to discover accounts.")
 .WithTags("Auth")
+.WithValidation<ForgotPasswordRequest>()
 .AllowAnonymous();
 
 app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPasswordRequest payload, UserManager<AuthUserEntity> users, RefreshTokenService sessions) =>
@@ -314,7 +319,7 @@ app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPass
     var result = await users.ResetPasswordAsync(user, payload.Token, payload.NewPassword);
     if (!result.Succeeded)
     {
-        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", string.Join(" ", result.Errors.Select(e => e.Description)));
+        return ValidationProblem.Create(context, "newPassword", ValidationMessages.WeakPassword);
     }
 
     // The emailed token proves control of the mailbox, and a new password ends any lockout.
@@ -331,6 +336,7 @@ app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPass
 .WithSummary("Set a new password with a reset token")
 .WithDescription("Sets the password using the emailed token, lifts any lockout and revokes all refresh tokens. Returns 204 on success.")
 .WithTags("Auth")
+.WithValidation<ResetPasswordRequest>()
 .AllowAnonymous();
 
 app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db, UserManager<AuthUserEntity> users) =>
