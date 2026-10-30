@@ -1570,6 +1570,78 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/completeness":
+    get:
+      tags:
+        - "Admin \u2014 Translations"
+      summary: "Translation completeness of one item, per language"
+      description: "A language is complete when every required field is filled. Required fields per type: project: title, summary, body; news: title, summary, body; page: title, body; faq: title, body; team-member: title, summary; testimonial: title, body; partner: title; press: title, summary."
+      operationId: "GetItemCompleteness"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/translations/report:
+    get:
+      tags:
+        - "Admin \u2014 Translations"
+      summary: "Missing and incomplete translations across all content types"
+      description: "Lists items with gaps (\u0060missing\u0060: no translation row; \u0060incomplete\u0060: a required field is blank), with counts per type and language for the whole filtered set. Filters: \u0060type\u0060, \u0060lang\u0060, \u0060status\u0060, \u0060includeComplete\u0060."
+      operationId: "TranslationReport"
+      parameters:
+        -
+          name: "type"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "includeComplete"
+          in: "query"
+          schema:
+            type: "boolean"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/content/trash:
     get:
       tags:
@@ -2354,6 +2426,8 @@ tags:
     name: "Content \u2014 Press"
   -
     name: "Admin \u2014 Editorial workflow"
+  -
+    name: "Admin \u2014 Translations"
   -
     name: "Admin \u2014 Audit log"
   -

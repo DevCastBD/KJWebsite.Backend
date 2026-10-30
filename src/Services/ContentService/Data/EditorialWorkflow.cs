@@ -9,7 +9,7 @@ namespace ContentService.Data;
 /// The status machine: draft, in_review, scheduled, published, archived. Anyone who may edit can send an item to review or pull it back to
 /// draft; every move into or out of scheduled, published and archived needs content.publish. Applies to all eight content types.
 /// </summary>
-public sealed class EditorialWorkflow(ContentDbContext db, TimeProvider time, RevisionStore revisions)
+public sealed class EditorialWorkflow(ContentDbContext db, TimeProvider time, RevisionStore revisions, IConfiguration configuration)
 {
     private static readonly Dictionary<string, string[]> Allowed = new()
     {
@@ -27,7 +27,7 @@ public sealed class EditorialWorkflow(ContentDbContext db, TimeProvider time, Re
             return new UpsertResult<WorkflowView>(UpsertOutcome.Invalid, Error: $"to must be one of: {string.Join(", ", StatusRules.Workflow)}.");
         }
 
-        var item = await db.Items.FirstOrDefaultAsync(i => i.Type == type && i.Slug == slug && i.DeletedAt == null);
+        var item = await db.Items.Include(i => i.Translations).FirstOrDefaultAsync(i => i.Type == type && i.Slug == slug && i.DeletedAt == null);
         if (item is null)
         {
             return new UpsertResult<WorkflowView>(UpsertOutcome.NotFound);
@@ -48,6 +48,18 @@ public sealed class EditorialWorkflow(ContentDbContext db, TimeProvider time, Re
         if (needsPermission && !canPublish)
         {
             return new UpsertResult<WorkflowView>(UpsertOutcome.Forbidden, Error: "Scheduling, publishing, unpublishing and archiving need the content.publish permission.");
+        }
+
+        // Going live is when a missing translation becomes visible, so the editor is told (or, if configured, stopped) here.
+        var warnings = new List<string>();
+        if (to is StatusRules.Published or StatusRules.Scheduled)
+        {
+            warnings = [.. TranslationCompleteness.Evaluate(type, item.Translations).Languages.Where(l => !l.Complete)
+                .Select(l => l.Present ? $"{l.Lang} translation is incomplete: {string.Join(", ", l.Missing)}" : $"{l.Lang} translation is missing")];
+            if (warnings.Count > 0 && configuration.GetValue<bool>("Content:Translations:RequireAllLanguages"))
+            {
+                return new UpsertResult<WorkflowView>(UpsertOutcome.Invalid, Error: $"Every language must be complete before publishing: {string.Join("; ", warnings)}.");
+            }
         }
 
         var now = Now();
@@ -86,7 +98,7 @@ public sealed class EditorialWorkflow(ContentDbContext db, TimeProvider time, Re
         }
 
         await revisions.RecordAsync(item.Id, $"workflow:{to}");
-        return new UpsertResult<WorkflowView>(UpsertOutcome.Updated, View(item), ETag: ContentETag.For(item.UpdatedAt));
+        return new UpsertResult<WorkflowView>(UpsertOutcome.Updated, View(item) with { Warnings = warnings }, ETag: ContentETag.For(item.UpdatedAt));
     }
 
     public static WorkflowView View(ContentItemEntity item) => new(item.Type, item.Slug, item.Status, item.ScheduledPublishAt, item.PublishedAt);
