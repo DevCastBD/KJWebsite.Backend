@@ -218,3 +218,6 @@
 - 2026-10-30T20:39Z [claude] 048-issue-53-member-self-service CREATED @6056728: stacked on #52 branch; card=PDF now, align campaigns/current (user); plan awaiting approval
 - 2026-10-30T20:46Z [claude] 048-issue-53-member-self-service PHASE PLAN→CONSTRUCT @c59fae1: plan approved; font download + packages approved (user)
 - 2026-10-30T20:46Z [claude] 048-issue-53-member-self-service DONE @c59fae1: portal, moderation, export, card PDF; 307 tests green incl PG; not pushed
+- 2026-10-30T20:49Z [claude] 049-issue-54-member-directory CREATED @9ca355c: stacked on #53 branch; plan awaiting approval
+- 2026-10-30T20:52Z [claude] 049-issue-54-member-directory PHASE PLAN→CONSTRUCT @9ca355c: plan approved (chapters deferred, photos need clean scan, staff-only internal)
+- 2026-10-30T20:52Z [claude] 049-issue-54-member-directory DONE @9ca355c: public+staff directory, query-level consent; 319 tests green incl PG; not pushed

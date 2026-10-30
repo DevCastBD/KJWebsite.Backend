@@ -8,6 +8,7 @@ using MembershipService.Contracts;
 using MembershipService.Data;
 using MembershipService.Data.Entities;
 using MembershipService.Intake;
+using MembershipService.MemberDirectory;
 using MembershipService.Review;
 using MembershipService.Self;
 using Microsoft.AspNetCore.DataProtection;
@@ -256,6 +257,7 @@ app.MapCampaignEndpoints();
 app.MapReviewEndpoints();
 app.MapProfileModeration();
 app.MapSelfEndpoints();
+app.MapDirectory();
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 
 app.MapPut("/api/v1/membership/applications/{id}/attachments/{kind}", async (HttpContext context, string id, string kind, MembershipDbContext db, IAttachmentStore store) =>

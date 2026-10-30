@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 4 run: #49, #50, #51, #52, #53 done; next #54; #109, #110 skipped by user)
+- Active work item: none  (milestone 4 run: #49-#54 done; next #55; #109, #110 skipped by user)
 - Phase: —
-- Branch: Feature/issue-53-member-self-service
+- Branch: Feature/issue-54-member-directory
 - Base SHA: —
-- Next step: start #54 (BE-047 member directory) on a new branch stacked on Feature/issue-53-member-self-service. Then #55, #56 (needs #109), #57, #58. Push/PRs only on request
+- Next step: start #55 (BE-048 committees, chapters, positions, terms, org chart) on a new branch stacked on Feature/issue-54-member-directory. Then #56 (needs #109), #57, #58. Push/PRs only on request
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

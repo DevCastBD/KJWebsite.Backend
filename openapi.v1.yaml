@@ -2709,6 +2709,107 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/members/directory:
+    get:
+      tags:
+        - "Directory"
+      summary: "Public member directory"
+      description: "Only members who opted in appear, each with only the fields they approved (name, photo, expertise). Contact details are never offered. 24 per page, page 1-50, \u0060q\u0060 matches only published fields. Never cached; rate limited at the gateway."
+      operationId: "SearchMemberDirectory"
+      parameters:
+        -
+          name: "q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "chapter"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "page"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/members/directory/{id}/photo":
+    get:
+      tags:
+        - "Directory"
+      summary: "A consented, scanned member photo"
+      operationId: "GetDirectoryPhoto"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/members:
+    get:
+      tags:
+        - "Membership admin"
+      summary: "Search members (staff)"
+      description: "Name, member code and expertise search with status filter; paged (limit max 100). Contact details are not part of the list: open one member for those."
+      operationId: "ListMembers"
+      parameters:
+        -
+          name: "q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/members/{id}":
+    get:
+      tags:
+        - "Membership admin"
+      summary: "One member with contact details (staff)"
+      operationId: "GetMember"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/membership/audit:
     get:
       tags:
@@ -3317,6 +3418,8 @@ tags:
     name: "Membership admin"
   -
     name: "Member portal"
+  -
+    name: "Directory"
   -
     name: "Auth"
   -

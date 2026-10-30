@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] directory — chapters filter/list wait for #55; #41 must set photo scan status "clean" (and strip EXIF) or no photo is ever published; internal member-facing directory is a policy call (found: 049-issue-54)
+- [2026-10-31] directory — prerendered/cached copies of the public list on the frontend side must honour no-store; sitemap/OG must not expose directory members (found: 049-issue-54)
 - [2026-10-31] membership — approved name edits are not pushed to Identity's member_profiles; email changes are not reflected in the portal profile (read from the application) (found: 048-issue-53)
 - [2026-10-31] membership — card QR points at Membership:CardVerifyUrl but no public verification page exists; photo/export not behind a scan until #41; consent withdrawal must reach prerendered pages (#54) (found: 048-issue-53)
 - [2026-10-31] membership — export includes reviewer notes about the applicant: confirm with the core members that this is intended (found: 048-issue-53)
