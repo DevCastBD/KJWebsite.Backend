@@ -116,7 +116,15 @@ public sealed class AuthApiFactory : SqliteWebApplicationFactory<AuthIdentitySer
     }
 }
 
-public sealed class CtaApiFactory : SqliteWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint, CtaDbContext>;
+public sealed class CtaApiFactory : SqliteWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint, CtaDbContext>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+    }
+}
 
 /// <summary>
 /// Postgres-required: tests that verify real PostgreSQL behavior (migrations, schemas, collation).
@@ -177,4 +185,18 @@ public sealed class PostgresContentApiFactory(string connectionString)
 public sealed class GatewayApiFactory : WebApplicationFactory<ApiGateway.ApiGatewayTestEntryPoint>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Development");
+}
+
+internal static class TestEnvironment
+{
+    /// <summary>
+    /// Services read job settings while building their service collection, before a factory can inject configuration,
+    /// so tests run Hangfire on in-memory storage without a worker through environment variables.
+    /// </summary>
+    [System.Runtime.CompilerServices.ModuleInitializer]
+    internal static void UseInMemoryJobs()
+    {
+        Environment.SetEnvironmentVariable("Jobs__Storage", "InMemory");
+        Environment.SetEnvironmentVariable("Jobs__ServerEnabled", "false");
+    }
 }

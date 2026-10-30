@@ -38,6 +38,7 @@ public static class KjObservability
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddRuntimeInstrumentation()
+                .AddMeter("KJWebsite.Outbox")
                 .AddPrometheusExporter());
 
         return builder.Services.AddHealthChecks()

@@ -95,6 +95,7 @@ The gateway at `http://localhost:7000` expects the downstream services on their 
 | `Jwt__PrivateKeyPem` | Yes, for Auth outside Development | Dev key file | PKCS#8 RSA signing key. Never commit it. |
 | `Jwt__PublicKeyPem` | Yes, for Content/CTA outside Development | Auth's dev key | The Auth service's public key, for verifying access tokens. |
 | `ReverseProxy__Clusters__{content,cta,auth}__Destinations__{name}__Address` | Yes, for the gateway outside Development | `appsettings.{Environment}.json` | Gateway downstream destinations; see [docs/GATEWAY.md](docs/GATEWAY.md). |
+| `Jobs__Storage`, `Outbox__MaxAttempts`, … | No | `PostgreSql`, 8 attempts | Background jobs and outbox tuning; see [docs/OUTBOX.md](docs/OUTBOX.md). |
 
 Secrets (signing key, connection strings) are read only from environment variables or a vault; none is committed. See [docs/SECRET_SCAN.md](docs/SECRET_SCAN.md).
 
