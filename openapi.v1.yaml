@@ -1885,6 +1885,132 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/content/settings:
+    get:
+      tags:
+        - "Content"
+      summary: "Site settings and runtime flags in one language"
+      description: "Navigation, contact, social, footer, homepage section order, maintenance and the custom non-secret settings, each text already resolved to \u0060lang\u0060. Secret settings are never included. \u0060flags\u0060 are runtime feature flags, not the frontend\u0027s build-time VITE_ENABLE_* flags."
+      operationId: "GetPublicSettings"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/settings:
+    get:
+      tags:
+        - "Admin \u2014 Site settings"
+      summary: "List settings (secret values are hidden)"
+      operationId: "ListSettings"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/settings/{key}":
+    get:
+      tags:
+        - "Admin \u2014 Site settings"
+      summary: "Get one setting with both languages"
+      description: "The \u0060ETag\u0060 is the version to send back as \u0060If-Match\u0060. Secret values are returned here, to settings.view holders only."
+      operationId: "GetSetting"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Site settings"
+      summary: "Create or replace a setting"
+      description: "Catalog keys: navigation.main, navigation.footer, contact, social, footer.text, homepage.sections, maintenance; plus custom.\u003Cname\u003E (one bilingual text, optionally secret). Every visible text needs both bn and en or the save is a 400. Honours \u0060If-Match\u0060."
+      operationId: "SetSetting"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingWrite"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Site settings"
+      summary: "Delete a setting (the frontend falls back to its static value)"
+      operationId: "DeleteSetting"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/flags:
+    get:
+      tags:
+        - "Admin \u2014 Site settings"
+      summary: "List runtime feature flags"
+      operationId: "ListFlags"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/flags/{key}":
+    put:
+      tags:
+        - "Admin \u2014 Site settings"
+      summary: "Create or change a runtime feature flag"
+      description: "Takes effect for the public site as soon as the cache is evicted (immediately). Runtime flags are separate from the frontend\u0027s build-time VITE_ENABLE_* capability flags."
+      operationId: "SetFlag"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlagWrite"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Site settings"
+      summary: "Delete a runtime feature flag"
+      operationId: "DeleteFlag"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/content/audit:
     get:
       tags:
@@ -2429,6 +2555,8 @@ tags:
   -
     name: "Admin \u2014 Translations"
   -
+    name: "Admin \u2014 Site settings"
+  -
     name: "Admin \u2014 Audit log"
   -
     name: "CTA"
@@ -2511,6 +2639,19 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/RelatedRef"
+    FlagWrite:
+      required:
+        - "enabled"
+        - "description"
+      type: "object"
+      properties:
+        enabled:
+          type: "boolean"
+        description:
+          type:
+            - "null"
+            - "string"
+    JsonElement: {}
     NewsTranslationInput:
       required:
         - "lang"
@@ -2702,6 +2843,18 @@ components:
           type: "array"
           items:
             type: "string"
+    SettingWrite:
+      required:
+        - "value"
+        - "isSecret"
+      type: "object"
+      properties:
+        value:
+          $ref: "#/components/schemas/JsonElement"
+        isSecret:
+          type:
+            - "null"
+            - "boolean"
     TagUpsertRequest:
       required:
         - "slug"

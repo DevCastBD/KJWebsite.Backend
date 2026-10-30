@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] settings — secret custom.* values stored plain; wire to #36 secrets store before real credentials (found: 041-issue-45)
+- [2026-10-31] tests — TokenTests.SessionsCanBeListedAndOneEnded 500 once in a full run (with RegisterReturnsCreated: auth flakiness) (found: 041-issue-45)
 - [2026-10-31] media(#41) — depends on #33 runner (not on base), R2 client, virus scan, image lib (ImageSharp licence vs SkiaSharp) — needs decisions before build (found: 040-run)
 - [2026-10-31] content — scheduler is a poller; move PublishDueAsync onto the #33 job runner when it lands; set Preview:SigningKey in every non-dev env (found: 039-issue-39)
 - [2026-10-31] audit — CTA service must register entities + MapAuditLog when its admin API (#34) lands; audit rows are not hash-chained (found: 038-issue-43)

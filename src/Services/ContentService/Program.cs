@@ -40,7 +40,9 @@ builder.Services.AddKjAuditing("content", audit => audit
     .Audit<TagNameEntity>()
     .Audit<ContentItemTagEntity>()
     .Audit<ContentRelationEntity>()
-    .Audit<RedirectEntity>());
+    .Audit<RedirectEntity>()
+    .Audit<SettingEntity>()
+    .Audit<FeatureFlagEntity>());
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<TranslationPolicy>();
 builder.Services.AddScoped<ContentStore>();
@@ -48,6 +50,7 @@ builder.Services.AddScoped<TaxonomyStore>();
 builder.Services.AddScoped<RedirectStore>();
 builder.Services.AddScoped<GenericContentStore>();
 builder.Services.AddScoped<RevisionStore>();
+builder.Services.AddScoped<SettingsStore>();
 builder.Services.AddScoped<EditorialWorkflow>();
 builder.Services.AddSingleton<PreviewTokens>();
 builder.Services.AddSingleton<ScheduledPublisher>();
@@ -165,14 +168,14 @@ app.MapGet("/api/v1/content/news/{id}", async (HttpRequest request, ContentStore
 .CachePublicContent()
 .AllowAnonymous();
 
-app.MapGet("/api/v1/content/bootstrap", async (HttpRequest request, ContentStore store, string? lang) =>
+app.MapGet("/api/v1/content/bootstrap", async (HttpRequest request, ContentStore store, SettingsStore settingsStore, string? lang) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
     return Cached(request, new
     {
         projects = Page(await store.ProjectsAsync(resolvedLanguage, "active"), MaxPageSize, 0, resolvedLanguage),
         news = Page(await store.NewsAsync(resolvedLanguage), MaxPageSize, 0, resolvedLanguage),
-        settings = new Dictionary<string, string>(),
+        settings = (await settingsStore.PublicAsync(resolvedLanguage)).Settings,
         lang = resolvedLanguage
     });
 })
@@ -342,6 +345,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 .RequirePermission(Permissions.ContentDelete);
 
 app.MapGenericContent();
+app.MapSettings();
 app.MapAuditLog<ContentDbContext>("/api/v1/admin/content/audit", "Content");
 
 app.Run();
