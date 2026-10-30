@@ -203,3 +203,6 @@
 - 2026-10-30T19:46Z [claude] 042-issue-44-backoffice-apis DONE @45618ff: dashboard, search, bulk; 210 tests green (+PG); not pushed
 - 2026-10-30T19:50Z [claude] 043-issue-47-public-extras CREATED @6398470: stacked on #44 branch; #46 skipped; plan awaiting approval
 - 2026-10-30T19:57Z [claude] 043-issue-47-public-extras DONE @6398470: search/sitemap/feeds/OG; 221 tests green (+PG); not pushed
+- 2026-10-30T20:11Z [claude] 044-issue-49-application-intake CREATED @ae67e94: milestone 4 run; 12 issues assigned to FHShubho; #109/#110 skipped (user)
+- 2026-10-30T20:18Z [claude] 044-issue-49-application-intake PHASE PLAN→CONSTRUCT @ae67e94: plan approved; attachments via local store + scan seam (user)
+- 2026-10-30T20:18Z [claude] 044-issue-49-application-intake DONE @ae67e94: MembershipService intake; 235 tests green; not pushed

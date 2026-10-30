@@ -15,6 +15,8 @@
   purpose: public projects/news and admin content endpoints; PostgreSQL `content` schema via `Data/ContentStore.cs`; seed JSON in `Data/Seed/`; entry: `Program.cs`; docs: `docs/CONTENT_CONTRACT.md`
 - CTA (`src/Services/CtaSubmissionService/**`)
   purpose: public CTA submission endpoint with PostgreSQL/EF Core; entry: `Program.cs`; migrations: `Migrations/`
+- membership (`src/Services/MembershipService/**`)
+  purpose: public application intake (port 7004, schema `membership`); encrypted PII fields, HMAC duplicate check, attachments behind `IAttachmentStore`; entry: `Program.cs`, `Intake/`; docs: `docs/MEMBERSHIP_INTAKE.md`
 - auth (`src/Services/AuthIdentityService/**`)
   purpose: ASP.NET Core Identity accounts, RS256 JWT + hashed rotating refresh tokens (`Tokens/`), sessions, password reset; entry: `Program.cs`; migrations: `Migrations/`; docs: `docs/AUTH_TOKENS.md`
 - shared (`src/BuildingBlocks/**`)

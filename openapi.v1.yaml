@@ -2282,6 +2282,68 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/membership/applications:
+    post:
+      tags:
+        - "Membership"
+      summary: "Submit a membership application"
+      description: "Accepts the full legacy application field set. Returns the application id and its public reference; attach the CV and photo afterwards with PUT /api/v1/membership/applications/{id}/attachments/{kind}."
+      operationId: "CreateMembershipApplication"
+      parameters:
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/membership/applications/check:
+    post:
+      tags:
+        - "Membership"
+      summary: "Warn when an email or phone already applied"
+      description: "Warn-only: re-applying (for example after a rejection) is legitimate, so a duplicate never blocks a submission. Rate limited at the gateway."
+      operationId: "CheckMembershipDuplicate"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateCheckRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/membership/applications/{id}/attachments/{kind}":
+    put:
+      tags:
+        - "Membership"
+      summary: "Attach a CV or photo to an application"
+      description: "Raw file body with the file\u0027s Content-Type and an optional URL-encoded X-Filename header. cv: pdf/doc/docx up to 5 MB; photo: jpeg/png/webp up to 2 MB. The content is checked against the declared type. A second upload replaces the first. Files are stored with scanStatus \u0060pending\u0060 until the media pipeline scans them."
+      operationId: "UploadMembershipAttachment"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "kind"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/auth/register:
     post:
       tags:
@@ -2727,6 +2789,8 @@ tags:
   -
     name: "CTA"
   -
+    name: "Membership"
+  -
     name: "Auth"
   -
     name: "Admin \u2014 Roles and users"
@@ -3104,6 +3168,115 @@ components:
         submittedAt:
           type: "string"
           format: "date-time"
+    ApplicationRequest:
+      required:
+        - "firstName"
+        - "lastName"
+        - "email"
+        - "phone"
+        - "bloodGroup"
+        - "currentAddress"
+        - "academicInstitute"
+        - "occupation"
+        - "reasonForJoining"
+        - "volunteeringExperience"
+        - "presentOrganization"
+        - "heardAboutUs"
+        - "gender"
+        - "dateOfBirth"
+        - "cityOfResidence"
+        - "countryOfResidence"
+        - "language"
+        - "submittedAt"
+      type: "object"
+      properties:
+        firstName:
+          type:
+            - "null"
+            - "string"
+        lastName:
+          type:
+            - "null"
+            - "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        phone:
+          type:
+            - "null"
+            - "string"
+        bloodGroup:
+          type:
+            - "null"
+            - "string"
+        currentAddress:
+          type:
+            - "null"
+            - "string"
+        academicInstitute:
+          type:
+            - "null"
+            - "string"
+        occupation:
+          type:
+            - "null"
+            - "string"
+        reasonForJoining:
+          type:
+            - "null"
+            - "string"
+        volunteeringExperience:
+          type:
+            - "null"
+            - "string"
+        presentOrganization:
+          type:
+            - "null"
+            - "string"
+        heardAboutUs:
+          type:
+            - "null"
+            - "string"
+        gender:
+          type:
+            - "null"
+            - "string"
+        dateOfBirth:
+          type:
+            - "null"
+            - "string"
+        cityOfResidence:
+          type:
+            - "null"
+            - "string"
+        countryOfResidence:
+          type:
+            - "null"
+            - "string"
+        language:
+          type:
+            - "null"
+            - "string"
+        submittedAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+    DuplicateCheckRequest:
+      required:
+        - "email"
+        - "phone"
+      type: "object"
+      properties:
+        email:
+          type:
+            - "null"
+            - "string"
+        phone:
+          type:
+            - "null"
+            - "string"
     ConfirmEmailRequest:
       required:
         - "userId"

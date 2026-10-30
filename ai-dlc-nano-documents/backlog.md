@@ -1,5 +1,8 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] membership — attachments on local disk, scan=pending until #41 (virus scan, EXIF strip, object storage); do not serve them; Postgres migration not run on PG (found: 044-issue-49)
+- [2026-10-31] membership — set Membership:HashKey and DataProtection:KeysPath in every non-dev env; key loss makes PII unreadable (found: 044-issue-49)
+- [2026-10-31] tests — AuditLogTests.AnUpdateRecordsOnlyWhatChanged failed once in a full run, passed on rerun (auth/audit flake family) (found: 044-issue-49)
 - [2026-10-31] search — term index is prefix-LIKE; add trigram/GIN or a real FTS index when the corpus grows; sitemap vs frontend sitemap must be merged as an index (found: 043-issue-47)
 - [2026-10-31] inbox(#46) — blocked until #34 is on develop; SLA targets must be config-only with no default (user decision), breaches reported only when set (found: 042-run)
 - [2026-10-31] tests — auth integration tests flake ~1 in 5 full runs (RoleManagement/Token/Register); passes alone; suspect shared SQLite/timing under parallel load (found: 042-issue-44)

@@ -1,11 +1,11 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 3 / P2 run: #48, #38, #42, #43, #39, #40, #45, #44, #47 done as stacked local branches off origin/develop; #108 skipped by user)
+- Active work item: none  (milestone 4 run: #49 done; next #50; #109, #110 skipped by user)
 - Phase: —
-- Branch: Feature/issue-47-public-extras
+- Branch: Feature/issue-49-public-application-intake
 - Base SHA: —
-- Next step: BE-036 #41 media needs decisions (see backlog); then #46 (blocked on #34) in order. Push stack + PRs only on request (48→develop, 38→48, 42→38, 43→42, 39→43, 40→39, 45→40, 44→45, 47→44)
+- Next step: start #50 (BE-043 campaigns, reference numbers, status lookup) on a new branch stacked on Feature/issue-49-public-application-intake. Order: #50, #51, #52, #53, #54, #55, #56 (needs #109), #57, #58. Push/PRs only on request
 - Paused work items:
-  - work-items/011-issue-116-p1-platform-core (CLARIFY, epic checklist not touched this run)
-  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
+  - work-items/011-issue-116-p1-platform-core (CLARIFY)
+  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)
 - Uncommitted code: no
 - Last updated: 2026-10-31 by claude
