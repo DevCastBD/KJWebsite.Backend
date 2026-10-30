@@ -236,6 +236,17 @@ public sealed class ContentApiFactory : SqliteWebApplicationFactory<ContentServi
     }
 }
 
+public sealed class PostgresMembershipApiFactory(string connectionString)
+    : PostgresWebApplicationFactory<MembershipService.MembershipServiceTestEntryPoint>(connectionString, "MembershipDb")
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+    }
+}
+
 public sealed class PostgresContentApiFactory(string connectionString)
     : PostgresWebApplicationFactory<ContentService.ContentServiceTestEntryPoint>(connectionString, "ContentDb")
 {

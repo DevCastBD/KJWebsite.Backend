@@ -10,7 +10,7 @@ public sealed class ApplicationEntity
     public string Reference { get; set; } = string.Empty;
     public string? CampaignId { get; set; }
     public string Language { get; set; } = string.Empty;
-    public string Status { get; set; } = ApplicationStatuses.Received;
+    public string Status { get; set; } = ApplicationStatuses.Awaiting;
     public DateTimeOffset SubmittedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
@@ -26,6 +26,10 @@ public sealed class ApplicationEntity
     public string? CityOfResidence { get; set; }
     public string? CountryOfResidence { get; set; }
 
+    public string? ReviewerId { get; set; }
+    public int? Score { get; set; }
+    public DateTimeOffset? InterviewAt { get; set; }
+
     public string EmailProtected { get; set; } = string.Empty;
     public string PhoneProtected { get; set; } = string.Empty;
     public string BloodGroupProtected { get; set; } = string.Empty;
@@ -37,11 +41,22 @@ public sealed class ApplicationEntity
 
     public List<AttachmentEntity> Attachments { get; set; } = [];
     public List<ApplicationStatusEventEntity> StatusEvents { get; set; } = [];
+    public List<ApplicationNoteEntity> Notes { get; set; } = [];
 }
 
 public static class ApplicationStatuses
 {
-    public const string Received = "received";
+    public const string Awaiting = "awaiting";
+    public const string UnderReview = "under_review";
+    public const string Shortlisted = "shortlisted";
+    public const string InterviewScheduled = "interview_scheduled";
+    public const string Approved = "approved";
+    public const string Rejected = "rejected";
+    public const string Postponed = "postponed";
+    public const string Withdrawn = "withdrawn";
+
+    public static readonly IReadOnlyList<string> All =
+        [Awaiting, UnderReview, Shortlisted, InterviewScheduled, Approved, Rejected, Postponed, Withdrawn];
 }
 
 public sealed class AttachmentEntity
@@ -69,6 +84,38 @@ public sealed class ApplicationStatusEventEntity
     public string ApplicationId { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTimeOffset At { get; set; }
+
+    /// <summary>User id of the reviewer, or "system" for the application's first event.</summary>
+    public string By { get; set; } = "system";
+
+    /// <summary>Whether a notification to the applicant was queued with this change.</summary>
+    public bool Notified { get; set; }
+}
+
+/// <summary>Internal reviewer note. Never part of any public response.</summary>
+public sealed class ApplicationNoteEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string ApplicationId { get; set; } = string.Empty;
+    public DateTimeOffset At { get; set; }
+    public string By { get; set; } = string.Empty;
+    public string Text { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// A message for the applicant, written in the same commit as the change that caused it. Delivery
+/// (email, in the applicant's language) is the outbox/email work of #32/#33; until then rows wait here.
+/// </summary>
+public sealed class NotificationOutboxEntity
+{
+    public long Id { get; set; }
+    public string ApplicationId { get; set; } = string.Empty;
+    public string Template { get; set; } = string.Empty;
+    public string Language { get; set; } = string.Empty;
+    public string RecipientProtected { get; set; } = string.Empty;
+    public string PayloadJson { get; set; } = "{}";
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? SentAt { get; set; }
 }
 
 /// <summary>A recruitment season. Open while not closed by hand and inside its window.</summary>

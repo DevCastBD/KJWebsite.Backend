@@ -159,6 +159,9 @@ namespace MembershipService.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<DateTimeOffset?>("InterviewAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Language")
                         .IsRequired()
                         .HasMaxLength(8)
@@ -197,6 +200,13 @@ namespace MembershipService.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
+                    b.Property<string>("ReviewerId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("Score")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -222,7 +232,40 @@ namespace MembershipService.Migrations
                     b.HasIndex("Reference")
                         .IsUnique();
 
+                    b.HasIndex("Status");
+
                     b.ToTable("applications", "membership");
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.ApplicationNoteEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("By")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId");
+
+                    b.ToTable("application_notes", "membership");
                 });
 
             modelBuilder.Entity("MembershipService.Data.Entities.ApplicationStatusEventEntity", b =>
@@ -240,6 +283,14 @@ namespace MembershipService.Migrations
 
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("By")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Notified")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -335,6 +386,59 @@ namespace MembershipService.Migrations
                     b.ToTable("campaigns", "membership");
                 });
 
+            modelBuilder.Entity("MembershipService.Data.Entities.NotificationOutboxEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RecipientProtected")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Template")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SentAt");
+
+                    b.ToTable("notification_outbox", "membership");
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.ApplicationNoteEntity", b =>
+                {
+                    b.HasOne("MembershipService.Data.Entities.ApplicationEntity", null)
+                        .WithMany("Notes")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.ApplicationStatusEventEntity", b =>
                 {
                     b.HasOne("MembershipService.Data.Entities.ApplicationEntity", null)
@@ -356,6 +460,8 @@ namespace MembershipService.Migrations
             modelBuilder.Entity("MembershipService.Data.Entities.ApplicationEntity", b =>
                 {
                     b.Navigation("Attachments");
+
+                    b.Navigation("Notes");
 
                     b.Navigation("StatusEvents");
                 });

@@ -2409,6 +2409,121 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/membership/applications:
+    get:
+      tags:
+        - "Membership admin"
+      summary: "List applications for review"
+      description: "Internal view with notes, score, reviewer and full status history. Filters: status, campaignId; paging: limit (default 200, max 500), offset."
+      operationId: "ListMembershipApplications"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "campaignId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/applications/{id}":
+    get:
+      tags:
+        - "Membership admin"
+      summary: "One application with notes and history"
+      operationId: "GetMembershipApplication"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    patch:
+      tags:
+        - "Membership admin"
+      summary: "Assign a reviewer, set the score or the interview time"
+      description: "Body fields are optional: \u0060reviewerId\u0060, \u0060score\u0060 (0-100), \u0060interviewAt\u0060. Send null to clear one."
+      operationId: "UpdateMembershipApplication"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JsonElement"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/applications/{id}/notes":
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Add an internal reviewer note"
+      operationId: "AddMembershipNote"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NoteRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/applications/transition:
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Move applications to a new status, in bulk"
+      description: "Up to 200 ids. Always 200 with one result per id; a failed item carries \u0060error\u0060 (\u0060not_found\u0060, \u0060final\u0060, \u0060invalid_transition\u0060, \u0060interview_date_required\u0060) and changes nothing. Each success is audited, appended to the history and queues the applicant\u0027s notification in their language. \u0060interview_scheduled\u0060 needs \u0060interviewAt\u0060."
+      operationId: "TransitionMembershipApplications"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/membership/audit:
     get:
       tags:
@@ -3482,6 +3597,15 @@ components:
           type:
             - "null"
             - "string"
+    NoteRequest:
+      required:
+        - "text"
+      type: "object"
+      properties:
+        text:
+          type:
+            - "null"
+            - "string"
     StatusLookupRequest:
       required:
         - "reference"
@@ -3496,6 +3620,28 @@ components:
           type:
             - "null"
             - "string"
+    TransitionRequest:
+      required:
+        - "ids"
+        - "to"
+        - "interviewAt"
+      type: "object"
+      properties:
+        ids:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        to:
+          type:
+            - "null"
+            - "string"
+        interviewAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
     ConfirmEmailRequest:
       required:
         - "userId"

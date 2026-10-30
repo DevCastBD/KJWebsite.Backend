@@ -116,7 +116,7 @@ public sealed class MembershipCampaignTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var timeline = JsonDocument.Parse(text).RootElement.GetProperty("timeline");
         timeline.GetArrayLength().Should().Be(1);
-        timeline[0].GetProperty("status").GetString().Should().Be("received");
+        timeline[0].GetProperty("status").GetString().Should().Be("awaiting");
         timeline[0].EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("status", "at");
         text.ToLowerInvariant().Should().NotContain("note").And.NotContain("score");
     }

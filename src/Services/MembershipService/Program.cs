@@ -8,6 +8,7 @@ using MembershipService.Contracts;
 using MembershipService.Data;
 using MembershipService.Data.Entities;
 using MembershipService.Intake;
+using MembershipService.Review;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
@@ -50,8 +51,18 @@ builder.Services.AddDbContext<MembershipDbContext>((services, options) =>
     options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "membership"));
     options.AddInterceptors(services.GetRequiredService<AuditInterceptor>());
 });
-// Only campaigns are audited: application rows hold personal data and join the log with the review pipeline (#51).
-builder.Services.AddKjAuditing("membership", audit => audit.Audit<CampaignEntity>());
+builder.Services.AddKjAuditing("membership", audit => audit
+    .Audit<CampaignEntity>()
+    // Personal data stays out of the log; only the review state is recorded.
+    .Audit<ApplicationEntity>(
+        nameof(ApplicationEntity.FirstName), nameof(ApplicationEntity.LastName), nameof(ApplicationEntity.Gender),
+        nameof(ApplicationEntity.AcademicInstitute), nameof(ApplicationEntity.Occupation), nameof(ApplicationEntity.ReasonForJoining),
+        nameof(ApplicationEntity.PresentOrganization), nameof(ApplicationEntity.VolunteeringExperience), nameof(ApplicationEntity.HeardAboutUs),
+        nameof(ApplicationEntity.CityOfResidence), nameof(ApplicationEntity.CountryOfResidence), nameof(ApplicationEntity.EmailProtected),
+        nameof(ApplicationEntity.PhoneProtected), nameof(ApplicationEntity.BloodGroupProtected), nameof(ApplicationEntity.CurrentAddressProtected),
+        nameof(ApplicationEntity.DateOfBirthProtected), nameof(ApplicationEntity.EmailHash), nameof(ApplicationEntity.PhoneHash))
+    .Audit<ApplicationStatusEventEntity>()
+    .Audit<ApplicationNoteEntity>(nameof(ApplicationNoteEntity.Text)));
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.Configure<MembershipOptions>(builder.Configuration.GetSection(MembershipOptions.SectionName));
@@ -150,7 +161,7 @@ app.MapPost("/api/v1/membership/applications", async (HttpContext context, Appli
         DateOfBirthProtected = Clean(payload.DateOfBirth) is { } dob ? protector.Protect(dob) : null,
         EmailHash = hasher.HashEmail(payload.Email!),
         PhoneHash = hasher.HashPhone(payload.Phone!),
-        StatusEvents = [new ApplicationStatusEventEntity { Status = ApplicationStatuses.Received, At = now }]
+        StatusEvents = [new ApplicationStatusEventEntity { Status = ApplicationStatuses.Awaiting, At = now }]
     };
 
     // References are random; the unique index settles the (vanishingly rare) collision and the loser draws again.
@@ -230,6 +241,7 @@ app.MapPost("/api/v1/membership/applications/status", async (HttpContext context
 .AllowAnonymous();
 
 app.MapCampaignEndpoints();
+app.MapReviewEndpoints();
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 
 app.MapPut("/api/v1/membership/applications/{id}/attachments/{kind}", async (HttpContext context, string id, string kind, MembershipDbContext db, IAttachmentStore store) =>
