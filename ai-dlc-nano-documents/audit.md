@@ -170,3 +170,15 @@
 - 2026-10-30T16:36Z [claude] 022-issue-22-identity PHASE PLAN→CONSTRUCT @37ad15c: plan approved; branch feature/issue-22-identity off origin/develop (user confirmed)
 - 2026-10-30T16:41Z [claude] 022-issue-22-identity DECISION @37ad15c: retired SqliteToPostgres auth import (plain-text source); dev admin re-hashed in Development only
 - 2026-10-30T16:41Z [claude] 022-issue-22-identity DONE @37ad15c: Identity, migration 20261030163840, 63 tests green incl. PG
+- 2026-10-30T16:42Z [claude] 023-issue-23-jwt BRANCH @9cb1c73: feature/issue-23-jwt stacked on feature/issue-22-identity (user confirmed)
+- 2026-10-30T16:46Z [claude] 023-issue-23-jwt CREATED @9cb1c73: from #23 (closes #16)
+- 2026-10-30T16:46Z [claude] 023-issue-23-jwt PHASE PLAN→CONSTRUCT @9cb1c73: plan approved with #22 run (user confirmed)
+- 2026-10-30T16:46Z [claude] 023-issue-23-jwt DONE @9cb1c73: RS256 JWT, hashed rotating refresh, sessions; 75 tests green
+- 2026-10-30T16:46Z [claude] 024-issue-24-authorization BRANCH @300f3d0: feature/issue-24-authorization stacked on feature/issue-23-jwt
+- 2026-10-30T16:50Z [claude] 024-issue-24-authorization CREATED @300f3d0: from #24 (closes #17)
+- 2026-10-30T16:50Z [claude] 024-issue-24-authorization PHASE PLAN→CONSTRUCT @300f3d0: plan approved with #22 run (user confirmed)
+- 2026-10-30T16:50Z [claude] 024-issue-24-authorization DONE @300f3d0: permission policies, deny-by-default, seed migration; 86 tests green
+- 2026-10-30T16:50Z [claude] 025-issue-25-content-persistence BRANCH @b917190: feature/issue-25-content-persistence stacked on feature/issue-24-authorization
+- 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence CREATED @b917190: from #25 (closes #18)
+- 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence PHASE PLAN→CONSTRUCT @b917190: plan approved with #22 run (user confirmed)
+- 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence DONE @b917190: content persisted + seeded; 94 tests green incl. PG

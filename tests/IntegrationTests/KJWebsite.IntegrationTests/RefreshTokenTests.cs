@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using AuthIdentityService.Data;
+using AuthIdentityService.Tokens;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -94,7 +95,7 @@ public abstract class RefreshTokenTestsBase<TFactory> : IDisposable
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-        var row = await db.RefreshTokens.SingleAsync(r => r.Token == refreshToken);
+        var row = await db.RefreshTokens.SingleAsync(r => r.TokenHash == RefreshTokenService.Hash(refreshToken));
         row.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1);
         await db.SaveChangesAsync();
     }

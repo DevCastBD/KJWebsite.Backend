@@ -155,7 +155,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "List projects with all translations"
-      description: "Returns every translation of every project, grouped per slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Returns every translation of every project, grouped per slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "ListAdminProjects"
       parameters:
         -
@@ -183,7 +183,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Create or replace a project"
-      description: "Creates a project with all provided language translations. Replaces any existing project with the same slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Creates a project with all provided language translations. Replaces (or restores) any existing project with the same slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "CreateProject"
       requestBody:
         content:
@@ -199,7 +199,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Get a project with all translations"
-      description: "Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Requires the \u0060content.view\u0060 permission."
       operationId: "GetAdminProject"
       parameters:
         -
@@ -215,7 +215,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update a project"
-      description: "Replaces all translations for the given project. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Replaces all translations for the given project. Requires the matching \u0060content.*\u0060 permission."
       operationId: "UpdateProject"
       parameters:
         -
@@ -237,7 +237,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Delete a project"
-      description: "Deletes all translations of the given project. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Soft-deletes the project (the slug stays reserved). Requires the matching \u0060content.*\u0060 permission."
       operationId: "DeleteProject"
       parameters:
         -
@@ -254,7 +254,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "List news articles with all translations"
-      description: "Returns every translation of every article, grouped per slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Returns every translation of every article, grouped per slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "ListAdminNews"
       parameters:
         -
@@ -282,7 +282,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Create or replace a news article"
-      description: "Creates a news article with all provided language translations. Replaces any existing article with the same slug. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Creates a news article with all provided language translations. Replaces (or restores) any existing article with the same slug. Requires the matching \u0060content.*\u0060 permission."
       operationId: "CreateNews"
       requestBody:
         content:
@@ -298,7 +298,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Get a news article with all translations"
-      description: "Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Requires the \u0060content.view\u0060 permission."
       operationId: "GetAdminNews"
       parameters:
         -
@@ -314,7 +314,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update a news article"
-      description: "Replaces all translations for the given news article. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Replaces all translations for the given news article. Requires the matching \u0060content.*\u0060 permission."
       operationId: "UpdateNews"
       parameters:
         -
@@ -336,7 +336,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Delete a news article"
-      description: "Deletes all translations of the given news article. Requires \u0060Authorization: Bearer dev-admin-token\u0060."
+      description: "Soft-deletes the article (the slug stays reserved). Requires the matching \u0060content.*\u0060 permission."
       operationId: "DeleteNews"
       parameters:
         -
@@ -385,7 +385,7 @@ paths:
       tags:
         - "Auth"
       summary: "Login and receive tokens"
-      description: "Authenticates a user and returns an \u0060access_token\u0060 (in-memory, 15 min) and a \u0060refresh_token\u0060 (persisted, 30 days). Repeated failures lock the account (423). Unconfirmed emails are rejected (403) unless \u0060Identity:RequireConfirmedEmail\u0060 is off."
+      description: "Authenticates a user and returns an \u0060access_token\u0060 (RS256 JWT, 15 min) and a \u0060refresh_token\u0060 (opaque, stored hashed, 30 days). Repeated failures lock the account (423). Unconfirmed emails are rejected (403) unless \u0060Identity:RequireConfirmedEmail\u0060 is off."
       operationId: "Login"
       requestBody:
         content:
@@ -401,7 +401,7 @@ paths:
       tags:
         - "Auth"
       summary: "Refresh an expired access token"
-      description: "Rotates the refresh token and issues a new access token. The old refresh token is immediately revoked."
+      description: "Rotates the refresh token and issues a new access token. The old refresh token is single-use; presenting it again ends the whole session."
       operationId: "RefreshToken"
       requestBody:
         content:
@@ -417,7 +417,7 @@ paths:
       tags:
         - "Auth"
       summary: "Logout and revoke refresh token"
-      description: "Revokes the given refresh token. Returns 204 No Content on success."
+      description: "Ends the session the given refresh token belongs to. Returns 204 No Content on success."
       operationId: "Logout"
       requestBody:
         content:
@@ -502,6 +502,53 @@ paths:
       responses:
         "200":
           description: "OK"
+  /.well-known/jwks.json:
+    get:
+      tags:
+        - "System"
+      summary: "Public signing keys"
+      description: "The public keys that verify access tokens (JSON Web Key Set). Contains no secrets."
+      operationId: "Jwks"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/auth/sessions:
+    get:
+      tags:
+        - "Auth"
+      summary: "List the signed-in user\u0027s active sessions"
+      description: "One entry per device/session with a live refresh token. \u0060current\u0060 marks the session making the request."
+      operationId: "ListSessions"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/auth/sessions/{id}":
+    delete:
+      tags:
+        - "Auth"
+      summary: "End one of the user\u0027s sessions"
+      description: "Revokes the session\u0027s refresh tokens. Another user\u0027s session id is reported as not found."
+      operationId: "RevokeSession"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/auth/logout-all:
+    post:
+      tags:
+        - "Auth"
+      summary: "End every session of the signed-in user"
+      description: "Revokes all refresh tokens for the user, on every device. Returns 204."
+      operationId: "LogoutAll"
+      responses:
+        "200":
+          description: "OK"
 tags:
   -
     name: "System"
@@ -532,6 +579,16 @@ components:
             - "null"
             - "string"
         content:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        date:
+          type:
+            - "null"
+            - "string"
+        tags:
           type:
             - "null"
             - "array"
@@ -585,6 +642,14 @@ components:
             - "null"
             - "string"
         fullDescription:
+          type:
+            - "null"
+            - "string"
+        category:
+          type:
+            - "null"
+            - "string"
+        year:
           type:
             - "null"
             - "string"

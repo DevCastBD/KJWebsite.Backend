@@ -116,7 +116,7 @@ public sealed class ContentSmokeTests : IDisposable
 
     private static HttpRequestMessage AuthorizedRequest(HttpMethod method, string path) => new(method, path)
     {
-        Headers = { Authorization = new("Bearer", "dev-admin-token") }
+        Headers = { Authorization = new("Bearer", TestTokens.ContentAdmin()) }
     };
 
     private static object ProjectPayload(string slug) => new

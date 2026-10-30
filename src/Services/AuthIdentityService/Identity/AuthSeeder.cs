@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using AuthIdentityService.Data;
 using AuthIdentityService.Data.Entities;
+using KJWebsite.BuildingBlocks.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,8 +12,6 @@ public static partial class AuthSeeder
     public const string DevAdminEmail = "admin@site.org";
     private const string DevAdminPassword = "admin123";
 
-    public static readonly string[] BaselineRoles = ["Admin", "Member"];
-
     public static async Task SeedAsync(IServiceProvider services, bool isDevelopment)
     {
         var db = services.GetRequiredService<AuthDbContext>();
@@ -19,13 +19,7 @@ public static partial class AuthSeeder
         var users = services.GetRequiredService<UserManager<AuthUserEntity>>();
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(AuthSeeder));
 
-        foreach (var role in BaselineRoles)
-        {
-            if (!await roles.RoleExistsAsync(role))
-            {
-                await roles.CreateAsync(new AuthRoleEntity(role));
-            }
-        }
+        await SeedRolesAsync(roles);
 
         var admin = await users.FindByEmailAsync(DevAdminEmail);
         if (!isDevelopment)
@@ -54,6 +48,11 @@ public static partial class AuthSeeder
                 await users.UpdateAsync(admin);
             }
 
+            if (!await users.IsInRoleAsync(admin, KjRoles.SuperAdmin))
+            {
+                await users.AddToRoleAsync(admin, KjRoles.SuperAdmin);
+            }
+
             return;
         }
 
@@ -75,7 +74,30 @@ public static partial class AuthSeeder
         admin.PasswordHash = users.PasswordHasher.HashPassword(admin, DevAdminPassword);
         db.Users.Add(admin);
         await db.SaveChangesAsync();
-        await users.AddToRoleAsync(admin, "Admin");
+        await users.AddToRoleAsync(admin, KjRoles.SuperAdmin);
+    }
+
+    /// <summary>
+    /// Adds any role or permission from the catalog that is missing. The migration seeds the same rows on PostgreSQL;
+    /// this keeps SQLite (tests) and later catalog additions in step. It never removes a claim someone granted.
+    /// </summary>
+    public static async Task SeedRolesAsync(RoleManager<AuthRoleEntity> roles)
+    {
+        foreach (var (name, permissions) in KjRoles.Seed)
+        {
+            var role = await roles.FindByNameAsync(name);
+            if (role is null)
+            {
+                await roles.CreateAsync(new AuthRoleEntity(name));
+                role = await roles.FindByNameAsync(name);
+            }
+
+            var held = (await roles.GetClaimsAsync(role!)).Where(c => c.Type == KjClaims.Permission).Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
+            foreach (var permission in permissions.Where(p => !held.Contains(p)))
+            {
+                await roles.AddClaimAsync(role!, new Claim(KjClaims.Permission, permission));
+            }
+        }
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The development seed account exists outside Development and has been disabled.")]

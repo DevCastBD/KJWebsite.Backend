@@ -116,9 +116,13 @@ public sealed class ContentContractTests : IDisposable
         using var doc = await GetAdminJsonAsync(path);
         var items = doc.RootElement.GetProperty("items");
 
-        items.GetArrayLength().Should().Be(1);
-        items[0].GetProperty("translations").GetArrayLength().Should().Be(2);
-        doc.RootElement.GetProperty("total").GetInt32().Should().Be(1);
+        items.GetArrayLength().Should().BeGreaterThan(0);
+        foreach (var item in items.EnumerateArray())
+        {
+            item.GetProperty("translations").GetArrayLength().Should().Be(2);
+        }
+
+        doc.RootElement.GetProperty("total").GetInt32().Should().Be(items.GetArrayLength());
     }
 
     [Fact]
@@ -147,7 +151,7 @@ public sealed class ContentContractTests : IDisposable
 
     private static HttpRequestMessage AdminRequest(string path) => new(HttpMethod.Get, path)
     {
-        Headers = { Authorization = new("Bearer", "dev-admin-token") }
+        Headers = { Authorization = new("Bearer", TestTokens.ContentAdmin()) }
     };
 
     public void Dispose()
