@@ -1,8 +1,11 @@
+using System.Security.Claims;
 using AuthIdentityService.Contracts;
 using AuthIdentityService.Data;
 using AuthIdentityService.Data.Entities;
 using AuthIdentityService.Identity;
+using AuthIdentityService.Tokens;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -50,7 +53,25 @@ builder.Services.AddSingleton(services => new InMemoryAuthEmailSender(
     services.GetRequiredService<ILogger<InMemoryAuthEmailSender>>(), builder.Environment.IsDevelopment()));
 builder.Services.AddSingleton<IAuthEmailSender>(services => services.GetRequiredService<InMemoryAuthEmailSender>());
 
+// Resolved from the final configuration (not builder.Configuration) so host-level overrides apply; the key is
+// forced to load right after Build, so a missing production key stops startup instead of the first login.
+builder.Services.AddSingleton(services => AuthSigningKey.Create(services.GetRequiredService<IConfiguration>(), services.GetRequiredService<IHostEnvironment>()));
+builder.Services.AddSingleton(services => KjJwtSettings.From(services.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<AccessTokenIssuer>();
+builder.Services.AddScoped<RefreshTokenService>();
+builder.Services.AddKjJwtAuthentication(services => services.GetRequiredService<AuthSigningKey>().VerificationKeys, async context =>
+{
+    // Access tokens are stateless, but a revoked session should stop working here at once, not after 15 minutes.
+    var sessions = context.HttpContext.RequestServices.GetRequiredService<RefreshTokenService>();
+    if (!await sessions.IsSessionActiveAsync(context.Principal?.FindFirstValue(KjClaims.SessionId)))
+    {
+        context.Fail("The session has been revoked.");
+    }
+});
+
 var app = builder.Build();
+_ = app.Services.GetRequiredService<AuthSigningKey>();
 
 if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
 {
@@ -80,7 +101,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-var accessTokens = new Dictionary<string, string>(StringComparer.Ordinal);
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "AuthIdentityService" }))
    .WithName("AuthHealth")
@@ -151,7 +173,7 @@ app.MapPost("/api/v1/auth/register", async (HttpContext context, LegacyRegistrat
 .WithDescription("Creates a new member account with a hashed password and sends an email-confirmation message. The requested role is ignored: new accounts are `Member`. Includes optional legacy profile fields (name, gender, address, etc.).")
 .WithTags("Auth");
 
-app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users) =>
+app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
 {
     var email = payload.Email?.Trim() ?? string.Empty;
     var user = string.IsNullOrEmpty(email) ? null : await users.FindByEmailAsync(email);
@@ -181,96 +203,51 @@ app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest paylo
         return ApiError.Create(context, StatusCodes.Status403Forbidden, "EMAIL_NOT_CONFIRMED", "Confirm your email address before signing in.");
     }
 
-    var token = $"atk_{Guid.NewGuid():N}";
-    var refresh = $"rt_{Guid.NewGuid():N}";
-    accessTokens[token] = user.Id;
-
-    db.RefreshTokens.Add(new RefreshTokenEntity
-    {
-        Id = $"rft_{Guid.NewGuid():N}",
-        Token = refresh,
-        UserId = user.Id,
-        CreatedAt = DateTimeOffset.UtcNow,
-        ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
-    });
+    var (refresh, row) = sessions.StartSession(user.Id, context.Request.Headers.UserAgent.ToString());
     await db.SaveChangesAsync();
 
-    return Results.Ok(new
-    {
-        access_token = token,
-        refresh_token = refresh,
-        expires_in = 900,
-        token_type = "Bearer",
-        user = new { id = user.Id, email = user.Email, role = await RoleOf(users, user) }
-    });
+    return await TokenResponse(users, issuer, user, row.FamilyId, refresh);
 })
 .WithName("Login")
 .WithSummary("Login and receive tokens")
-.WithDescription("Authenticates a user and returns an `access_token` (in-memory, 15 min) and a `refresh_token` (persisted, 30 days). Repeated failures lock the account (423). Unconfirmed emails are rejected (403) unless `Identity:RequireConfirmedEmail` is off.")
+.WithDescription("Authenticates a user and returns an `access_token` (RS256 JWT, 15 min) and a `refresh_token` (opaque, stored hashed, 30 days). Repeated failures lock the account (423). Unconfirmed emails are rejected (403) unless `Identity:RequireConfirmedEmail` is off.")
 .WithTags("Auth");
 
-app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users) =>
+app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequest payload, UserManager<AuthUserEntity> users, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
 {
-    // Token is unique-indexed, so this fetches at most one row; expiry is then checked in memory.
-    // Npgsql could not translate DateTimeOffset.UtcNow in this query (found by the first CI run, #11).
-    var refreshRow = await db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == payload.RefreshToken && r.RevokedAt == null);
-    if (refreshRow is null || refreshRow.ExpiresAt <= DateTimeOffset.UtcNow)
+    var rotation = await sessions.RotateAsync(payload.RefreshToken ?? string.Empty, context.Request.Headers.UserAgent.ToString());
+    if (rotation.Outcome != RotationOutcome.Rotated)
     {
-        return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid refresh token.");
+        var message = rotation.Outcome == RotationOutcome.ReplayDetected ? "Refresh token reuse detected; the session has been ended." : "Invalid refresh token.";
+        return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", message);
     }
 
-    var user = await users.FindByIdAsync(refreshRow.UserId);
+    var user = await users.FindByIdAsync(rotation.Row!.UserId);
     if (user is null || user.Status != "active" || await users.IsLockedOutAsync(user))
     {
+        await sessions.RevokeSessionAsync(rotation.Row.FamilyId);
         return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid refresh token.");
     }
 
-    refreshRow.RevokedAt = DateTimeOffset.UtcNow;
-
-    var token = $"atk_{Guid.NewGuid():N}";
-    var newRefresh = $"rt_{Guid.NewGuid():N}";
-    accessTokens[token] = user.Id;
-
-    db.RefreshTokens.Add(new RefreshTokenEntity
-    {
-        Id = $"rft_{Guid.NewGuid():N}",
-        Token = newRefresh,
-        UserId = user.Id,
-        CreatedAt = DateTimeOffset.UtcNow,
-        ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
-    });
-    await db.SaveChangesAsync();
-
-    return Results.Ok(new
-    {
-        access_token = token,
-        refresh_token = newRefresh,
-        expires_in = 900,
-        token_type = "Bearer",
-        user = new { id = user.Id, email = user.Email, role = await RoleOf(users, user) }
-    });
+    return await TokenResponse(users, issuer, user, rotation.Row.FamilyId, rotation.Token!);
 })
 .WithName("RefreshToken")
 .WithSummary("Refresh an expired access token")
-.WithDescription("Rotates the refresh token and issues a new access token. The old refresh token is immediately revoked.")
+.WithDescription("Rotates the refresh token and issues a new access token. The old refresh token is single-use; presenting it again ends the whole session.")
 .WithTags("Auth");
 
-app.MapPost("/api/v1/auth/logout", async (HttpContext context, RefreshTokenRequest payload, AuthDbContext db) =>
+app.MapPost("/api/v1/auth/logout", async (HttpContext context, RefreshTokenRequest payload, RefreshTokenService sessions) =>
 {
-    var refreshRow = await db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == payload.RefreshToken && r.RevokedAt == null);
-    if (refreshRow is null)
+    if (!await sessions.RevokeByTokenAsync(payload.RefreshToken ?? string.Empty))
     {
         return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid refresh token.");
     }
-
-    refreshRow.RevokedAt = DateTimeOffset.UtcNow;
-    await db.SaveChangesAsync();
 
     return Results.NoContent();
 })
 .WithName("Logout")
 .WithSummary("Logout and revoke refresh token")
-.WithDescription("Revokes the given refresh token. Returns 204 No Content on success.")
+.WithDescription("Ends the session the given refresh token belongs to. Returns 204 No Content on success.")
 .WithTags("Auth");
 
 app.MapPost("/api/v1/auth/confirm-email", async (HttpContext context, ConfirmEmailRequest payload, UserManager<AuthUserEntity> users) =>
@@ -318,7 +295,7 @@ app.MapPost("/api/v1/auth/forgot-password", async (ForgotPasswordRequest payload
 .WithDescription("Always returns 202, whether or not the account exists, so it cannot be used to discover accounts.")
 .WithTags("Auth");
 
-app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPasswordRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users) =>
+app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPasswordRequest payload, UserManager<AuthUserEntity> users, RefreshTokenService sessions) =>
 {
     var user = string.IsNullOrWhiteSpace(payload.Email) ? null : await users.FindByEmailAsync(payload.Email.Trim());
     if (user is null || user.Status != "active" || string.IsNullOrWhiteSpace(payload.Token) || string.IsNullOrEmpty(payload.NewPassword))
@@ -339,13 +316,7 @@ app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPass
     await users.UpdateAsync(user);
 
     // A password change ends every existing session (plan §7).
-    var now = DateTimeOffset.UtcNow;
-    foreach (var row in await db.RefreshTokens.Where(r => r.UserId == user.Id && r.RevokedAt == null).ToListAsync())
-    {
-        row.RevokedAt = now;
-    }
-
-    await db.SaveChangesAsync();
+    await sessions.RevokeAllAsync(user.Id);
     return Results.NoContent();
 })
 .WithName("ResetPassword")
@@ -353,30 +324,13 @@ app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPass
 .WithDescription("Sets the password using the emailed token, lifts any lockout and revokes all refresh tokens. Returns 204 on success.")
 .WithTags("Auth");
 
-app.MapGet("/api/v1/auth/me", async (HttpRequest request, AuthDbContext db, UserManager<AuthUserEntity> users) =>
+app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db, UserManager<AuthUserEntity> users) =>
 {
-    if (!request.Headers.TryGetValue("Authorization", out var authHeader))
-    {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Missing Authorization header.");
-    }
-
-    const string bearerPrefix = "Bearer ";
-    var raw = authHeader.ToString();
-    if (!raw.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
-    {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid Authorization header.");
-    }
-
-    var token = raw[bearerPrefix.Length..].Trim();
-    if (!accessTokens.TryGetValue(token, out var userId))
-    {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid token.");
-    }
-
+    var userId = principal.FindFirstValue(KjClaims.Subject);
     var user = await db.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.Id == userId);
     if (user is null)
     {
-        return ApiError.Create(request.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid token.");
+        return Results.Unauthorized();
     }
 
     var profile = user.Profile ?? new MemberProfileEntity();
@@ -412,7 +366,72 @@ app.MapGet("/api/v1/auth/me", async (HttpRequest request, AuthDbContext db, User
 .WithName("GetCurrentUser")
 .WithSummary("Get the authenticated user's profile")
 .WithDescription("Returns the full profile of the currently authenticated user. Requires `Authorization: Bearer <access_token>` obtained from the login endpoint.")
-.WithTags("Auth");
+.WithTags("Auth")
+.RequireAuthorization();
+
+app.MapGet("/.well-known/jwks.json", (AuthSigningKey signingKey) => Results.Json(signingKey.ToJwks()))
+    .WithName("Jwks")
+    .WithSummary("Public signing keys")
+    .WithDescription("The public keys that verify access tokens (JSON Web Key Set). Contains no secrets.")
+    .WithTags("System");
+
+app.MapGet("/api/v1/auth/sessions", async (ClaimsPrincipal principal, RefreshTokenService sessions) =>
+{
+    var current = principal.FindFirstValue(KjClaims.SessionId);
+    var active = await sessions.ActiveSessionsAsync(principal.FindFirstValue(KjClaims.Subject)!);
+    return Results.Ok(new
+    {
+        items = active.Select(s => new
+        {
+            id = s.FamilyId,
+            createdAt = s.SessionCreatedAt,
+            lastUsedAt = s.CreatedAt,
+            userAgent = s.UserAgent,
+            current = s.FamilyId == current
+        })
+    });
+})
+.WithName("ListSessions")
+.WithSummary("List the signed-in user's active sessions")
+.WithDescription("One entry per device/session with a live refresh token. `current` marks the session making the request.")
+.WithTags("Auth")
+.RequireAuthorization();
+
+app.MapDelete("/api/v1/auth/sessions/{id}", async (HttpContext context, string id, ClaimsPrincipal principal, RefreshTokenService sessions) =>
+{
+    return await sessions.RevokeSessionAsync(id, principal.FindFirstValue(KjClaims.Subject))
+        ? Results.NoContent()
+        : ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Session not found.");
+})
+.WithName("RevokeSession")
+.WithSummary("End one of the user's sessions")
+.WithDescription("Revokes the session's refresh tokens. Another user's session id is reported as not found.")
+.WithTags("Auth")
+.RequireAuthorization();
+
+app.MapPost("/api/v1/auth/logout-all", async (ClaimsPrincipal principal, RefreshTokenService sessions) =>
+{
+    await sessions.RevokeAllAsync(principal.FindFirstValue(KjClaims.Subject)!);
+    return Results.NoContent();
+})
+.WithName("LogoutAll")
+.WithSummary("End every session of the signed-in user")
+.WithDescription("Revokes all refresh tokens for the user, on every device. Returns 204.")
+.WithTags("Auth")
+.RequireAuthorization();
+
+static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, AccessTokenIssuer issuer, AuthUserEntity user, string sessionId, string refreshToken)
+{
+    var roles = await users.GetRolesAsync(user);
+    return Results.Ok(new
+    {
+        access_token = issuer.Issue(user, sessionId, roles, []),
+        refresh_token = refreshToken,
+        expires_in = 900,
+        token_type = "Bearer",
+        user = new { id = user.Id, email = user.Email, role = roles.FirstOrDefault() ?? "Member" }
+    });
+}
 
 static async Task<string> RoleOf(UserManager<AuthUserEntity> users, AuthUserEntity user) =>
     (await users.GetRolesAsync(user)).FirstOrDefault() ?? "Member";

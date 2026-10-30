@@ -57,7 +57,28 @@ public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebAp
     }
 }
 
-public sealed class AuthApiFactory : SqliteWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint, AuthDbContext>;
+/// <summary>Fixed RSA keys for tests, so no test writes a development key into the user's profile.</summary>
+public static class TestJwtKeys
+{
+    public static readonly string Primary = Generate();
+    public static readonly string Other = Generate();
+
+    private static string Generate()
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        return rsa.ExportPkcs8PrivateKeyPem();
+    }
+}
+
+public sealed class AuthApiFactory : SqliteWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint, AuthDbContext>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PrivateKeyPem"] = TestJwtKeys.Primary }));
+    }
+}
 
 public sealed class CtaApiFactory : SqliteWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint, CtaDbContext>;
 
@@ -83,7 +104,15 @@ public abstract class PostgresWebApplicationFactory<TEntryPoint>(string connecti
 }
 
 public sealed class PostgresAuthApiFactory(string connectionString)
-    : PostgresWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint>(connectionString, "AuthDb");
+    : PostgresWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint>(connectionString, "AuthDb")
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PrivateKeyPem"] = TestJwtKeys.Primary }));
+    }
+}
 
 public sealed class PostgresCtaApiFactory(string connectionString)
     : PostgresWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint>(connectionString, "CtaDb");

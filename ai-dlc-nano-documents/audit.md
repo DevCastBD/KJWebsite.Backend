@@ -170,3 +170,7 @@
 - 2026-10-30T16:36Z [claude] 022-issue-22-identity PHASE PLAN→CONSTRUCT @37ad15c: plan approved; branch feature/issue-22-identity off origin/develop (user confirmed)
 - 2026-10-30T16:41Z [claude] 022-issue-22-identity DECISION @37ad15c: retired SqliteToPostgres auth import (plain-text source); dev admin re-hashed in Development only
 - 2026-10-30T16:41Z [claude] 022-issue-22-identity DONE @37ad15c: Identity, migration 20261030163840, 63 tests green incl. PG
+- 2026-10-30T16:42Z [claude] 023-issue-23-jwt BRANCH @9cb1c73: feature/issue-23-jwt stacked on feature/issue-22-identity (user confirmed)
+- 2026-10-30T16:46Z [claude] 023-issue-23-jwt CREATED @9cb1c73: from #23 (closes #16)
+- 2026-10-30T16:46Z [claude] 023-issue-23-jwt PHASE PLAN→CONSTRUCT @9cb1c73: plan approved with #22 run (user confirmed)
+- 2026-10-30T16:46Z [claude] 023-issue-23-jwt DONE @9cb1c73: RS256 JWT, hashed rotating refresh, sessions; 75 tests green
