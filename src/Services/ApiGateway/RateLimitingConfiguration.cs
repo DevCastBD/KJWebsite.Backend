@@ -36,6 +36,9 @@ public sealed class RateLimitingOptions
     /// <summary>Public status lookups (reference + email): tighter than intake, because each call is a guess.</summary>
     public RateLimitRule MembershipStatus { get; set; } = new() { PermitLimit = 10, WindowSeconds = 900 };
 
+    /// <summary>Public directory searches (GET): enough to browse, too slow to harvest into a contact list.</summary>
+    public RateLimitRule MembershipDirectory { get; set; } = new() { PermitLimit = 60, WindowSeconds = 600 };
+
     public int SlidingSegments { get; set; } = 6;
 }
 
@@ -144,6 +147,11 @@ public static class RateLimitingConfiguration
 
     internal static (string Name, RateLimitRule Rule)? RuleFor(HttpRequest request, RateLimitingOptions rules)
     {
+        if (HttpMethods.IsGet(request.Method) && request.Path.StartsWithSegments("/api/v1/members/directory", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("membership-directory", rules.MembershipDirectory);
+        }
+
         if (!HttpMethods.IsPost(request.Method))
         {
             return null;

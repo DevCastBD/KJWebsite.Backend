@@ -16,6 +16,9 @@ public sealed class MembershipOptions
 
     /// <summary>What the card's QR code points at, followed by the member code. A public verification page is not built yet.</summary>
     public string CardVerifyUrl { get; set; } = "https://kolpojontro.org/verify";
+
+    /// <summary>Prefix for photo links in the public directory (the API's public origin). Empty gives site-relative links.</summary>
+    public string PublicApiBaseUrl { get; set; } = string.Empty;
 }
 
 /// <summary>

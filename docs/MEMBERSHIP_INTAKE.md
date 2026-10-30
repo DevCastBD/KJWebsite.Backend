@@ -90,3 +90,15 @@ Moderation (`membership.manage`): `GET /api/v1/admin/membership/profile-changes?
 **Where data lives.** At approval the application snapshot becomes the member's profile in `membership.members` (phone, address, date of birth, blood group data-protected). Identity's `member_profiles` keeps only the provisioning snapshot; an approved name change is not pushed back to it.
 
 **Card.** The PDF uses QuestPDF under its Community licence and an embedded Noto Sans Bengali (SIL OFL, `Assets/Fonts/OFL.txt`), so conjuncts shape correctly on a server with no fonts. The QR encodes `Membership:CardVerifyUrl` + `/` + code; no public verification page exists yet. Set `KJ_CARD_PDF_OUT` when running `TheCardCarriesTheCodeAQrAndABengaliPdf` to keep the PDF for a look.
+
+## Member directory (BE-047, #54)
+
+**Public** (`GET /api/v1/members/directory?q=&chapter=&page=`, anonymous, the shape the site reads): `{items:[{id, name?, nameBn?, photoUrl?, expertise?[]}], total, pageSize: 24, chapters: []}`.
+
+- **Consent is enforced in the SQL statement** (`DirectoryEndpoints.PublicQuery`): rows are active members with at least one consent and no erasure request; each field is projected as `CASE WHEN consent THEN column END`, so an unapproved field is never read by the application. A test asserts the statement does not mention the contact columns. The search `q` matches only published fields, so a hidden name or skill cannot be probed. Order is by the opaque member id so ordering reveals nothing.
+- **Withdrawal is immediate**: nothing is cached (`Cache-Control: no-store`); the next request is the first without the member. Consent changes in the portal (`PUT /members/me/consents`) are the only switch.
+- **Photos** are offered only when the member consented **and** the file's scan status is `clean`. Nothing sets `clean` yet (the media pipeline, #41, will, including EXIF stripping), so no photo is published until then. `GET /api/v1/members/directory/{id}/photo` answers 404 identically for a missing member, no consent or an unscanned file. Set `Membership:PublicApiBaseUrl` to make `photoUrl` absolute.
+- **No harvesting**: 24 per page, page 1-50 (else 400), contact details never returned, and the gateway throttles per IP (`RateLimiting:MembershipDirectory`, 60 requests / 10 min, `429` + `Retry-After`).
+- `chapter` is accepted and ignored and `chapters` is empty until chapters exist (#55).
+
+**Staff** (`member.profile.view`): `GET /api/v1/admin/membership/members?q=&status=&limit=&offset=` (name, member code, expertise; no contact details) and `GET .../members/{id}` (email, phone, address, date of birth, blood group for that one member). Whether ordinary members get an internal directory of their own is a policy question for the core members; it is not built.

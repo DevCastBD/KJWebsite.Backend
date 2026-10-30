@@ -57,6 +57,39 @@ public sealed class MembershipPostgresTests
         }
     }
 
+    [RequiresPostgresFact]
+    public async Task TheDirectoryQueryRunsOnPostgresAndKeepsUnapprovedFieldsOut()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("membership_dir_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            using var factory = new PostgresMembershipApiFactory(connectionString);
+            using var client = factory.CreateClient();
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<MembershipDbContext>();
+                db.Members.AddRange(
+                    new MembershipService.Data.Entities.MemberEntity { Id = "mem_a", UserId = "u1", MemberCode = "KJ-2026-0001", ApplicationId = "a1", FirstName = "Anika", LastName = "Rahman", NameBn = "আনিকা", Expertise = "Robotics", ConsentName = true, JoinedAt = DateTimeOffset.UtcNow },
+                    new MembershipService.Data.Entities.MemberEntity { Id = "mem_b", UserId = "u2", MemberCode = "KJ-2026-0002", ApplicationId = "a2", FirstName = "Hidden", LastName = "Person", Expertise = "Robotics", ConsentExpertise = true, JoinedAt = DateTimeOffset.UtcNow },
+                    new MembershipService.Data.Entities.MemberEntity { Id = "mem_c", UserId = "u3", MemberCode = "KJ-2026-0003", ApplicationId = "a3", FirstName = "Nobody", LastName = "Consented", JoinedAt = DateTimeOffset.UtcNow });
+                await db.SaveChangesAsync();
+            }
+
+            var page = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/members/directory");
+            page.GetProperty("total").GetInt32().Should().Be(2);
+            var byName = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/members/directory?q=ANIKA");
+            byName.GetProperty("items").GetArrayLength().Should().Be(1);
+            (await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/members/directory?q=hidden")).GetProperty("total").GetInt32().Should().Be(0);
+            (await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/members/directory?q=%E0%A6%86%E0%A6%A8%E0%A6%BF%E0%A6%95%E0%A6%BE")).GetProperty("total").GetInt32().Should().Be(1);
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            await TestPostgres.DropDatabaseAsync(databaseName);
+        }
+    }
+
     private static async Task Refused(string connectionString, string sql)
     {
         await using var connection = new NpgsqlConnection(connectionString);

@@ -19,6 +19,7 @@ public sealed class GatewayRateLimitTests : IDisposable
             builder.UseSetting("RateLimiting:CtaSubmission:PermitLimit", "2");
             builder.UseSetting("RateLimiting:MembershipIntake:PermitLimit", "2");
             builder.UseSetting("RateLimiting:MembershipStatus:PermitLimit", "2");
+            builder.UseSetting("RateLimiting:MembershipDirectory:PermitLimit", "2");
             builder.UseSetting("RateLimiting:Global:PermitLimit", "50");
             builder.UseSetting("ForwardedHeaders:TrustAnyProxy", "true");
         });
@@ -94,6 +95,23 @@ public sealed class GatewayRateLimitTests : IDisposable
         // The budgets are separate: login for the same client is untouched.
         using var login = await Post(client, "/api/v1/auth/login", "203.0.113.20");
         login.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task DirectorySearchesAreThrottledSoTheListCannotBeHarvested()
+    {
+        using var client = _factory.CreateClient();
+        async Task<HttpStatusCode> Search(string path)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            request.Headers.Add("X-Forwarded-For", "203.0.113.50");
+            using var response = await client.SendAsync(request);
+            return response.StatusCode;
+        }
+
+        (await Search("/api/v1/members/directory")).Should().NotBe(HttpStatusCode.TooManyRequests);
+        (await Search("/api/v1/members/directory?page=2")).Should().NotBe(HttpStatusCode.TooManyRequests);
+        (await Search("/api/v1/members/directory?q=a")).Should().Be(HttpStatusCode.TooManyRequests);
     }
 
     [Fact]
