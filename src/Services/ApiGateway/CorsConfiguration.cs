@@ -19,7 +19,7 @@ public sealed class CorsOptions
 internal sealed class OriginCorsPolicyProvider : ICorsPolicyProvider
 {
     private static readonly string[] Methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
-    private static readonly string[] Headers = ["Content-Type", "Idempotency-Key", "Authorization"];
+    private static readonly string[] Headers = ["Content-Type", "Idempotency-Key", "Authorization", "X-Filename"];
 
     private readonly CorsPolicy _site;
     private readonly CorsPolicy _admin;

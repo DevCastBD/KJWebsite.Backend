@@ -1,6 +1,7 @@
 using AuthIdentityService.Data;
 using ContentService.Data;
 using CtaSubmissionService.Data;
+using MembershipService.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -133,6 +134,54 @@ public sealed class AuthApiFactory : SqliteWebApplicationFactory<AuthIdentitySer
         base.ConfigureWebHost(builder);
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PrivateKeyPem"] = TestJwtKeys.Primary }));
+    }
+}
+
+/// <summary>Membership with a throwaway attachment folder and a log sink the tests can search.</summary>
+public sealed class MembershipApiFactory : SqliteWebApplicationFactory<MembershipService.MembershipServiceTestEntryPoint, MembershipDbContext>
+{
+    public string AttachmentsPath { get; } = Path.Combine(Path.GetTempPath(), $"kj-test-attachments-{Guid.NewGuid():N}");
+
+    public CapturingLoggerProvider Logs { get; } = new();
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Membership:AttachmentsPath"] = AttachmentsPath }));
+        builder.ConfigureServices(services => services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(Logs));
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (Directory.Exists(AttachmentsPath))
+        {
+            Directory.Delete(AttachmentsPath, recursive: true);
+        }
+    }
+}
+
+public sealed class CapturingLoggerProvider : Microsoft.Extensions.Logging.ILoggerProvider
+{
+    private readonly System.Collections.Concurrent.ConcurrentQueue<string> _lines = new();
+
+    public IReadOnlyCollection<string> Lines => _lines.ToArray();
+
+    public Microsoft.Extensions.Logging.ILogger CreateLogger(string categoryName) => new Sink(_lines);
+
+    public void Dispose()
+    {
+    }
+
+    private sealed class Sink(System.Collections.Concurrent.ConcurrentQueue<string> lines) : Microsoft.Extensions.Logging.ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            lines.Enqueue(formatter(state, exception) + exception);
     }
 }
 

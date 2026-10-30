@@ -70,6 +70,20 @@ public sealed class GatewayCorsTests : IDisposable
     }
 
     [Fact]
+    public async Task PreflightAllowsTheAttachmentUploadHeader()
+    {
+        using var client = _factory.CreateClient();
+        var request = Request(HttpMethod.Options, "/api/v1/membership/applications/app_1/attachments/cv", SiteOrigin);
+        request.Headers.Add("Access-Control-Request-Method", "PUT");
+        request.Headers.Add("Access-Control-Request-Headers", "content-type,x-filename");
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        string.Join(",", response.Headers.GetValues("Access-Control-Allow-Headers")).Should().ContainEquivalentOf("X-Filename");
+    }
+
+    [Fact]
     public async Task PreflightFromUnlistedOriginIsNotApproved()
     {
         using var client = _factory.CreateClient();
