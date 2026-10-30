@@ -186,3 +186,6 @@
 - 2026-10-30T18:30Z [claude] 026-issue-28-rate-limiting DONE @6608350: gateway per-IP limits, 429 problem+json, forwarded headers; 102 tests green
 - 2026-10-30T18:57Z [claude] 035-issue-48-idempotency-caching-etag CREATED @2c9bc40: milestone-3 run BE-030..040 autopilot; #108 skipped
 - 2026-10-30T18:57Z [claude] 035-issue-48-idempotency-caching-etag BRANCH @2c9bc40: Feature/issue-48-idempotency-caching-etag off origin/develop (user confirmed)
+- 2026-10-30T19:03Z [claude] 035-issue-48-idempotency-caching-etag DONE @ac60cb4: committed locally; 106+9 tests green, openapi verified; not pushed
+- 2026-10-30T19:03Z [claude] 036-issue-38-content-model CREATED @ac60cb4: #38 stacked on #48 branch (user confirmed)
+- 2026-10-30T19:11Z [claude] 036-issue-38-content-model DONE @ac60cb4: 8 types, tags, related, redirects; 138 tests green; not pushed
