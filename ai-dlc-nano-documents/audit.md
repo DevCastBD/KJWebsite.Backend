@@ -185,3 +185,4 @@
 - 2026-10-30T18:00Z [claude] 026-issue-28-rate-limiting CREATED @6608350: batch run #28-34,36,37 (33 before 32); #107/#35/#116 skipped by user
 - 2026-10-30T18:30Z [claude] 026-issue-28-rate-limiting DONE @6608350: gateway per-IP limits, 429 problem+json, forwarded headers; 102 tests green
 - 2026-10-30T17:53Z [claude] 027-issue-29-validation DONE @c8afdf1: FluentValidation filter, Problem Details errors bn/en; 113 tests green
+- 2026-10-30T17:55Z [claude] 028-issue-30-gateway-config DONE @891a4b8: YARP from config, health checks, correlation ID, compression; 119 tests (109 pass, 10 PG skipped)
