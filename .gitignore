@@ -38,3 +38,9 @@ test-results/
 legacy/**/.vs/
 legacy/**/bin/
 legacy/**/obj/
+.claude/skills/aidlc-nano/SKILL.md
+.claude/skills/aidlc-nano/reference/bootstrap.md
+.gitignore
+.gitignore
+.claude/skills/aidlc-nano/reference/large-repo.md
+.claude/skills/aidlc-nano/reference/multi-repo.md
