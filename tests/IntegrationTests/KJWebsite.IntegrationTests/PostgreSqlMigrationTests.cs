@@ -93,7 +93,7 @@ public sealed class PostgreSqlMigrationTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CtaDbContext>();
 
-        db.Database.GetAppliedMigrations().Should().HaveCount(2).And.Contain(m => m.Contains("Outbox"));
+        db.Database.GetAppliedMigrations().Should().HaveCount(3).And.Contain(m => m.Contains("Outbox")).And.Contain(m => m.Contains("CtaTriageAndAudit"));
         (await TableExists(connectionString, "cta", "outbox_messages")).Should().BeTrue();
         (await TableExists(connectionString, "cta", "dead_letters")).Should().BeTrue();
         (await TableExists(connectionString, "cta", "cta_submissions")).Should().BeTrue();

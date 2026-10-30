@@ -75,7 +75,8 @@ namespace SqliteToPostgres
                 await using (var targetReader = await inspect.ExecuteReaderAsync())
                 {
                     var targetColumns = Enumerable.Range(0, targetReader.FieldCount).Select(targetReader.GetName).ToArray();
-                    if (columns.Length != targetColumns.Length || !columns.ToHashSet(StringComparer.Ordinal).SetEquals(targetColumns))
+                    // Columns added by later migrations (nullable or defaulted) are absent from old development files and keep their defaults.
+                    if (!columns.All(column => targetColumns.Contains(column, StringComparer.Ordinal)))
                     {
                         throw new InvalidOperationException($"Column mismatch for {qualifiedTable}; apply the PostgreSQL baseline first.");
                     }

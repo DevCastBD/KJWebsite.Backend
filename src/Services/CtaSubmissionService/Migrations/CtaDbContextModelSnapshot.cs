@@ -30,6 +30,10 @@ namespace CtaSubmissionService.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("AssigneeId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("CityOfResidence")
                         .HasColumnType("text");
 
@@ -68,6 +72,9 @@ namespace CtaSubmissionService.Migrations
                         .HasColumnType("text")
                         .UseCollation("bn-x-icu");
 
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
                     b.Property<string>("PresentOrganization")
                         .HasColumnType("text");
 
@@ -79,7 +86,17 @@ namespace CtaSubmissionService.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("new");
+
                     b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ValuesJson")
@@ -93,7 +110,45 @@ namespace CtaSubmissionService.Migrations
 
                     b.HasIndex("CreatedAt");
 
+                    b.HasIndex("Status");
+
                     b.ToTable("cta_submissions", "cta");
+                });
+
+            modelBuilder.Entity("CtaSubmissionService.Data.Entities.SubmissionAuditEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("SubmissionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("SubmissionId");
+
+                    b.ToTable("submission_audit", "cta");
                 });
 
             modelBuilder.Entity("KJWebsite.BuildingBlocks.Outbox.DeadLetterMessage", b =>
