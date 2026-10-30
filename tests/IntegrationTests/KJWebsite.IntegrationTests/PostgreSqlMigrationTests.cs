@@ -93,7 +93,9 @@ public sealed class PostgreSqlMigrationTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<CtaDbContext>();
 
-        db.Database.GetAppliedMigrations().Should().ContainSingle().Which.Should().Contain("InitialPostgreSql");
+        db.Database.GetAppliedMigrations().Should().HaveCount(2).And.Contain(m => m.Contains("Outbox"));
+        (await TableExists(connectionString, "cta", "outbox_messages")).Should().BeTrue();
+        (await TableExists(connectionString, "cta", "dead_letters")).Should().BeTrue();
         (await TableExists(connectionString, "cta", "cta_submissions")).Should().BeTrue();
         (await TableExists(connectionString, "cta", "__EFMigrationsHistory")).Should().BeTrue();
         var seed = await db.Submissions.SingleAsync(s => s.Id == "subm_dev_bengali");

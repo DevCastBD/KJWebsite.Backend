@@ -1,15 +1,21 @@
 using CtaSubmissionService.Data.Entities;
+using KJWebsite.BuildingBlocks.Outbox;
 using Microsoft.EntityFrameworkCore;
 
 namespace CtaSubmissionService.Data;
 
-public sealed class CtaDbContext(DbContextOptions<CtaDbContext> options) : DbContext(options)
+public sealed class CtaDbContext(DbContextOptions<CtaDbContext> options) : DbContext(options), IOutboxDbContext
 {
     public DbSet<CtaSubmissionEntity> Submissions => Set<CtaSubmissionEntity>();
+
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    public DbSet<DeadLetterMessage> DeadLetters => Set<DeadLetterMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("cta");
+        modelBuilder.ConfigureOutbox();
 
         // ICU collation is a PostgreSQL feature; Sqlite (test-only provider) has no "bn-x-icu" collation to register.
         var useBengaliCollation = Database.IsNpgsql();

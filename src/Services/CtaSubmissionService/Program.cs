@@ -1,8 +1,11 @@
 using CtaSubmissionService.Contracts;
 using CtaSubmissionService.Data;
 using CtaSubmissionService.Data.Entities;
+using CtaSubmissionService.Outbox;
 using CtaSubmissionService.Validation;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Jobs;
+using KJWebsite.BuildingBlocks.Outbox;
 using KJWebsite.BuildingBlocks.Security;
 using KJWebsite.BuildingBlocks.Validation;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +34,8 @@ builder.Services.AddDbContext<CtaDbContext>((services, options) =>
 });
 
 builder.Services.AddKjJwtAuthentication();
+builder.Services.AddKjBackgroundJobs<CtaDbContext>(builder.Configuration, "CtaDb");
+builder.Services.AddOutboxHandler<SubmissionReceivedHandler>();
 
 health.AddDbContextCheck<CtaDbContext>("database", tags: [KjObservability.ReadyTag, KjObservability.StartupTag]);
 
@@ -89,7 +94,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmis
    .WithTags("System")
 .AllowAnonymous();
 
-app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db) =>
+app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db, IOutboxSignal outbox) =>
 {
     var valuesJson = System.Text.Json.JsonSerializer.Serialize(payload.Values);
     var id = $"subm_{Guid.NewGuid():N}";
@@ -117,7 +122,11 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
         CountryOfResidence = awaitingProfile?.CountryOfResidence
     });
 
+    // Same SaveChanges as the submission: the event exists if and only if the submission does.
+    db.Enqueue(OutboxTypes.SubmissionReceived, new { submissionId = id, formName = payload.FormName, language = payload.Language });
+
     await db.SaveChangesAsync();
+    outbox.Signal();
 
     return Results.Created($"/api/v1/cta/submissions/{id}", new { id, status = "accepted", created_at = createdAt });
 })
@@ -127,6 +136,8 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
 .WithTags("CTA")
 .WithValidation<CtaSubmissionRequest>()
 .AllowAnonymous();
+
+app.MapKjBackgroundJobs<CtaDbContext>();
 
 app.Run();
 

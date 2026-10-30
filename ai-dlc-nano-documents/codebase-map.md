@@ -14,7 +14,7 @@
 - content (`src/Services/ContentService/**`)
   purpose: public projects/news and admin content endpoints; PostgreSQL `content` schema via `Data/ContentStore.cs`; seed JSON in `Data/Seed/`; entry: `Program.cs`; docs: `docs/CONTENT_CONTRACT.md`
 - CTA (`src/Services/CtaSubmissionService/**`)
-  purpose: public CTA submission endpoint with PostgreSQL/EF Core; entry: `Program.cs`; migrations: `Migrations/`
+  purpose: public CTA submission endpoint with PostgreSQL/EF Core, transactional outbox + Hangfire (`docs/OUTBOX.md`); entry: `Program.cs`; migrations: `Migrations/`
 - auth (`src/Services/AuthIdentityService/**`)
   purpose: ASP.NET Core Identity accounts, RS256 JWT + hashed rotating refresh tokens (`Tokens/`), sessions, password reset; entry: `Program.cs`; migrations: `Migrations/`; docs: `docs/AUTH_TOKENS.md`
 - shared (`src/BuildingBlocks/**`)
