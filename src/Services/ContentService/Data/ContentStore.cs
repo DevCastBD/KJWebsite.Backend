@@ -41,7 +41,7 @@ public static class ContentETag
 }
 
 /// <summary>Reads and writes content, and maps it to the public and admin shapes. Deleting is soft: the row stays and its slug stays reserved.</summary>
-public sealed partial class ContentStore(ContentDbContext db, TimeProvider time, RevisionStore revisions)
+public sealed partial class ContentStore(ContentDbContext db, TimeProvider time, RevisionStore revisions, TranslationPolicy policy)
 {
     private static readonly string[] ProjectStatuses = ["active", "draft", "in_review", "scheduled", "archived"];
     private static readonly string[] NewsStatuses = ["published", "draft", "in_review", "scheduled", "archived"];
@@ -56,11 +56,11 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time,
     public async Task<List<ProjectItem>> ProjectsAsync(string lang, string status)
     {
         var items = await LiveAsync(ContentTypes.Project);
-        return [.. items.Where(i => status == "all" || i.Status == "active").SelectMany(i => ToProjectItems(i).Where(p => p.Lang == lang))];
+        return [.. items.Where(i => status == "all" || i.Status == "active").Select(i => PublicProject(i, lang)).OfType<ProjectItem>()];
     }
 
     public async Task<ProjectItem?> ProjectAsync(string slug, string lang) =>
-        (await LiveAsync(ContentTypes.Project, slug)).SelectMany(i => ToProjectItems(i)).FirstOrDefault(p => p.Lang == lang);
+        (await LiveAsync(ContentTypes.Project, slug)).Select(i => PublicProject(i, lang)).FirstOrDefault(p => p is not null);
 
     public async Task<List<ProjectAdminView>> AdminProjectsAsync() => [.. (await LiveAsync(ContentTypes.Project)).Select(ToProjectAdminView)];
 
@@ -117,10 +117,10 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time,
     // ---- news
 
     public async Task<List<NewsItem>> NewsAsync(string lang) =>
-        [.. (await LiveAsync(ContentTypes.News)).Where(i => i.Status == "published").SelectMany(i => ToNewsItems(i).Where(n => n.Lang == lang))];
+        [.. (await LiveAsync(ContentTypes.News)).Where(i => i.Status == "published").Select(i => PublicNews(i, lang)).OfType<NewsItem>()];
 
     public async Task<NewsItem?> NewsItemAsync(string slug, string lang) =>
-        (await LiveAsync(ContentTypes.News, slug)).Where(i => i.Status == "published").SelectMany(i => ToNewsItems(i)).FirstOrDefault(n => n.Lang == lang);
+        (await LiveAsync(ContentTypes.News, slug)).Where(i => i.Status == "published").Select(i => PublicNews(i, lang)).FirstOrDefault(n => n is not null);
 
     public async Task<List<NewsAdminView>> AdminNewsAsync() => [.. (await LiveAsync(ContentTypes.News)).Select(ToNewsAdminView)];
 
@@ -324,6 +324,43 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time,
 
     // ---- mapping
 
+    /// <summary>The project as a reader of <paramref name="lang"/> sees it under the fallback rules, or null when it is hidden for them.</summary>
+    private ProjectItem? PublicProject(ContentItemEntity item, string lang)
+    {
+        var choice = policy.Choose([.. item.Translations.Select(t => t.Lang)], lang);
+        if (choice is null)
+        {
+            return null;
+        }
+
+        var project = ToProjectItems(item).First(p => p.Lang == choice.ContentLang);
+        if (!choice.Pending)
+        {
+            return project;
+        }
+
+        project = project with { TranslationPending = true, RequestedLang = lang };
+        return choice.Placeholder ? project with { ShortDescription = string.Empty, FullDescription = string.Empty } : project;
+    }
+
+    private NewsItem? PublicNews(ContentItemEntity item, string lang)
+    {
+        var choice = policy.Choose([.. item.Translations.Select(t => t.Lang)], lang);
+        if (choice is null)
+        {
+            return null;
+        }
+
+        var news = ToNewsItems(item).First(n => n.Lang == choice.ContentLang);
+        if (!choice.Pending)
+        {
+            return news;
+        }
+
+        news = news with { TranslationPending = true, RequestedLang = lang };
+        return choice.Placeholder ? news with { Summary = string.Empty, Content = [] } : news;
+    }
+
     private static List<ProjectItem> ToProjectItems(ContentItemEntity item) =>
     [
         .. item.Translations.OrderBy(t => t.Lang, StringComparer.Ordinal).Select(t =>
@@ -351,12 +388,14 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time,
         var lead = translations.FirstOrDefault(t => t.Lang == "en") ?? translations.FirstOrDefault();
         return new ProjectAdminView(item.Slug, item.Project?.ImageUrl ?? string.Empty, lead?.Category ?? string.Empty, lead?.Year ?? string.Empty,
             item.Status, item.Project?.Icon ?? string.Empty,
-            [.. translations.Select(t => new ProjectTranslationView(t.Lang, t.Title, t.ShortTitle, t.ShortDescription, t.FullDescription, t.Category, t.Year))]);
+            [.. translations.Select(t => new ProjectTranslationView(t.Lang, t.Title, t.ShortTitle, t.ShortDescription, t.FullDescription, t.Category, t.Year))],
+            TranslationCompleteness.Evaluate(ContentTypes.Project, item.Translations));
     }
 
     private static NewsAdminView ToNewsAdminView(ContentItemEntity item) =>
         new(item.Slug, item.News?.ImageUrl ?? string.Empty, item.PublishedAt ?? item.CreatedAt, item.Status,
-            [.. ToNewsItems(item).Select(n => new NewsTranslationView(n.Lang, n.Title, n.Summary, n.Content, n.Date, n.Tags))]);
+            [.. ToNewsItems(item).Select(n => new NewsTranslationView(n.Lang, n.Title, n.Summary, n.Content, n.Date, n.Tags))],
+            TranslationCompleteness.Evaluate(ContentTypes.News, item.Translations));
 
     private static List<string> Paragraphs(string body) =>
         [.. body.Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];

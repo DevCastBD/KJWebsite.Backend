@@ -1,9 +1,11 @@
 # AI-DLC Nano State
-- Active work item: work-items/035-issue-48-idempotency-caching-etag
-- Phase: PLAN
-- Branch: Feature/issue-48-idempotency-caching-etag
+- Active work item: none  (milestone 3 / P2 run: #48, #38, #42, #43, #39, #40 done as stacked local branches off origin/develop; #108 skipped by user)
+- Phase: —
+- Branch: Feature/issue-40-translation-completeness
 - Base SHA: —
-- Next step: get plan approval for #48, then construct; then #38,#42,#43,#39,#40,#41,#45,#44,#46,#47 each stacked on the previous
-- Paused work items:  (see git grep phase: in plan.md files; P1 stack branches up to feature/issue-37-contract-tests unpushed)
+- Next step: BE-036 #41 media needs decisions (see backlog); then #45, #44, #46, #47 in order. Push stack + PRs only on request (48→develop, 38→48, 42→38, 43→42, 39→43, 40→39)
+- Paused work items:
+  - work-items/011-issue-116-p1-platform-core (CLARIFY, epic checklist not touched this run)
+  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
 - Last updated: 2026-10-31 by claude

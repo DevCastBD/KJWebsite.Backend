@@ -22,7 +22,9 @@ public sealed record ContentItemView(
     DateTimeOffset? PublishedAt,
     List<TagRef> Tags,
     List<RelatedItemView> Related,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    bool TranslationPending = false,
+    string? RequestedLang = null);
 
 public sealed record ContentTranslationInput(string Lang, string Title, string? Summary, string? Body, Dictionary<string, JsonElement>? Attributes);
 
@@ -48,7 +50,8 @@ public sealed record ContentItemAdminView(
     DateTimeOffset? ScheduledPublishAt,
     List<ContentTranslationView> Translations,
     List<string> Tags,
-    List<RelatedRef> Related);
+    List<RelatedRef> Related,
+    ContentService.Data.ItemCompleteness? Completeness = null);
 
 public sealed record SetTagsRequest(List<string> Tags);
 
@@ -68,10 +71,26 @@ public sealed record RedirectResolution(string From, string To, int StatusCode);
 
 public sealed record WorkflowRequest(string To, DateTimeOffset? PublishAt);
 
-public sealed record WorkflowView(string Type, string Slug, string Status, DateTimeOffset? ScheduledPublishAt, DateTimeOffset? PublishedAt);
+public sealed record WorkflowView(string Type, string Slug, string Status, DateTimeOffset? ScheduledPublishAt, DateTimeOffset? PublishedAt, List<string>? Warnings = null);
 
 public sealed record TrashItemView(string Type, string Slug, DateTimeOffset DeletedAt, string Title);
 
 public sealed record PreviewTokenRequest(int? TtlMinutes);
 
 public sealed record PreviewTokenView(string Token, DateTimeOffset ExpiresAt, string Path);
+
+public sealed record LanguageGap(string Lang, string State, List<string> Fields);
+
+public sealed record TranslationGapView(string Type, string Slug, string Status, string Title, List<LanguageGap> Gaps);
+
+public sealed record GapCount(int Missing, int Incomplete);
+
+public sealed record TypeGapCount(int Items, int WithGaps);
+
+public sealed record TranslationReport(
+    List<TranslationGapView> Items,
+    int Total,
+    int Limit,
+    int Offset,
+    Dictionary<string, TypeGapCount> ByType,
+    Dictionary<string, GapCount> ByLanguage);

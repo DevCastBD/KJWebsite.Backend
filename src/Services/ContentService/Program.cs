@@ -42,6 +42,7 @@ builder.Services.AddKjAuditing("content", audit => audit
     .Audit<ContentRelationEntity>()
     .Audit<RedirectEntity>());
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<TranslationPolicy>();
 builder.Services.AddScoped<ContentStore>();
 builder.Services.AddScoped<TaxonomyStore>();
 builder.Services.AddScoped<RedirectStore>();
@@ -55,6 +56,7 @@ builder.Services.AddKjJwtAuthentication();
 builder.Services.AddContentCaching(builder.Configuration);
 
 var app = builder.Build();
+_ = app.Services.GetRequiredService<TranslationPolicy>(); // a bad fallback setting stops startup, not the first request
 
 if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
 {

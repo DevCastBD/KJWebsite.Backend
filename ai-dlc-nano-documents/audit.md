@@ -195,3 +195,5 @@
 - 2026-10-30T19:22Z [claude] 038-issue-43-audit-log DONE @e67368d: audit log for Content+Auth; 169 tests green incl. PG; not pushed
 - 2026-10-30T19:24Z [claude] 039-issue-39-editorial-workflow CREATED @95a3959: #39 stacked on #43 branch; self-contained scheduler (user confirmed); plan awaiting approval
 - 2026-10-30T19:30Z [claude] 039-issue-39-editorial-workflow DONE @95a3959: workflow, scheduler, revisions, trash, preview; 184 tests green (+PG); not pushed
+- 2026-10-30T19:31Z [claude] 040-issue-40-translation-completeness CREATED @0b2f9be: #40 stacked on #39 branch; awaiting fallback decision + plan approval
+- 2026-10-30T19:34Z [claude] 040-issue-40-translation-completeness DONE @0b2f9be: completeness, report, fallback (user-decided); 195 tests green (+PG); not pushed

@@ -8,7 +8,7 @@ namespace ContentService.Data;
 /// Reads and writes every content type in the one generic shape: translations, tags, related items and slug changes.
 /// Deleting is soft and a deleted slug stays reserved, as for projects and news.
 /// </summary>
-public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, TaxonomyStore taxonomy, RedirectStore redirects, RevisionStore revisions)
+public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, TaxonomyStore taxonomy, RedirectStore redirects, RevisionStore revisions, TranslationPolicy policy)
 {
     private static readonly string[] Languages = ["en", "bn"];
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -219,6 +219,55 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         item.UpdatedAt = item.DeletedAt.Value;
         await db.SaveChangesAsync();
         return true;
+    }
+
+    // ---- translation completeness
+
+    public async Task<ItemCompleteness?> CompletenessAsync(string type, string slug)
+    {
+        var item = await db.Items.AsNoTracking().Include(i => i.Translations).FirstOrDefaultAsync(i => i.Type == type && i.Slug == slug && i.DeletedAt == null);
+        return item is null ? null : TranslationCompleteness.Evaluate(type, item.Translations);
+    }
+
+    /// <summary>
+    /// The gaps across every content type: per item and language, whether the translation is `missing` (no row) or `incomplete`
+    /// (a required field is blank). The summary counts cover the whole filtered set, not just the requested page.
+    /// </summary>
+    public async Task<TranslationReport> ReportAsync(string? type, string? lang, string? status, bool includeComplete, int limit, int offset)
+    {
+        var query = db.Items.AsNoTracking().Include(i => i.Translations).Where(i => i.DeletedAt == null);
+        if (type is not null)
+        {
+            query = query.Where(i => i.Type == type);
+        }
+
+        var items = (await query.ToListAsync())
+            .Where(i => status is null || StatusRules.Canonical(i.Status) == StatusRules.Canonical(status))
+            .OrderBy(i => i.Type, StringComparer.Ordinal).ThenBy(i => i.Slug, StringComparer.Ordinal).ToList();
+
+        var rows = new List<TranslationGapView>();
+        var byType = new Dictionary<string, TypeGapCount>();
+        var byLang = TranslationCompleteness.Languages.ToDictionary(l => l, _ => new GapCount(0, 0));
+        foreach (var item in items)
+        {
+            var gaps = TranslationCompleteness.Evaluate(item.Type, item.Translations).Languages
+                .Where(l => !l.Complete && (lang is null || l.Lang == lang))
+                .Select(l => new LanguageGap(l.Lang, l.Present ? "incomplete" : "missing", l.Missing)).ToList();
+            foreach (var gap in gaps)
+            {
+                byLang[gap.Lang] = gap.State == "missing" ? byLang[gap.Lang] with { Missing = byLang[gap.Lang].Missing + 1 } : byLang[gap.Lang] with { Incomplete = byLang[gap.Lang].Incomplete + 1 };
+            }
+
+            var counts = byType.GetValueOrDefault(item.Type, new TypeGapCount(0, 0));
+            byType[item.Type] = new TypeGapCount(counts.Items + 1, counts.WithGaps + (gaps.Count > 0 ? 1 : 0));
+            if (gaps.Count > 0 || includeComplete)
+            {
+                var title = item.Translations.OrderBy(t => t.Lang == "bn" ? 0 : 1).Select(t => t.Title).FirstOrDefault(t => !string.IsNullOrWhiteSpace(t)) ?? item.Slug;
+                rows.Add(new TranslationGapView(item.Type, item.Slug, item.Status, title, gaps));
+            }
+        }
+
+        return new TranslationReport([.. rows.Skip(offset).Take(limit)], rows.Count, limit, offset, byType, byLang);
     }
 
     // ---- history, trash and preview
@@ -502,31 +551,35 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         return list.Any(t => string.IsNullOrWhiteSpace(t.Title)) ? "Every translation needs a title." : null;
     }
 
-    private static ContentItemView? ToView(ContentItemEntity item, string lang)
+    /// <summary>The item as a reader of <paramref name="lang"/> sees it under the fallback rules, or null when it is hidden for them.</summary>
+    private ContentItemView? ToView(ContentItemEntity item, string lang)
     {
-        var translation = item.Translations.FirstOrDefault(t => t.Lang == lang);
-        if (translation is null)
+        var choice = policy.Choose([.. item.Translations.Select(t => t.Lang)], lang);
+        if (choice is null)
         {
             return null;
         }
 
+        var translation = item.Translations.First(t => t.Lang == choice.ContentLang);
         var tags = item.TagLinks.Select(l => l.Tag).OfType<TagEntity>().OrderBy(t => t.Slug, StringComparer.Ordinal)
             .Select(t => new TagRef(t.Slug, (t.Names.FirstOrDefault(n => n.Lang == lang) ?? t.Names.FirstOrDefault())?.Name ?? t.Slug)).ToList();
-        // Related items that are not live, published and translated into this language are left out rather than shown half-empty.
+        // Related items that are not live and published, or hidden for this reader by the fallback rules, are left out rather than shown half-empty.
         var related = item.RelatedLinks.OrderBy(r => r.SortOrder).Select(r => r.To)
             .Where(t => t is { DeletedAt: null, Status: "published" or "active" })
-            .Select(t => (Target: t!, Translation: t!.Translations.FirstOrDefault(x => x.Lang == lang)))
-            .Where(x => x.Translation is not null)
-            .Select(x => new RelatedItemView(x.Target.Type, x.Target.Slug, x.Translation!.Title)).ToList();
-        return new ContentItemView(item.Id, item.Type, item.Slug, lang, translation.Title, translation.Summary, translation.Body,
-            ReadAttributes(translation), item.ImageUrl, item.PublishedAt, tags, related, item.UpdatedAt);
+            .Select(t => (Target: t!, Choice: policy.Choose([.. t!.Translations.Select(x => x.Lang)], lang)))
+            .Where(x => x.Choice is not null)
+            .Select(x => new RelatedItemView(x.Target.Type, x.Target.Slug, x.Target.Translations.First(t => t.Lang == x.Choice!.ContentLang).Title)).ToList();
+        var placeholder = choice is { Pending: true, Placeholder: true };
+        return new ContentItemView(item.Id, item.Type, item.Slug, choice.ContentLang, translation.Title, placeholder ? string.Empty : translation.Summary, placeholder ? string.Empty : translation.Body,
+            placeholder ? [] : ReadAttributes(translation), item.ImageUrl, item.PublishedAt, tags, related, item.UpdatedAt, choice.Pending, choice.Pending ? lang : null);
     }
 
     private static ContentItemAdminView ToAdminView(ContentItemEntity item) => new(
         item.Type, item.Slug, item.Status, item.ImageUrl, item.SortOrder, item.PublishedAt, item.ScheduledPublishAt,
         [.. item.Translations.OrderBy(t => t.Lang, StringComparer.Ordinal).Select(t => new ContentTranslationView(t.Lang, t.Title, t.Summary, t.Body, ReadAttributes(t)))],
         [.. item.TagLinks.Select(l => l.Tag?.Slug).OfType<string>().OrderBy(s => s, StringComparer.Ordinal)],
-        [.. item.RelatedLinks.OrderBy(r => r.SortOrder).Where(r => r.To is not null).Select(r => new RelatedRef(r.To!.Type, r.To.Slug))]);
+        [.. item.RelatedLinks.OrderBy(r => r.SortOrder).Where(r => r.To is not null).Select(r => new RelatedRef(r.To!.Type, r.To.Slug))],
+        TranslationCompleteness.Evaluate(item.Type, item.Translations));
 
     private static Dictionary<string, JsonElement> ReadAttributes(ContentTranslationEntity translation)
     {

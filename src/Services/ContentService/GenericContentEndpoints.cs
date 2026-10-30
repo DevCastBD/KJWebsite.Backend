@@ -187,6 +187,33 @@ public static class GenericContentEndpoints
         .WithDescription("Restores translations, images, tags and related items. The slug, status and publication date are not rolled back.")
         .WithTags(adminTag).EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
 
+        app.MapGet($"{items}/completeness", async (HttpRequest request, GenericContentStore store, string type, string slug) =>
+            ContentKinds.ByType(type) is not null && await store.CompletenessAsync(type, slug) is { } completeness
+                ? Results.Ok(completeness)
+                : NotFound(request, "Item not found."))
+        .WithName("GetItemCompleteness").WithSummary("Translation completeness of one item, per language")
+        .WithDescription($"A language is complete when every required field is filled. Required fields per type: {RequiredFieldsDescription()}.")
+        .WithTags("Admin — Translations").RequirePermission(Permissions.ContentView);
+
+        app.MapGet($"{Admin}/translations/report", async (HttpRequest request, GenericContentStore store, string? type, string? lang, string? status, bool? includeComplete, int? limit, int? offset) =>
+        {
+            if ((type is not null && ContentKinds.ByType(type) is null) || (lang is not null && !TranslationCompleteness.Languages.Contains(lang)) || (status is not null && !StatusRules.Workflow.Contains(StatusRules.Canonical(status)) && status != "active"))
+            {
+                return Invalid(request, "type, lang or status is not recognised.");
+            }
+
+            if (!TryReadPaging(limit, offset, out var safeLimit, out var safeOffset))
+            {
+                return Invalid(request, "Invalid paging values.");
+            }
+
+            request.HttpContext.Response.Headers.CacheControl = "no-store";
+            return Results.Ok(await store.ReportAsync(type, lang, status, includeComplete.GetValueOrDefault(), safeLimit, safeOffset));
+        })
+        .WithName("TranslationReport").WithSummary("Missing and incomplete translations across all content types")
+        .WithDescription("Lists items with gaps (`missing`: no translation row; `incomplete`: a required field is blank), with counts per type and language for the whole filtered set. Filters: `type`, `lang`, `status`, `includeComplete`.")
+        .WithTags("Admin — Translations").RequirePermission(Permissions.ContentView);
+
         app.MapGet($"{Admin}/trash", async (HttpRequest request, GenericContentStore store, string? type) =>
         {
             if (type is not null && ContentKinds.ByType(type) is null)
@@ -334,6 +361,9 @@ public static class GenericContentEndpoints
         SetETag(request, await store.ETagAsync(type, slug));
         return view is null ? NotFound(request, "Item not found.") : Results.Ok(view);
     }
+
+    private static string RequiredFieldsDescription() =>
+        string.Join("; ", ContentKinds.All.Select(k => $"{k.Type}: {string.Join(", ", TranslationCompleteness.RequiredFields(k.Type))}"));
 
     private static IResult Respond<T>(HttpRequest request, UpsertResult<T> result, string? created) => result.Outcome switch
     {
