@@ -247,7 +247,12 @@ public static class ReviewEndpoints
             ApplicationId = application.Id,
             FirstName = application.FirstName,
             LastName = application.LastName,
-            JoinedAt = now
+            JoinedAt = now,
+            // The application snapshot becomes the member's own profile; from here the portal is where it is kept current.
+            PhoneProtected = application.PhoneProtected,
+            AddressProtected = application.CurrentAddressProtected,
+            DateOfBirthProtected = application.DateOfBirthProtected,
+            BloodGroupProtected = application.BloodGroupProtected
         };
         var welcome = Notification(application, protector, "member.welcome", new { reference = application.Reference, memberCode = string.Empty, userId = account.UserId, setupToken = account.SetupToken }, now);
         var previousStatus = application.Status;

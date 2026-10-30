@@ -2524,6 +2524,191 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/membership/profile-changes:
+    get:
+      tags:
+        - "Membership admin"
+      summary: "Sensitive profile edits waiting for review (status=pending|approved|rejected)"
+      operationId: "ListProfileChanges"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/profile-changes/{id}/approve":
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Apply a member\u0027s sensitive edit"
+      operationId: "ApproveProfileChange"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/profile-changes/{id}/reject":
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Refuse a member\u0027s sensitive edit, with a reason the member can read"
+      operationId: "RejectProfileChange"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/profile:
+    get:
+      tags:
+        - "Member portal"
+      summary: "The member\u0027s profile, with moderation status of pending edits"
+      operationId: "GetMyProfile"
+      responses:
+        "200":
+          description: "OK"
+    patch:
+      tags:
+        - "Member portal"
+      summary: "Edit the profile: phone, address and expertise apply now; names, date of birth and blood group wait for review"
+      operationId: "UpdateMyProfile"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfilePatch"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/consents:
+    get:
+      tags:
+        - "Member portal"
+      summary: "What the member has agreed to publish (everything off until they say so)"
+      operationId: "GetMyConsents"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Member portal"
+      summary: "Give or withdraw publication consent per field"
+      operationId: "SetMyConsents"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Consents"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/notifications:
+    get:
+      tags:
+        - "Member portal"
+      summary: "Which messages the member wants"
+      operationId: "GetMyNotifications"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Member portal"
+      summary: "Choose which messages to receive"
+      operationId: "SetMyNotifications"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPrefs"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/deletion-request:
+    post:
+      tags:
+        - "Member portal"
+      summary: "Ask for the member\u0027s data to be erased"
+      description: "Records the request and returns 202 with a reference; repeating it returns the same one. Carrying it out, and what must be kept by law, is decided with the retention work (#58)."
+      operationId: "RequestMyDeletion"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/photo:
+    put:
+      tags:
+        - "Member portal"
+      summary: "Set the member\u0027s photo (jpeg, png or webp, up to 2 MB)"
+      operationId: "UploadMyPhoto"
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Member portal"
+      summary: "The member\u0027s own photo"
+      operationId: "GetMyPhoto"
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Member portal"
+      summary: "Remove the member\u0027s photo"
+      operationId: "DeleteMyPhoto"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/export:
+    get:
+      tags:
+        - "Member portal"
+      summary: "Download everything held about the member"
+      description: "Profile, consents and their history, edit requests, the original application with its history and reviewer notes, messages sent, audit entries about the member\u0027s records, and the Identity account with sessions. Secrets (password hashes, token values) are never included. \u0060identityAvailable\u0060 is false when Identity could not be reached; retry for the full set."
+      operationId: "ExportMyData"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/card:
+    get:
+      tags:
+        - "Member portal"
+      summary: "Membership card data with its QR code (SVG)"
+      operationId: "GetMyCard"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/card.pdf:
+    get:
+      tags:
+        - "Member portal"
+      summary: "Membership card as a printable PDF (Bengali name rendered with an embedded font)"
+      operationId: "GetMyCardPdf"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/membership/audit:
     get:
       tags:
@@ -2976,6 +3161,41 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/members/me/sessions:
+    get:
+      tags:
+        - "Member portal"
+      summary: "The member\u0027s signed-in devices"
+      operationId: "ListMemberSessions"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/members/me/sessions/{id}":
+    delete:
+      tags:
+        - "Member portal"
+      summary: "Sign one device out"
+      operationId: "RevokeMemberSession"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/auth/me/export:
+    get:
+      tags:
+        - "Auth"
+      summary: "Everything Identity holds about the signed-in user"
+      description: "Account, profile, active sessions and audit entries about or by the caller. Never includes password hashes or token values. Used by the member data export."
+      operationId: "ExportMyAccount"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/auth/audit:
     get:
       tags:
@@ -3095,6 +3315,8 @@ tags:
     name: "Membership"
   -
     name: "Membership admin"
+  -
+    name: "Member portal"
   -
     name: "Auth"
   -
@@ -3599,6 +3821,28 @@ components:
             - "null"
             - "string"
           format: "date-time"
+    Consents:
+      required:
+        - "name"
+        - "photograph"
+        - "expertise"
+      type: "object"
+      properties:
+        name:
+          type: "boolean"
+        photograph:
+          type: "boolean"
+        expertise:
+          type: "boolean"
+    DecisionRequest:
+      required:
+        - "reason"
+      type: "object"
+      properties:
+        reason:
+          type:
+            - "null"
+            - "string"
     DuplicateCheckRequest:
       required:
         - "email"
@@ -3622,6 +3866,30 @@ components:
           type:
             - "null"
             - "string"
+    NotificationPrefs:
+      required:
+        - "news"
+        - "events"
+        - "membership"
+      type: "object"
+      properties:
+        news:
+          type: "boolean"
+        events:
+          type: "boolean"
+        membership:
+          type: "boolean"
+    ProfilePatch:
+      required:
+        - "changes"
+      type: "object"
+      properties:
+        changes:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            type: "string"
     StatusLookupRequest:
       required:
         - "reference"

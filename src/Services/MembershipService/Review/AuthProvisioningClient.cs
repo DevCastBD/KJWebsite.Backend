@@ -20,6 +20,9 @@ public sealed record ProvisionAccount(
 
 public interface IAuthProvisioningClient
 {
+    /// <summary>Everything Identity holds about the caller (their own token is forwarded). Null when Identity cannot answer.</summary>
+    Task<System.Text.Json.JsonElement?> GetAccountExportAsync(string? bearerToken, CancellationToken cancellationToken);
+
     Task<ProvisioningResult> ProvisionAsync(ProvisionAccount account, string? bearerToken, CancellationToken cancellationToken);
 }
 
@@ -30,6 +33,22 @@ public interface IAuthProvisioningClient
 public sealed partial class AuthProvisioningClient(IHttpClientFactory factory, ILogger<AuthProvisioningClient> logger) : IAuthProvisioningClient
 {
     public const string ClientName = "auth";
+
+    public async Task<System.Text.Json.JsonElement?> GetAccountExportAsync(string? bearerToken, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/auth/me/export");
+            request.Headers.Authorization = string.IsNullOrEmpty(bearerToken) ? null : new AuthenticationHeaderValue("Bearer", bearerToken);
+            using var response = await factory.CreateClient(ClientName).SendAsync(request, cancellationToken);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(cancellationToken) : null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            LogUnreachable(logger, ex.GetType().Name);
+            return null;
+        }
+    }
 
     public async Task<ProvisioningResult> ProvisionAsync(ProvisionAccount account, string? bearerToken, CancellationToken cancellationToken)
     {

@@ -9,6 +9,7 @@ using MembershipService.Data;
 using MembershipService.Data.Entities;
 using MembershipService.Intake;
 using MembershipService.Review;
+using MembershipService.Self;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
@@ -62,7 +63,11 @@ builder.Services.AddKjAuditing("membership", audit => audit
         nameof(ApplicationEntity.PhoneProtected), nameof(ApplicationEntity.BloodGroupProtected), nameof(ApplicationEntity.CurrentAddressProtected),
         nameof(ApplicationEntity.DateOfBirthProtected), nameof(ApplicationEntity.EmailHash), nameof(ApplicationEntity.PhoneHash))
     .Audit<ApplicationStatusEventEntity>()
-    .Audit<MemberEntity>()
+    .Audit<MemberEntity>(
+        nameof(MemberEntity.PhoneProtected), nameof(MemberEntity.AddressProtected), nameof(MemberEntity.DateOfBirthProtected),
+        nameof(MemberEntity.BloodGroupProtected), nameof(MemberEntity.PhotoKey))
+    .Audit<ProfileChangeEntity>(nameof(ProfileChangeEntity.ValueProtected))
+    .Audit<DeletionRequestEntity>()
     .Audit<ApplicationNoteEntity>(nameof(ApplicationNoteEntity.Text)));
 builder.Services.AddSingleton(TimeProvider.System);
 
@@ -249,6 +254,8 @@ app.MapPost("/api/v1/membership/applications/status", async (HttpContext context
 
 app.MapCampaignEndpoints();
 app.MapReviewEndpoints();
+app.MapProfileModeration();
+app.MapSelfEndpoints();
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 
 app.MapPut("/api/v1/membership/applications/{id}/attachments/{kind}", async (HttpContext context, string id, string kind, MembershipDbContext db, IAttachmentStore store) =>
