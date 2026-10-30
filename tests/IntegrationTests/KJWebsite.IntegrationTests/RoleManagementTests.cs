@@ -212,6 +212,23 @@ public sealed class RoleManagementTests : IDisposable
         (await Role("Moderator", token)).GetProperty("permissions").GetArrayLength().Should().Be(1, "the edit survives the reseed");
     }
 
+    [Fact]
+    public async Task RoleAndAssignmentChangesAreWrittenToTheAuditLog()
+    {
+        var token = await SuperAdminToken();
+        await Send(HttpMethod.Post, $"{Base}/roles", token, new { name = "Audited", permissions = new[] { Permissions.ContentView } });
+        var user = await CreateUser("audited@example.org");
+        await Send(HttpMethod.Put, $"{Base}/users/{user}/roles", token, new { roles = new[] { "Audited" } });
+
+        using var assignments = await Send(HttpMethod.Get, $"{Base}/audit?entity=IdentityUserRole&action=create", token);
+        var item = (await assignments.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        item.GetProperty("actorId").GetString().Should().Be("usr_admin");
+        item.GetProperty("after").GetProperty("userId").GetString().Should().Be(user);
+        using var claims = await Send(HttpMethod.Get, $"{Base}/audit?entity=IdentityRoleClaim", token);
+        (await claims.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").GetArrayLength().Should().BeGreaterThan(0);
+        (await Send(HttpMethod.Get, $"{Base}/audit", await Login("audited@example.org", Password))).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
     private async Task<JsonElement> Role(string name, string token)
     {
         using var response = await Send(HttpMethod.Get, $"{Base}/roles/{name}", token);

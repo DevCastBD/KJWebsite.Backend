@@ -1568,6 +1568,90 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/content/audit:
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Query the Content audit log"
+      description: "Newest first. Filters: \u0060actor\u0060 (id or email), \u0060entity\u0060, \u0060entityId\u0060, \u0060action\u0060 (create/update/delete), \u0060requestId\u0060, \u0060from\u0060, \u0060to\u0060. Page with \u0060cursor\u0060 = the \u0060nextCursor\u0060 of the previous page. Requires \u0060audit.view\u0060; before/after hold personal data."
+      operationId: "ListContentAuditLog"
+      parameters:
+        -
+          name: "actor"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entity"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entityId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "action"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "requestId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "cursor"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int64"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/audit/{id}":
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Get one Content audit event"
+      operationId: "GetContentAuditEvent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/cta/submissions:
     post:
       tags:
@@ -1920,6 +2004,90 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/auth/audit:
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Query the Auth audit log"
+      description: "Newest first. Filters: \u0060actor\u0060 (id or email), \u0060entity\u0060, \u0060entityId\u0060, \u0060action\u0060 (create/update/delete), \u0060requestId\u0060, \u0060from\u0060, \u0060to\u0060. Page with \u0060cursor\u0060 = the \u0060nextCursor\u0060 of the previous page. Requires \u0060audit.view\u0060; before/after hold personal data."
+      operationId: "ListAuthAuditLog"
+      parameters:
+        -
+          name: "actor"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entity"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entityId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "action"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "requestId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "cursor"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int64"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/auth/audit/{id}":
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Get one Auth audit event"
+      operationId: "GetAuthAuditEvent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
 tags:
   -
     name: "System"
@@ -1939,6 +2107,8 @@ tags:
     name: "Content \u2014 Partner"
   -
     name: "Content \u2014 Press"
+  -
+    name: "Admin \u2014 Audit log"
   -
     name: "CTA"
   -

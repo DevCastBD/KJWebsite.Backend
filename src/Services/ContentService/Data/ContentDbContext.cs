@@ -1,4 +1,5 @@
 using ContentService.Data.Entities;
+using KJWebsite.BuildingBlocks.Auditing;
 using Microsoft.EntityFrameworkCore;
 
 namespace ContentService.Data;
@@ -18,6 +19,7 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("content");
+        modelBuilder.ConfigureAudit();
 
         // ICU collation is a PostgreSQL feature; Sqlite (test-only provider) has none. Titles mix Bengali and Latin text,
         // so sorting uses the Bengali ICU collation, as CTA does for names. P2 search builds on this choice.

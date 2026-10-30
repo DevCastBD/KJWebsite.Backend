@@ -191,3 +191,5 @@
 - 2026-10-30T19:11Z [claude] 036-issue-38-content-model DONE @ac60cb4: 8 types, tags, related, redirects; 138 tests green; not pushed
 - 2026-10-30T19:12Z [claude] 037-issue-42-rbac CREATED @fcf55b7: #42 stacked on #38 branch; plan awaiting approval
 - 2026-10-30T19:16Z [claude] 037-issue-42-rbac DONE @fcf55b7: role mgmt API + guards; 156 tests green; audit persistence deferred to #43; not pushed
+- 2026-10-30T19:17Z [claude] 038-issue-43-audit-log CREATED @e67368d: #43 stacked on #42 branch; plan awaiting approval
+- 2026-10-30T19:22Z [claude] 038-issue-43-audit-log DONE @e67368d: audit log for Content+Auth; 169 tests green incl. PG; not pushed

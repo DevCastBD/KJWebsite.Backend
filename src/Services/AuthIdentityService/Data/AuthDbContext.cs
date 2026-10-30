@@ -1,4 +1,5 @@
 using AuthIdentityService.Data.Entities;
+using KJWebsite.BuildingBlocks.Auditing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options)
     {
         base.OnModelCreating(builder);
         builder.HasDefaultSchema("auth");
+        builder.ConfigureAudit();
 
         builder.Entity<AuthUserEntity>(entity =>
         {
