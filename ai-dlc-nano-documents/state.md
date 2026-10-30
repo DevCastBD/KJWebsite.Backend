@@ -1,11 +1,11 @@
 # AI-DLC Nano State
-- Active work item: none  (#22, #23, #24, #25 done as stacked local branches; #15-#18 closed by them; #19/#20 already merged)
+- Active work item: none  (#28, #29, #30, #31, #33, #32, #34, #36, #37 done as stacked local branches; #107/#35/#116 skipped by request)
 - Phase: —
-- Branch: feature/issue-25-content-persistence
+- Branch: feature/issue-37-contract-tests
 - Base SHA: —
-- Next step: push stacked branches + open PRs on request (22→develop, 23→22, 24→23, 25→24); post tracker comments / close #15-#20 on request
+- Next step: push stacked branches + open PRs on request (28→develop, 29→28, 30→29, 31→30, 33→31, 32→33, 34→32, 36→34, 37→36); post tracker comments on request
 - Paused work items:
-  - work-items/011-issue-116-p1-platform-core (CLARIFY, blocked on #30/#27 next; #12 done)
+  - work-items/011-issue-116-p1-platform-core (CLARIFY, epic checklist not touched this run)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
 - Uncommitted code: no
-- Last updated: 2026-10-30 by claude
+- Last updated: 2026-10-31 by claude
