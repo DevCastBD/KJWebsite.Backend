@@ -37,6 +37,13 @@ namespace SqliteToPostgres
     {
         public static async Task CopyAsync(string sourcePath, string connectionString, string schema, string[] tables)
         {
+            if (schema == "auth")
+            {
+                // Auth credentials moved to ASP.NET Core Identity (#22). The old plain-text passwords must never be
+                // copied into PostgreSQL, and the old column set no longer exists, so users start fresh and reset.
+                throw new NotSupportedException("Importing Auth data is retired: passwords were plain text and are not migrated. Recreate accounts and use password reset.");
+            }
+
             // The schema and table names are fixed by this tool, never taken from a connection or SQLite row.
             if (!((schema == "auth" && tables.SequenceEqual(["users", "refresh_tokens"])) ||
                 (schema == "cta" && tables.SequenceEqual(["cta_submissions"]))))
