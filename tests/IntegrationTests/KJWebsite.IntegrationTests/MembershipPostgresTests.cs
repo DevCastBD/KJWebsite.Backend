@@ -24,7 +24,7 @@ public sealed class MembershipPostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<MembershipDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(5);
+                db.Database.GetAppliedMigrations().Should().HaveCount(6);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/membership/applications", new
@@ -82,6 +82,23 @@ public sealed class MembershipPostgresTests
             byName.GetProperty("items").GetArrayLength().Should().Be(1);
             (await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/members/directory?q=hidden")).GetProperty("total").GetInt32().Should().Be(0);
             (await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/members/directory?q=%E0%A6%86%E0%A6%A8%E0%A6%BF%E0%A6%95%E0%A6%BE")).GetProperty("total").GetInt32().Should().Be(1);
+
+            // Committee terms use date-only columns and a join with the consent filter: check both on the real provider.
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<MembershipDbContext>();
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                db.Committees.Add(new MembershipService.Data.Entities.CommitteeEntity { Id = "com_x", Slug = "exec", Kind = "executive", NameEn = "Executive", NameBn = "নির্বাহী", CreatedAt = DateTimeOffset.UtcNow });
+                db.CommitteeMembers.AddRange(
+                    new MembershipService.Data.Entities.CommitteeMemberEntity { Id = "t1", CommitteeId = "com_x", MemberId = "mem_a", PositionKey = "chair", PositionEn = "Chair", PositionBn = "সভাপতি", StartsOn = today.AddDays(-5), CreatedAt = DateTimeOffset.UtcNow },
+                    new MembershipService.Data.Entities.CommitteeMemberEntity { Id = "t2", CommitteeId = "com_x", MemberId = "mem_b", PositionKey = "member", PositionEn = "Member", PositionBn = "সদস্য", StartsOn = today.AddDays(-5), CreatedAt = DateTimeOffset.UtcNow },
+                    new MembershipService.Data.Entities.CommitteeMemberEntity { Id = "t3", CommitteeId = "com_x", MemberId = "mem_a", PositionKey = "treasurer", PositionEn = "Treasurer", PositionBn = "কোষাধ্যক্ষ", StartsOn = today.AddYears(-2), EndsOn = today.AddDays(-1), CreatedAt = DateTimeOffset.UtcNow });
+                await db.SaveChangesAsync();
+            }
+
+            var chart = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/committees/exec");
+            chart.GetProperty("current").GetArrayLength().Should().Be(1, "mem_b never agreed to be named");
+            chart.GetProperty("past").GetArrayLength().Should().Be(1);
         }
         finally
         {

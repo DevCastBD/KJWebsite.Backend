@@ -102,3 +102,13 @@ Moderation (`membership.manage`): `GET /api/v1/admin/membership/profile-changes?
 - `chapter` is accepted and ignored and `chapters` is empty until chapters exist (#55).
 
 **Staff** (`member.profile.view`): `GET /api/v1/admin/membership/members?q=&status=&limit=&offset=` (name, member code, expertise; no contact details) and `GET .../members/{id}` (email, phone, address, date of birth, blood group for that one member). Whether ordinary members get an internal directory of their own is a policy question for the core members; it is not built.
+
+## Committees, chapters and terms (BE-048, #55)
+
+A **committee** has a `kind` (`executive`, `advisory`, `project`, `chapter`), a bilingual name, an optional parent (nesting up to 6 deep; cycles are refused) and can be archived. A **term** seats a member in a position (`positionKey` such as `chair`, bilingual title) from `startsOn` to an optional `endsOn`. A term is **current** from its first through its last day, inclusive (UTC dates), and historical afterwards. Terms are ended, never deleted; a committee with children or any term can only be archived (`409 HAS_HISTORY` on delete). The same member cannot hold the same position in overlapping periods (`409 TERM_OVERLAP`).
+
+**Admin** (`membership.manage`, `/api/v1/admin/membership/committees`): `GET` (flat list; `includeArchived=true`), `POST`, `PUT /{id}`, `POST /{id}/archive|unarchive`, `DELETE /{id}`; terms: `GET /{id}/members?scope=current|past|all`, `POST /{id}/members`, `PUT /{id}/members/{termId}`, `POST /{id}/members/{termId}/end {endsOn?}`. The back office's `{name, parentId, chair}` still works: `name` is the English name (the Bengali name then copies it and `nameBnIsFallback` is true so a translator can find it). `chair` is **derived** (the current holder of a `chair` position) and a chair sent in a draft is ignored: the UI needs a member picker. All changes are audited.
+
+**Public** (anonymous, never cached): `GET /api/v1/committees` is the org chart as a tree with current seats; `GET /api/v1/committees/{slug}` adds past seats. A seat is listed only for members who consented to publish their name (the directory's consent), are active and have no erasure request; the SQL selects nothing about anyone else, and a member who withdraws consent leaves the chart on the next request. Archived committees are not public.
+
+**Directory**: `chapters` now lists the chapter committees, and `chapter=<English name>` filters to current members of that chapter who agreed to be named.

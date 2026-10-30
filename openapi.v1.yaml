@@ -2714,7 +2714,7 @@ paths:
       tags:
         - "Directory"
       summary: "Public member directory"
-      description: "Only members who opted in appear, each with only the fields they approved (name, photo, expertise). Contact details are never offered. 24 per page, page 1-50, \u0060q\u0060 matches only published fields. Never cached; rate limited at the gateway."
+      description: "Only members who opted in appear. \u0060chapter\u0060 filters to current members of a chapter committee (by its English name) who agreed to be named; \u0060chapters\u0060 lists the chapters, each with only the fields they approved (name, photo, expertise). Contact details are never offered. 24 per page, page 1-50, \u0060q\u0060 matches only published fields. Never cached; rate limited at the gateway."
       operationId: "SearchMemberDirectory"
       parameters:
         -
@@ -2803,6 +2803,228 @@ paths:
       parameters:
         -
           name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/committees:
+    get:
+      tags:
+        - "Membership admin"
+      summary: "All committees, flat (the client nests them by parentId); archived ones with includeArchived=true"
+      operationId: "ListCommittees"
+      parameters:
+        -
+          name: "includeArchived"
+          in: "query"
+          schema:
+            type: "boolean"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Create a committee, chapter or project group"
+      operationId: "CreateCommittee"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitteeRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/committees/{id}":
+    put:
+      tags:
+        - "Membership admin"
+      summary: "Rename, re-parent or change the kind of a committee"
+      operationId: "UpdateCommittee"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitteeRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Membership admin"
+      summary: "Delete a committee that never had members or children"
+      operationId: "DeleteCommittee"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/committees/{id}/archive":
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Retire a committee: it leaves the public chart, its history stays"
+      operationId: "ArchiveCommittee"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/committees/{id}/unarchive":
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Bring an archived committee back"
+      operationId: "UnarchiveCommittee"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/committees/{id}/members":
+    get:
+      tags:
+        - "Membership admin"
+      summary: "A committee\u0027s terms: scope=current|past|all (default all)"
+      operationId: "ListCommitteeTerms"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "scope"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Seat a member in a position for a term"
+      operationId: "AddCommitteeTerm"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TermRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/committees/{id}/members/{termId}":
+    put:
+      tags:
+        - "Membership admin"
+      summary: "Correct a term\u0027s position or dates"
+      operationId: "UpdateCommitteeTerm"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "termId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TermRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/committees/{id}/members/{termId}/end":
+    post:
+      tags:
+        - "Membership admin"
+      summary: "End a term (default today); the term stays as history"
+      operationId: "EndCommitteeTerm"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "termId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EndTermRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/committees:
+    get:
+      tags:
+        - "Committees"
+      summary: "The organisation\u0027s committees as a tree, with current members who agreed to be named"
+      description: "Current terms only (dates inclusive), members who consented to publish their name. Never cached: withdrawing consent shows on the next request."
+      operationId: "GetOrgChart"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/committees/{slug}":
+    get:
+      tags:
+        - "Committees"
+      summary: "One committee with its current and past members (consenting members only)"
+      operationId: "GetCommittee"
+      parameters:
+        -
+          name: "slug"
           in: "path"
           required: true
           schema:
@@ -3421,6 +3643,8 @@ tags:
   -
     name: "Directory"
   -
+    name: "Committees"
+  -
     name: "Auth"
   -
     name: "Admin \u2014 Roles and users"
@@ -3924,6 +4148,44 @@ components:
             - "null"
             - "string"
           format: "date-time"
+    CommitteeRequest:
+      required:
+        - "slug"
+        - "kind"
+        - "name"
+        - "nameEn"
+        - "nameBn"
+        - "parentId"
+      type: "object"
+      properties:
+        slug:
+          type:
+            - "null"
+            - "string"
+        kind:
+          type:
+            - "null"
+            - "string"
+        name:
+          type:
+            - "null"
+            - "string"
+        nameEn:
+          type:
+            - "null"
+            - "string"
+        nameBn:
+          type:
+            - "null"
+            - "string"
+        parentId:
+          type:
+            - "null"
+            - "string"
+        chair:
+          type:
+            - "null"
+            - "string"
     Consents:
       required:
         - "name"
@@ -3960,6 +4222,16 @@ components:
           type:
             - "null"
             - "string"
+    EndTermRequest:
+      required:
+        - "endsOn"
+      type: "object"
+      properties:
+        endsOn:
+          type:
+            - "null"
+            - "string"
+          format: "date"
     NoteRequest:
       required:
         - "text"
@@ -4007,6 +4279,42 @@ components:
           type:
             - "null"
             - "string"
+    TermRequest:
+      required:
+        - "memberId"
+        - "positionKey"
+        - "positionEn"
+        - "positionBn"
+        - "startsOn"
+        - "endsOn"
+      type: "object"
+      properties:
+        memberId:
+          type:
+            - "null"
+            - "string"
+        positionKey:
+          type:
+            - "null"
+            - "string"
+        positionEn:
+          type:
+            - "null"
+            - "string"
+        positionBn:
+          type:
+            - "null"
+            - "string"
+        startsOn:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        endsOn:
+          type:
+            - "null"
+            - "string"
+          format: "date"
     TransitionRequest:
       required:
         - "ids"
