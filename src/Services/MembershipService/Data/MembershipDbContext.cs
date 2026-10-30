@@ -11,6 +11,9 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<CampaignEntity> Campaigns => Set<CampaignEntity>();
     public DbSet<ApplicationStatusEventEntity> StatusEvents => Set<ApplicationStatusEventEntity>();
     public DbSet<ApplicationNoteEntity> Notes => Set<ApplicationNoteEntity>();
+    public DbSet<MemberConsentEventEntity> ConsentEvents => Set<MemberConsentEventEntity>();
+    public DbSet<ProfileChangeEntity> ProfileChanges => Set<ProfileChangeEntity>();
+    public DbSet<DeletionRequestEntity> DeletionRequests => Set<DeletionRequestEntity>();
     public DbSet<MemberEntity> Members => Set<MemberEntity>();
     public DbSet<NotificationOutboxEntity> NotificationOutbox => Set<NotificationOutboxEntity>();
 
@@ -146,9 +149,49 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
             entity.Property(x => x.LastName).HasMaxLength(100).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.NameBn).HasMaxLength(200);
+            entity.Property(x => x.Expertise).HasMaxLength(500);
+            entity.Property(x => x.PhotoKey).HasMaxLength(128);
+            entity.Property(x => x.PhotoContentType).HasMaxLength(128);
+            entity.Property(x => x.PhotoFileName).HasMaxLength(200);
+            entity.Property(x => x.PhotoScanStatus).HasMaxLength(16);
             entity.HasIndex(x => x.MemberCode).IsUnique();
             entity.HasIndex(x => x.UserId).IsUnique();
             entity.HasIndex(x => x.ApplicationId).IsUnique();
+        });
+
+        modelBuilder.Entity<MemberConsentEventEntity>(entity =>
+        {
+            entity.ToTable("member_consent_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Field).HasMaxLength(32).IsRequired();
+            entity.HasIndex(x => x.MemberId);
+        });
+
+        modelBuilder.Entity<ProfileChangeEntity>(entity =>
+        {
+            entity.ToTable("profile_changes");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Field).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.ValueProtected).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(1000);
+            entity.Property(x => x.DecidedBy).HasMaxLength(64);
+            entity.HasIndex(x => new { x.MemberId, x.Field });
+            entity.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<DeletionRequestEntity>(entity =>
+        {
+            entity.ToTable("deletion_requests");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Reference).HasMaxLength(32).IsRequired();
+            entity.HasIndex(x => x.MemberId);
         });
 
         modelBuilder.Entity<CampaignEntity>(entity =>

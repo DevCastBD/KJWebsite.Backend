@@ -56,6 +56,8 @@ public interface IAttachmentStore
     Task SaveAsync(string key, Stream content, CancellationToken cancellationToken);
 
     Task DeleteAsync(string key, CancellationToken cancellationToken);
+
+    Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken);
 }
 
 public sealed class LocalDiskAttachmentStore(Microsoft.Extensions.Options.IOptions<MembershipOptions> options) : IAttachmentStore
@@ -80,6 +82,12 @@ public sealed class LocalDiskAttachmentStore(Microsoft.Extensions.Options.IOptio
         }
 
         return Task.CompletedTask;
+    }
+
+    public Task<Stream?> OpenReadAsync(string key, CancellationToken cancellationToken)
+    {
+        var path = PathFor(key);
+        return Task.FromResult<Stream?>(File.Exists(path) ? File.OpenRead(path) : null);
     }
 
     // Keys are generated server-side (hex only); refuse anything else so a key can never leave the folder.

@@ -1,5 +1,8 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] membership — approved name edits are not pushed to Identity's member_profiles; email changes are not reflected in the portal profile (read from the application) (found: 048-issue-53)
+- [2026-10-31] membership — card QR points at Membership:CardVerifyUrl but no public verification page exists; photo/export not behind a scan until #41; consent withdrawal must reach prerendered pages (#54) (found: 048-issue-53)
+- [2026-10-31] membership — export includes reviewer notes about the applicant: confirm with the core members that this is intended (found: 048-issue-53)
 - [2026-10-31] membership/auth — failed local commit after Identity success leaves a passwordless orphan account (retry reuses it); add reconcile or compensating delete; s2s auth replaces token forwarding (BE-093) (found: 047-issue-52)
 - [2026-10-31] membership/frontend — TransitionResult errors email_taken|forbidden|provisioning_failed and memberCode are new; admin UI must show them; welcome email text (legacy email.html, #14) is the #32 sender's job (found: 047-issue-52)
 - [2026-10-31] membership — notification_outbox rows (SentAt null) need a sender once #32/#33 land; no reviewers list (Identity data), rubric or .ics invites yet (found: 046-issue-51)

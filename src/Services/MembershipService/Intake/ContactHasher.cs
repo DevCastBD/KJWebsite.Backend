@@ -13,6 +13,9 @@ public sealed class MembershipOptions
 
     /// <summary>Where attachments are written. Empty means a folder under the system temp path (development only).</summary>
     public string AttachmentsPath { get; set; } = string.Empty;
+
+    /// <summary>What the card's QR code points at, followed by the member code. A public verification page is not built yet.</summary>
+    public string CardVerifyUrl { get; set; } = "https://kolpojontro.org/verify";
 }
 
 /// <summary>

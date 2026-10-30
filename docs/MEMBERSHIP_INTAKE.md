@@ -69,3 +69,24 @@ Moving an application to `approved` (the transition API above) does five things 
 **Failure handling.** Identity unreachable, refusing, or the email taken ends that item with `provisioning_failed`, `forbidden` or `email_taken`, and the application stays `interview_scheduled` with no member, event or message. If the local commit fails after Identity succeeded, the passwordless account is left behind (it cannot be used) and a retry of the approval reuses it. There is no compensating delete; a cross-service transaction is not possible (ADR-001). The result for a success carries `memberCode`.
 
 The profile stays in Identity's `member_profiles` (its interim home); the Member row keeps only the code, link and name. Service-to-service credentials (BE-093) replace token forwarding later.
+
+## Member self-service (BE-046, #53)
+
+Everything is about the signed-in member and takes no member id: the member is found from the token's subject, so one member cannot name another. Routes need `member.profile.edit` (the `Member` role has it); an account without a member record gets `404 NOT_A_MEMBER`. Gateway: `/api/v1/members/me/*` goes to Membership, except `/sessions` which Identity serves.
+
+| Call | Notes |
+|---|---|
+| `GET/PATCH /api/v1/members/me/profile` | `PATCH {changes:{field:value}}`. `phone`, `address`, `expertise` apply now. `firstName`, `lastName`, `nameBn`, `dateOfBirth`, `bloodGroup` queue for review; the record is unchanged until a reviewer approves. `pending` in the profile shows each field's latest request (`pending`, or `rejected` with the reviewer's reason). A newer request replaces the waiting one. Bad values: `400` naming the fields only |
+| `GET/PUT /consents` | `{name, photograph, expertise}`, all `false` until the member opts in; every change is appended to `member_consent_events` |
+| `GET/PUT /notifications` | `{news, events, membership}` (default on) |
+| `PUT/GET/DELETE /photo` | raw body, jpeg/png/webp up to 2 MB, content checked; stored with scan `pending` (see #41); only the owner can read it |
+| `POST /deletion-request` | `202 {reference, requestedAt}`, idempotent. Executing erasure belongs to #58 |
+| `GET /export` | profile, consents + history, edit requests, the application with its history, **reviewer notes**, score and reviewer, messages sent, audit entries about the member's records, and Identity's account, sessions and audit entries. Never password hashes or token values. `identityAvailable:false` if Identity was unreachable |
+| `GET /card` and `/card.pdf` | code, name in both scripts, since-date, QR (SVG in JSON; PNG in the PDF) |
+| `GET/DELETE /sessions[/{id}]` | Identity: the member's devices; another member's id is a 404 |
+
+Moderation (`membership.manage`): `GET /api/v1/admin/membership/profile-changes?status=pending|approved|rejected`, `POST .../{id}/approve`, `POST .../{id}/reject {reason}` (reason is required and shown to the member). Deciding twice is `409`.
+
+**Where data lives.** At approval the application snapshot becomes the member's profile in `membership.members` (phone, address, date of birth, blood group data-protected). Identity's `member_profiles` keeps only the provisioning snapshot; an approved name change is not pushed back to it.
+
+**Card.** The PDF uses QuestPDF under its Community licence and an embedded Noto Sans Bengali (SIL OFL, `Assets/Fonts/OFL.txt`), so conjuncts shape correctly on a server with no fonts. The QR encodes `Membership:CardVerifyUrl` + `/` + code; no public verification page exists yet. Set `KJ_CARD_PDF_OUT` when running `TheCardCarriesTheCodeAQrAndABengaliPdf` to keep the PDF for a look.

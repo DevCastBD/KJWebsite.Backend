@@ -216,3 +216,5 @@
 - 2026-10-30T20:37Z [claude] 047-issue-52-approval-provisioning PHASE PLAN→CONSTRUCT @e22f9cb: plan approved (idempotent sync call, passwordless confirmed account)
 - 2026-10-30T20:37Z [claude] 047-issue-52-approval-provisioning DONE @e22f9cb: approve provisions login+member+code+welcome; 293 tests green incl PG; not pushed
 - 2026-10-30T20:39Z [claude] 048-issue-53-member-self-service CREATED @6056728: stacked on #52 branch; card=PDF now, align campaigns/current (user); plan awaiting approval
+- 2026-10-30T20:46Z [claude] 048-issue-53-member-self-service PHASE PLAN→CONSTRUCT @c59fae1: plan approved; font download + packages approved (user)
+- 2026-10-30T20:46Z [claude] 048-issue-53-member-self-service DONE @c59fae1: portal, moderation, export, card PDF; 307 tests green incl PG; not pushed

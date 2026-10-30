@@ -11,7 +11,13 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="QuestPDF" />
     <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Fonts\NotoSansBengali.ttf" LogicalName="Fonts.NotoSansBengali.ttf" />
   </ItemGroup>
 
   <ItemGroup>

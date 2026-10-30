@@ -9,7 +9,7 @@
 ## Decisions
 - Card: PDF now (user): QuestPDF Community licence + bundled Noto Sans Bengali (OFL); QR via QRCoder (MIT)
 - campaigns/current gets the frontend's fields additively (user), separate commit
-- (pending) profile source of truth moves to Membership (Member row, PII data-protected); Auth profile stays the provisioning snapshot; sessions served from Auth at /members/me/sessions
+- (approved) profile source of truth moves to Membership (Member row, PII data-protected); Auth profile stays the provisioning snapshot; sessions served from Auth at /members/me/sessions
 ## Out of scope
 - Executing erasure and retention (#58), directory publication (#54), public card verification endpoint
 ## Follow-ups
