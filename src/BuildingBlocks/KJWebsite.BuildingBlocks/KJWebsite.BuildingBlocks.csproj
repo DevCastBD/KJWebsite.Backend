@@ -13,6 +13,7 @@
     <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.InMemory" />
     <PackageReference Include="Hangfire.PostgreSql" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     <PackageReference Include="Newtonsoft.Json" />

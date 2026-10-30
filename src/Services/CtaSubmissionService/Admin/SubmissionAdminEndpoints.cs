@@ -45,6 +45,7 @@ public static class SubmissionAdminEndpoints
         .WithName("ListCtaSubmissions")
         .WithSummary("List submissions (paged, filterable)")
         .WithDescription("Filters: status, formName, ctaType, language, assigneeId, q (id or name), from, to. Newest first. Requires `cta.view`; the read is audited.")
+        .Produces<PagingEnvelope<SubmissionSummary>>(StatusCodes.Status200OK)
         .WithTags("Admin — CTA")
         .RequirePermission(Permissions.CtaView);
 
@@ -107,6 +108,7 @@ public static class SubmissionAdminEndpoints
         .WithName("GetCtaSubmission")
         .WithSummary("Get one submission")
         .WithDescription("Full submission with its update history. Requires `cta.view`; the read is audited.")
+        .Produces<SubmissionDetail>(StatusCodes.Status200OK)
         .WithTags("Admin — CTA")
         .RequirePermission(Permissions.CtaView);
 
@@ -158,6 +160,7 @@ public static class SubmissionAdminEndpoints
         .WithName("UpdateCtaSubmission")
         .WithSummary("Update status, assignee or notes")
         .WithDescription("Omitted fields are unchanged; an empty assigneeId or notes clears it. Requires `cta.manage`; every change is audited.")
+        .Produces<SubmissionPatchResult>(StatusCodes.Status200OK)
         .WithTags("Admin — CTA")
         .WithValidation<SubmissionPatchRequest>()
         .RequirePermission(Permissions.CtaManage);

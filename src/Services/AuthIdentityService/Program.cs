@@ -6,6 +6,7 @@ using AuthIdentityService.Identity;
 using AuthIdentityService.Tokens;
 using AuthIdentityService.Validation;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.OpenApi;
 using KJWebsite.BuildingBlocks.Security;
 using KJWebsite.BuildingBlocks.Validation;
 using Microsoft.AspNetCore.Identity;
@@ -17,6 +18,7 @@ var health = builder.AddKjObservability("AuthIdentityService");
 builder.Services.AddKjValidation<AuthIdentityService.Validation.LoginRequestValidator>();
 builder.Services.AddOpenApi(options =>
 {
+    options.AddKjErrorResponses();
     options.AddDocumentTransformer((document, context, ct) =>
     {
         document.Info.Title = "Auth Identity Service API";
@@ -170,11 +172,13 @@ app.MapPost("/api/v1/auth/register", async (HttpContext context, LegacyRegistrat
     await users.AddToRoleAsync(user, "Member");
     await mail.SendAsync(new AuthEmail(AuthEmailKind.ConfirmEmail, user.Id, email, await users.GenerateEmailConfirmationTokenAsync(user)));
 
-    return Results.Created($"/api/v1/auth/users/{user.Id}", new { id = user.Id, email = user.Email, role = "Member", emailConfirmationRequired = requireConfirmedEmail });
+    return Results.Created($"/api/v1/auth/users/{user.Id}", new RegisteredUser(user.Id, user.Email, "Member", requireConfirmedEmail));
 })
 .WithName("Register")
 .WithSummary("Register a new user account")
 .WithDescription("Creates a new member account with a hashed password and sends an email-confirmation message. The requested role is ignored: new accounts are `Member`. Includes optional legacy profile fields (name, gender, address, etc.).")
+.Produces<RegisteredUser>(StatusCodes.Status201Created)
+.ProducesProblem(StatusCodes.Status429TooManyRequests)
 .WithTags("Auth")
 .WithValidation<LegacyRegistrationRequest>()
 .AllowAnonymous();
@@ -217,6 +221,11 @@ app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest paylo
 .WithName("Login")
 .WithSummary("Login and receive tokens")
 .WithDescription("Authenticates a user and returns an `access_token` (RS256 JWT, 15 min) and a `refresh_token` (opaque, stored hashed, 30 days). Repeated failures lock the account (423). Unconfirmed emails are rejected (403) unless `Identity:RequireConfirmedEmail` is off.")
+.Produces<AuthTokens>(StatusCodes.Status200OK)
+.ProducesProblem(StatusCodes.Status429TooManyRequests)
+.ProducesProblem(StatusCodes.Status401Unauthorized)
+.ProducesProblem(StatusCodes.Status403Forbidden)
+.ProducesProblem(StatusCodes.Status423Locked)
 .WithTags("Auth")
 .WithValidation<LoginRequest>()
 .AllowAnonymous();
@@ -242,6 +251,8 @@ app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequ
 .WithName("RefreshToken")
 .WithSummary("Refresh an expired access token")
 .WithDescription("Rotates the refresh token and issues a new access token. The old refresh token is single-use; presenting it again ends the whole session.")
+.Produces<AuthTokens>(StatusCodes.Status200OK)
+.ProducesProblem(StatusCodes.Status401Unauthorized)
 .WithTags("Auth")
 .WithValidation<RefreshTokenRequest>()
 .AllowAnonymous();
@@ -258,6 +269,7 @@ app.MapPost("/api/v1/auth/logout", async (HttpContext context, RefreshTokenReque
 .WithName("Logout")
 .WithSummary("Logout and revoke refresh token")
 .WithDescription("Ends the session the given refresh token belongs to. Returns 204 No Content on success.")
+.Produces(StatusCodes.Status204NoContent)
 .WithTags("Auth")
 .WithValidation<RefreshTokenRequest>()
 .AllowAnonymous();
@@ -275,6 +287,7 @@ app.MapPost("/api/v1/auth/confirm-email", async (HttpContext context, ConfirmEma
 .WithName("ConfirmEmail")
 .WithSummary("Confirm an email address")
 .WithDescription("Confirms the address using the token from the confirmation email. Returns 204 on success.")
+.Produces(StatusCodes.Status204NoContent)
 .WithTags("Auth")
 .WithValidation<ConfirmEmailRequest>()
 .AllowAnonymous();
@@ -287,11 +300,12 @@ app.MapPost("/api/v1/auth/resend-confirmation", async (ResendConfirmationRequest
         await mail.SendAsync(new AuthEmail(AuthEmailKind.ConfirmEmail, user.Id, user.Email!, await users.GenerateEmailConfirmationTokenAsync(user)));
     }
 
-    return Results.Accepted(value: new { message = ResetMessage });
+    return Results.Accepted(value: new MessageResponse(ResetMessage));
 })
 .WithName("ResendConfirmation")
 .WithSummary("Resend the confirmation email")
 .WithDescription("Always returns 202, whether or not the account exists.")
+.Produces<MessageResponse>(StatusCodes.Status202Accepted)
 .WithTags("Auth")
 .WithValidation<ResendConfirmationRequest>()
 .AllowAnonymous();
@@ -304,11 +318,12 @@ app.MapPost("/api/v1/auth/forgot-password", async (ForgotPasswordRequest payload
         await mail.SendAsync(new AuthEmail(AuthEmailKind.ResetPassword, user.Id, user.Email!, await users.GeneratePasswordResetTokenAsync(user)));
     }
 
-    return Results.Accepted(value: new { message = ResetMessage });
+    return Results.Accepted(value: new MessageResponse(ResetMessage));
 })
 .WithName("ForgotPassword")
 .WithSummary("Request a password-reset email")
 .WithDescription("Always returns 202, whether or not the account exists, so it cannot be used to discover accounts.")
+.Produces<MessageResponse>(StatusCodes.Status202Accepted)
 .WithTags("Auth")
 .WithValidation<ForgotPasswordRequest>()
 .AllowAnonymous();
@@ -340,6 +355,7 @@ app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPass
 .WithName("ResetPassword")
 .WithSummary("Set a new password with a reset token")
 .WithDescription("Sets the password using the emailed token, lifts any lockout and revokes all refresh tokens. Returns 204 on success.")
+.Produces(StatusCodes.Status204NoContent)
 .WithTags("Auth")
 .WithValidation<ResetPasswordRequest>()
 .AllowAnonymous();
@@ -354,38 +370,17 @@ app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db
     }
 
     var profile = user.Profile ?? new MemberProfileEntity();
-    return Results.Ok(new
-    {
-        id = user.Id,
-        email = user.Email,
-        role = await RoleOf(users, user),
-        profile = new
-        {
-            profile.FirstName,
-            profile.LastName,
-            profile.Gender,
-            profile.ReasonForJoining,
-            profile.PresentOrganization,
-            profile.VolunteeingExperience,
-            profile.DateOfBirth,
-            profile.CityOfResidence,
-            profile.CountryOfResidence,
-            profile.PermanentAddress,
-            profile.MailingAddress,
-            profile.IsMailingAddressSameAsPermanentAddress,
-            profile.BloodGroup,
-            profile.AreasOfExpertise,
-            profile.HighestDegree,
-            profile.DisabilitiesIfAny,
-            profile.Nationality,
-            profile.PersonalWebPage,
-            profile.SocialMediaLink
-        }
-    });
+    return Results.Ok(new MeResponse(user.Id, user.Email, await RoleOf(users, user), new MemberProfileView(
+        profile.FirstName, profile.LastName, profile.Gender, profile.ReasonForJoining, profile.PresentOrganization,
+        profile.VolunteeingExperience, profile.DateOfBirth, profile.CityOfResidence, profile.CountryOfResidence,
+        profile.PermanentAddress, profile.MailingAddress, profile.IsMailingAddressSameAsPermanentAddress, profile.BloodGroup,
+        profile.AreasOfExpertise, profile.HighestDegree, profile.DisabilitiesIfAny, profile.Nationality,
+        profile.PersonalWebPage, profile.SocialMediaLink)));
 })
 .WithName("GetCurrentUser")
 .WithSummary("Get the authenticated user's profile")
 .WithDescription("Returns the full profile of the currently authenticated user. Requires `Authorization: Bearer <access_token>` obtained from the login endpoint.")
+.Produces<MeResponse>(StatusCodes.Status200OK)
 .WithTags("Auth")
 .RequireAuthorization();
 
@@ -393,28 +388,20 @@ app.MapGet("/.well-known/jwks.json", (AuthSigningKey signingKey) => Results.Json
     .WithName("Jwks")
     .WithSummary("Public signing keys")
     .WithDescription("The public keys that verify access tokens (JSON Web Key Set). Contains no secrets.")
-    .WithTags("System")
+    .Produces(StatusCodes.Status200OK, contentType: "application/json")
+.WithTags("System")
 .AllowAnonymous();
 
 app.MapGet("/api/v1/auth/sessions", async (ClaimsPrincipal principal, RefreshTokenService sessions) =>
 {
     var current = principal.FindFirstValue(KjClaims.SessionId);
     var active = await sessions.ActiveSessionsAsync(principal.FindFirstValue(KjClaims.Subject)!);
-    return Results.Ok(new
-    {
-        items = active.Select(s => new
-        {
-            id = s.FamilyId,
-            createdAt = s.SessionCreatedAt,
-            lastUsedAt = s.CreatedAt,
-            userAgent = s.UserAgent,
-            current = s.FamilyId == current
-        })
-    });
+    return Results.Ok(new SessionList([.. active.Select(s => new SessionView(s.FamilyId, s.SessionCreatedAt, s.CreatedAt, s.UserAgent, s.FamilyId == current))]));
 })
 .WithName("ListSessions")
 .WithSummary("List the signed-in user's active sessions")
 .WithDescription("One entry per device/session with a live refresh token. `current` marks the session making the request.")
+.Produces<SessionList>(StatusCodes.Status200OK)
 .WithTags("Auth")
 .RequireAuthorization();
 
@@ -427,6 +414,7 @@ app.MapDelete("/api/v1/auth/sessions/{id}", async (HttpContext context, string i
 .WithName("RevokeSession")
 .WithSummary("End one of the user's sessions")
 .WithDescription("Revokes the session's refresh tokens. Another user's session id is reported as not found.")
+.Produces(StatusCodes.Status204NoContent)
 .WithTags("Auth")
 .RequireAuthorization();
 
@@ -438,6 +426,7 @@ app.MapPost("/api/v1/auth/logout-all", async (ClaimsPrincipal principal, Refresh
 .WithName("LogoutAll")
 .WithSummary("End every session of the signed-in user")
 .WithDescription("Revokes all refresh tokens for the user, on every device. Returns 204.")
+.Produces(StatusCodes.Status204NoContent)
 .WithTags("Auth")
 .RequireAuthorization();
 
@@ -454,14 +443,8 @@ static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, Role
         }
     }
 
-    return Results.Ok(new
-    {
-        access_token = issuer.Issue(user, sessionId, roles, permissions),
-        refresh_token = refreshToken,
-        expires_in = 900,
-        token_type = "Bearer",
-        user = new { id = user.Id, email = user.Email, role = roles.FirstOrDefault() ?? "Member" }
-    });
+    return Results.Ok(new AuthTokens(issuer.Issue(user, sessionId, roles, permissions), refreshToken, 900, "Bearer",
+        new AuthUserSummary(user.Id, user.Email, roles.FirstOrDefault() ?? "Member")));
 }
 
 static async Task<string> RoleOf(UserManager<AuthUserEntity> users, AuthUserEntity user) =>

@@ -56,3 +56,7 @@ public sealed record NewsUpsertRequest(
     List<NewsTranslationInput> Translations);
 
 public sealed record NewsTranslationInput(string Lang, string Title, string? Summary, List<string>? Content, string? Date = null, List<string>? Tags = null);
+
+public sealed record ContentPage<T>(IReadOnlyList<T> Items, int Total, int Limit, int Offset, string Lang);
+
+public sealed record ContentBootstrap(ContentPage<ProjectItem> Projects, ContentPage<NewsItem> News, Dictionary<string, string> Settings, string Lang);

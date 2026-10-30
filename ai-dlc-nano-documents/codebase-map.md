@@ -23,6 +23,8 @@
   purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests run against SQLite by default (no Docker); Postgres-specific tests (migration/collation, SQLite transfer) gate on `KJ_TEST_POSTGRES` via `[RequiresPostgresFact]`
 - contract and plans (`openapi.v1.yaml`, `PROJECT_CONTEXT.md`, `docs/**`)
   purpose: checked-in API contract, onboarding context, source-of-truth plans, and ratified decisions in `docs/adr/`
+- contract tests (`tests/IntegrationTests/**/Contract/`)
+  purpose: `dotnet test --filter Category=Contract` runs every documented operation against the real services and diffs responses with `openapi.v1.yaml` (`docs/CONTRACT_TESTS.md`); new endpoint = `.Produces<T>()` + a probe in `ContractFixture`
 - OpenAPI export (`tools/OpenApiExporter/**`)
   purpose: starts isolated development services without database initialization and merges runtime OpenAPI into `openapi.v1.yaml`; verify: `dotnet run --project tools/OpenApiExporter -- --verify`
 - SQLite transfer (`tools/SqliteToPostgres/**`, `docs/SQLITE_TO_POSTGRES.md`)

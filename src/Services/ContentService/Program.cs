@@ -6,6 +6,7 @@ using ContentService.Data.Entities;
 using ContentService.Validation;
 using FluentValidation;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.OpenApi;
 using KJWebsite.BuildingBlocks.Security;
 using KJWebsite.BuildingBlocks.Validation;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,7 @@ var health = builder.AddKjObservability("ContentService");
 builder.Services.AddKjValidation<ContentService.Validation.ListQueryValidator>();
 builder.Services.AddOpenApi(options =>
 {
+    options.AddKjErrorResponses();
     options.AddDocumentTransformer((document, context, ct) =>
     {
         document.Info.Title = "Content Service API";
@@ -100,6 +102,8 @@ app.MapGet("/api/v1/content/projects", async (HttpRequest request, ContentStore 
 .WithName("GetProjects")
 .WithSummary("List projects (paginated)")
 .WithDescription("Returns `{ items, total, limit, offset, lang }`. `lang`: en/bn (default en). `status`: active/all (default active). `limit`: 1–100 (default 20). `offset`: default 0. ETag + Cache-Control are set.")
+.Produces<ContentPage<ProjectItem>>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status304NotModified)
 .WithTags("Content")
 .AllowAnonymous();
 
@@ -114,6 +118,8 @@ app.MapGet("/api/v1/content/projects/{id}", async (HttpRequest request, ContentS
 .WithName("GetProjectById")
 .WithSummary("Get project by ID")
 .WithDescription("Returns a single project by slug ID in the requested language (`lang`: en/bn, default en).")
+.Produces<ProjectItem>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status304NotModified)
 .WithTags("Content")
 .AllowAnonymous();
 
@@ -132,6 +138,8 @@ app.MapGet("/api/v1/content/news", async (HttpRequest request, ContentStore stor
 .WithName("GetNews")
 .WithSummary("List news articles (paginated)")
 .WithDescription("Returns `{ items, total, limit, offset, lang }`. `lang`: en/bn (default en). `limit`: 1–100 (default 20). `offset`: default 0. ETag + Cache-Control are set.")
+.Produces<ContentPage<NewsItem>>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status304NotModified)
 .WithTags("Content")
 .AllowAnonymous();
 
@@ -146,23 +154,25 @@ app.MapGet("/api/v1/content/news/{id}", async (HttpRequest request, ContentStore
 .WithName("GetNewsById")
 .WithSummary("Get news article by ID")
 .WithDescription("Returns a single news article by slug ID in the requested language (`lang`: en/bn, default en).")
+.Produces<NewsItem>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status304NotModified)
 .WithTags("Content")
 .AllowAnonymous();
 
 app.MapGet("/api/v1/content/bootstrap", async (HttpRequest request, ContentStore store, string? lang) =>
 {
     var resolvedLanguage = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
-    return Cached(request, new
-    {
-        projects = Page(await store.ProjectsAsync(resolvedLanguage, "active"), MaxPageSize, 0, resolvedLanguage),
-        news = Page(await store.NewsAsync(resolvedLanguage), MaxPageSize, 0, resolvedLanguage),
-        settings = new Dictionary<string, string>(),
-        lang = resolvedLanguage
-    });
+    return Cached(request, new ContentBootstrap(
+        Page(await store.ProjectsAsync(resolvedLanguage, "active"), MaxPageSize, 0, resolvedLanguage),
+        Page(await store.NewsAsync(resolvedLanguage), MaxPageSize, 0, resolvedLanguage),
+        new Dictionary<string, string>(),
+        resolvedLanguage));
 })
 .WithName("GetContentBootstrap")
 .WithSummary("Cold-start bundle")
 .WithDescription("Returns `{ projects, news, settings, lang }` in one call for the SPA's first render (up to 100 active projects and 100 news items). ETag + Cache-Control are set.")
+.Produces<ContentBootstrap>(StatusCodes.Status200OK)
+.Produces(StatusCodes.Status304NotModified)
 .WithTags("Content")
 .AllowAnonymous();
 
@@ -182,6 +192,7 @@ app.MapGet("/api/v1/admin/content/projects", async (HttpRequest request, Content
 .WithName("ListAdminProjects")
 .WithSummary("List projects with all translations")
 .WithDescription("Returns every translation of every project, grouped per slug. Requires the matching `content.*` permission.")
+.Produces<PagingEnvelope<ProjectAdminView>>(StatusCodes.Status200OK)
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
@@ -197,6 +208,7 @@ app.MapGet("/api/v1/admin/content/projects/{id}", async (HttpRequest request, Co
 .WithName("GetAdminProject")
 .WithSummary("Get a project with all translations")
 .WithDescription("Requires the `content.view` permission.")
+.Produces<ProjectAdminView>(StatusCodes.Status200OK)
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
@@ -216,6 +228,7 @@ app.MapGet("/api/v1/admin/content/news", async (HttpRequest request, ContentStor
 .WithName("ListAdminNews")
 .WithSummary("List news articles with all translations")
 .WithDescription("Returns every translation of every article, grouped per slug. Requires the matching `content.*` permission.")
+.Produces<PagingEnvelope<NewsAdminView>>(StatusCodes.Status200OK)
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
@@ -231,6 +244,7 @@ app.MapGet("/api/v1/admin/content/news/{id}", async (HttpRequest request, Conten
 .WithName("GetAdminNews")
 .WithSummary("Get a news article with all translations")
 .WithDescription("Requires the `content.view` permission.")
+.Produces<NewsAdminView>(StatusCodes.Status200OK)
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
@@ -244,6 +258,7 @@ app.MapPost("/api/v1/admin/content/projects", async (HttpRequest request, Conten
 .WithName("CreateProject")
 .WithSummary("Create or replace a project")
 .WithDescription("Creates a project with all provided language translations. Replaces (or restores) any existing project with the same slug. Requires the matching `content.*` permission.")
+.Produces<ProjectItem>(StatusCodes.Status201Created)
 .WithTags("Admin — Content")
 .WithValidation<ProjectUpsertRequest>()
 .RequirePermission(Permissions.ContentCreate);
@@ -261,6 +276,7 @@ app.MapPut("/api/v1/admin/content/projects/{id}", async (HttpRequest request, Co
 .WithName("UpdateProject")
 .WithSummary("Update a project")
 .WithDescription("Replaces all translations for the given project. Requires the matching `content.*` permission.")
+.Produces<ProjectItem>(StatusCodes.Status200OK)
 .WithTags("Admin — Content")
 .WithValidation<ProjectUpsertRequest>()
 .RequirePermission(Permissions.ContentUpdate);
@@ -272,6 +288,7 @@ app.MapDelete("/api/v1/admin/content/projects/{id}", async (HttpRequest request,
 .WithName("DeleteProject")
 .WithSummary("Delete a project")
 .WithDescription("Soft-deletes the project (the slug stays reserved). Requires the matching `content.*` permission.")
+.Produces(StatusCodes.Status204NoContent)
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentDelete);
 
@@ -285,6 +302,7 @@ app.MapPost("/api/v1/admin/content/news", async (HttpRequest request, ContentSto
 .WithName("CreateNews")
 .WithSummary("Create or replace a news article")
 .WithDescription("Creates a news article with all provided language translations. Replaces (or restores) any existing article with the same slug. Requires the matching `content.*` permission.")
+.Produces<NewsItem>(StatusCodes.Status201Created)
 .WithTags("Admin — Content")
 .WithValidation<NewsUpsertRequest>()
 .RequirePermission(Permissions.ContentCreate);
@@ -302,6 +320,7 @@ app.MapPut("/api/v1/admin/content/news/{id}", async (HttpRequest request, Conten
 .WithName("UpdateNews")
 .WithSummary("Update a news article")
 .WithDescription("Replaces all translations for the given news article. Requires the matching `content.*` permission.")
+.Produces<NewsItem>(StatusCodes.Status200OK)
 .WithTags("Admin — Content")
 .WithValidation<NewsUpsertRequest>()
 .RequirePermission(Permissions.ContentUpdate);
@@ -313,6 +332,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 .WithName("DeleteNews")
 .WithSummary("Delete a news article")
 .WithDescription("Soft-deletes the article (the slug stays reserved). Requires the matching `content.*` permission.")
+.Produces(StatusCodes.Status204NoContent)
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentDelete);
 
@@ -326,11 +346,8 @@ static IResult? InvalidList(HttpContext context, IValidator<ListQuery> validator
     return result.IsValid ? null : ValidationProblem.Create(context, result.Errors);
 }
 
-static object Page<T>(List<T> rows, int limit, int offset, string language)
-{
-    var paged = rows.Skip(offset).Take(limit).ToArray();
-    return new { items = paged, total = rows.Count, limit, offset, lang = language };
-}
+static ContentPage<T> Page<T>(List<T> rows, int limit, int offset, string language) =>
+    new(rows.Skip(offset).Take(limit).ToArray(), rows.Count, limit, offset, language);
 
 static object PageAll<T>(List<T> rows, int limit, int offset) =>
     new PagingEnvelope<T>(rows.Skip(offset).Take(limit).ToArray(), rows.Count, null, limit, offset);
