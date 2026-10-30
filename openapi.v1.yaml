@@ -2287,7 +2287,7 @@ paths:
       tags:
         - "Membership"
       summary: "Submit a membership application"
-      description: "Accepts the full legacy application field set. Returns the application id and its public reference; attach the CV and photo afterwards with PUT /api/v1/membership/applications/{id}/attachments/{kind}."
+      description: "Accepts the full legacy application field set. Returns 409 INTAKE_CLOSED when recruitment seasons exist but none is open. Returns the application id and its public reference; attach the CV and photo afterwards with PUT /api/v1/membership/applications/{id}/attachments/{kind}."
       operationId: "CreateMembershipApplication"
       parameters:
         -
@@ -2318,6 +2318,178 @@ paths:
             schema:
               $ref: "#/components/schemas/DuplicateCheckRequest"
         required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/membership/applications/status:
+    post:
+      tags:
+        - "Membership"
+      summary: "Look up an application\u0027s status"
+      description: "Needs the reference AND the email used to apply. Any mismatch returns the same 404. Returns status transitions only. Rate limited at the gateway."
+      operationId: "LookupMembershipStatus"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusLookupRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/membership/campaigns/current:
+    get:
+      tags:
+        - "Membership"
+      summary: "Is recruitment open, and which season"
+      description: "\u0060intake\u0060 is \u0060open\u0060 (inside a season), \u0060closed\u0060 (seasons exist but none is open; applications get 409 INTAKE_CLOSED) or \u0060unrestricted\u0060 (no season is defined)."
+      operationId: "GetCurrentCampaign"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/campaigns:
+    get:
+      tags:
+        - "Membership admin"
+      summary: "List recruitment campaigns"
+      operationId: "ListCampaigns"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Create a recruitment campaign"
+      operationId: "CreateCampaign"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/campaigns/{id}":
+    put:
+      tags:
+        - "Membership admin"
+      summary: "Change a campaign\u0027s name or window"
+      operationId: "UpdateCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/campaigns/{id}/close":
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Close a campaign now"
+      description: "Intake stops immediately: applications get 409 INTAKE_CLOSED unless another season is open. Closing twice changes nothing."
+      operationId: "CloseCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/audit:
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Query the Membership audit log"
+      description: "Newest first. Filters: \u0060actor\u0060 (id or email), \u0060entity\u0060, \u0060entityId\u0060, \u0060action\u0060 (create/update/delete), \u0060requestId\u0060, \u0060from\u0060, \u0060to\u0060. Page with \u0060cursor\u0060 = the \u0060nextCursor\u0060 of the previous page. Requires \u0060audit.view\u0060; before/after hold personal data."
+      operationId: "ListMembershipAuditLog"
+      parameters:
+        -
+          name: "actor"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entity"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entityId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "action"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "requestId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "cursor"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int64"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/audit/{id}":
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Get one Membership audit event"
+      operationId: "GetMembershipAuditEvent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
       responses:
         "200":
           description: "OK"
@@ -2791,6 +2963,8 @@ tags:
   -
     name: "Membership"
   -
+    name: "Membership admin"
+  -
     name: "Auth"
   -
     name: "Admin \u2014 Roles and users"
@@ -3263,6 +3437,37 @@ components:
             - "null"
             - "string"
           format: "date-time"
+    CampaignRequest:
+      required:
+        - "slug"
+        - "nameEn"
+        - "nameBn"
+        - "opensAt"
+        - "closesAt"
+      type: "object"
+      properties:
+        slug:
+          type:
+            - "null"
+            - "string"
+        nameEn:
+          type:
+            - "null"
+            - "string"
+        nameBn:
+          type:
+            - "null"
+            - "string"
+        opensAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        closesAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
     DuplicateCheckRequest:
       required:
         - "email"
@@ -3274,6 +3479,20 @@ components:
             - "null"
             - "string"
         phone:
+          type:
+            - "null"
+            - "string"
+    StatusLookupRequest:
+      required:
+        - "reference"
+        - "email"
+      type: "object"
+      properties:
+        reference:
+          type:
+            - "null"
+            - "string"
+        email:
           type:
             - "null"
             - "string"

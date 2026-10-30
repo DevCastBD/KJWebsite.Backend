@@ -14,7 +14,7 @@ All three are anonymous and throttled per IP at the gateway (`RateLimiting:Membe
 
 Required: `firstName`, `lastName`, `email`, `phone`, `bloodGroup` (A/B/AB/O ±), `currentAddress`, `academicInstitute`, `occupation`, `language` (`bn`|`en`). Optional: `reasonForJoining`, `volunteeringExperience`, `presentOrganization`, `heardAboutUs`, and the legacy `gender`, `dateOfBirth` (`yyyy-MM-dd`), `cityOfResidence`, `countryOfResidence`. The legacy typo `VolunteeingExperience` is not carried over.
 
-`reference` is `KJ-<year>-<nnnn>`, one sequence per year.
+`reference` is `KJ-<year>-<8 random Crockford base32 characters>`: unique, non-sequential, not guessable.
 
 ## Personal data (ADR-014)
 
@@ -25,3 +25,15 @@ Required: `firstName`, `lastName`, `email`, `phone`, `bloodGroup` (A/B/AB/O ±),
 ## Attachments
 
 CV: pdf/doc/docx up to 5 MB; photo: jpeg/png/webp up to 2 MB. The leading bytes must match the declared type. A second upload of the same kind replaces the first. Files go to `Membership:AttachmentsPath` (local disk, development default under the temp folder) behind `IAttachmentStore`, with `scanStatus = pending`: virus scanning and EXIF stripping arrive with the media pipeline (#41), which also replaces the local store. Do not serve these files until then.
+
+## Campaigns (BE-043, #50)
+
+A campaign is a recruitment season: `slug`, bilingual name, `opensAt`, optional `closesAt`, and a manual `closedAt`. It is open inside its window until closed.
+
+- `GET /api/v1/membership/campaigns/current` (public) → `{intake, campaign}`; `intake` is `open`, `closed` or `unrestricted`.
+- **No campaign defined = intake stays open** (`unrestricted`), so nothing breaks before the first season is created. Once any campaign exists, applications need an open one; otherwise `409 INTAKE_CLOSED`. Applications are linked to the open campaign.
+- Admin (`membership.manage`, gateway `/api/v1/admin/membership/...`): `GET/POST /campaigns`, `PUT /campaigns/{id}`, `POST /campaigns/{id}/close`. Changes are audited (`GET /api/v1/admin/membership/audit`, `audit.view`).
+
+## Status lookup
+
+`POST /api/v1/membership/applications/status {reference, email}` → `200 {timeline:[{status, at}]}`. Unknown reference, wrong email and malformed input all return the same `404`. The response carries status and time only, never notes or scores. Throttled per IP (`RateLimiting:MembershipStatus`, 10 per 15 min). Each application starts with a `received` event; the review pipeline (#51) appends the rest.

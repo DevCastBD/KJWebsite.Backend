@@ -1,3 +1,4 @@
+using KJWebsite.BuildingBlocks.Auditing;
 using MembershipService.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,10 +8,13 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
 {
     public DbSet<ApplicationEntity> Applications => Set<ApplicationEntity>();
     public DbSet<AttachmentEntity> Attachments => Set<AttachmentEntity>();
+    public DbSet<CampaignEntity> Campaigns => Set<CampaignEntity>();
+    public DbSet<ApplicationStatusEventEntity> StatusEvents => Set<ApplicationStatusEventEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("membership");
+        modelBuilder.ConfigureAudit();
 
         // ICU collation is a PostgreSQL feature; Sqlite (test-only provider) has no "bn-x-icu" collation to register.
         var useBengaliCollation = Database.IsNpgsql();
@@ -25,6 +29,7 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasMaxLength(64);
             entity.Property(x => x.Reference).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.CampaignId).HasMaxLength(64);
             entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
             entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
@@ -54,6 +59,8 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.HasIndex(x => x.EmailHash);
             entity.HasIndex(x => x.PhoneHash);
             entity.HasIndex(x => x.CreatedAt);
+            entity.HasIndex(x => x.CampaignId);
+            entity.HasMany(x => x.StatusEvents).WithOne().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(x => x.Attachments).WithOne().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -67,6 +74,26 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.FileName).HasMaxLength(200).IsRequired();
             entity.Property(x => x.ContentType).HasMaxLength(128).IsRequired();
             entity.Property(x => x.ScanStatus).HasMaxLength(16).IsRequired();
+        });
+
+        modelBuilder.Entity<ApplicationStatusEventEntity>(entity =>
+        {
+            entity.ToTable("application_status_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ApplicationId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            entity.HasIndex(x => x.ApplicationId);
+        });
+
+        modelBuilder.Entity<CampaignEntity>(entity =>
+        {
+            entity.ToTable("campaigns");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Slug).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.NameEn).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.NameBn).HasMaxLength(200).IsRequired();
+            entity.HasIndex(x => x.Slug).IsUnique();
         });
     }
 }

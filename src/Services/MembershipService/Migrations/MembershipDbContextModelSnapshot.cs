@@ -24,6 +24,81 @@ namespace MembershipService.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("KJWebsite.BuildingBlocks.Auditing.AuditEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ActorEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("After")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Before")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Entity")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Operation")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Service")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.HasIndex("RequestId");
+
+                    b.HasIndex("ActorId", "Id");
+
+                    b.HasIndex("Entity", "EntityId", "Id");
+
+                    b.ToTable("audit_events", "membership");
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.ApplicationEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -38,6 +113,10 @@ namespace MembershipService.Migrations
                     b.Property<string>("BloodGroupProtected")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("CampaignId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("CityOfResidence")
                         .HasMaxLength(100)
@@ -132,6 +211,8 @@ namespace MembershipService.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CampaignId");
+
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("EmailHash");
@@ -142,6 +223,34 @@ namespace MembershipService.Migrations
                         .IsUnique();
 
                     b.ToTable("applications", "membership");
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.ApplicationStatusEventEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId");
+
+                    b.ToTable("application_status_events", "membership");
                 });
 
             modelBuilder.Entity("MembershipService.Data.Entities.AttachmentEntity", b =>
@@ -185,6 +294,56 @@ namespace MembershipService.Migrations
                     b.ToTable("application_attachments", "membership");
                 });
 
+            modelBuilder.Entity("MembershipService.Data.Entities.CampaignEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ClosesAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NameBn")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("OpensAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("campaigns", "membership");
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.ApplicationStatusEventEntity", b =>
+                {
+                    b.HasOne("MembershipService.Data.Entities.ApplicationEntity", null)
+                        .WithMany("StatusEvents")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.AttachmentEntity", b =>
                 {
                     b.HasOne("MembershipService.Data.Entities.ApplicationEntity", null)
@@ -197,6 +356,8 @@ namespace MembershipService.Migrations
             modelBuilder.Entity("MembershipService.Data.Entities.ApplicationEntity", b =>
                 {
                     b.Navigation("Attachments");
+
+                    b.Navigation("StatusEvents");
                 });
 #pragma warning restore 612, 618
         }

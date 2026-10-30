@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
+using System.Text;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Idempotency;
 using KJWebsite.BuildingBlocks.Security;
 using MembershipService.Contracts;
@@ -45,7 +48,11 @@ builder.Services.AddDbContext<MembershipDbContext>((services, options) =>
     var connectionString = configuration.GetConnectionString("MembershipDb")
         ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=membership" : throw new InvalidOperationException("ConnectionStrings:MembershipDb is required."));
     options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "membership"));
+    options.AddInterceptors(services.GetRequiredService<AuditInterceptor>());
 });
+// Only campaigns are audited: application rows hold personal data and join the log with the review pipeline (#51).
+builder.Services.AddKjAuditing("membership", audit => audit.Audit<CampaignEntity>());
+builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.Configure<MembershipOptions>(builder.Configuration.GetSection(MembershipOptions.SectionName));
 // Persist the key ring (DataProtection:KeysPath) in any deployment: rows encrypted by one instance must open on the next.
@@ -110,11 +117,18 @@ app.MapPost("/api/v1/membership/applications", async (HttpContext context, Appli
         return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Invalid fields: {string.Join(", ", invalid)}.");
     }
 
+    var intake = await CampaignEndpoints.DecideIntakeAsync(db, now);
+    if (intake.Intake == "closed")
+    {
+        return ApiError.Create(context, StatusCodes.Status409Conflict, "INTAKE_CLOSED", "Applications are closed: no recruitment season is open right now.");
+    }
+
     static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     var entity = new ApplicationEntity
     {
         Id = $"app_{Guid.NewGuid():N}",
+        CampaignId = intake.Campaign?.Id,
         Language = payload.Language!.ToLowerInvariant(),
         SubmittedAt = (payload.SubmittedAt ?? now).ToUniversalTime(),
         CreatedAt = now,
@@ -135,15 +149,14 @@ app.MapPost("/api/v1/membership/applications", async (HttpContext context, Appli
         CurrentAddressProtected = protector.Protect(payload.CurrentAddress!.Trim()),
         DateOfBirthProtected = Clean(payload.DateOfBirth) is { } dob ? protector.Protect(dob) : null,
         EmailHash = hasher.HashEmail(payload.Email!),
-        PhoneHash = hasher.HashPhone(payload.Phone!)
+        PhoneHash = hasher.HashPhone(payload.Phone!),
+        StatusEvents = [new ApplicationStatusEventEntity { Status = ApplicationStatuses.Received, At = now }]
     };
 
-    // The unique index on Reference settles two applicants racing for the same number: the loser takes the next one.
-    var prefix = $"KJ-{now.Year}-";
+    // References are random; the unique index settles the (vanishingly rare) collision and the loser draws again.
     for (var attempt = 1; ; attempt++)
     {
-        var taken = await db.Applications.CountAsync(a => a.Reference.StartsWith(prefix));
-        entity.Reference = $"{prefix}{taken + attempt:D4}";
+        entity.Reference = ReferenceNumber.Create(now.Year);
         db.Applications.Add(entity);
         try
         {
@@ -153,6 +166,10 @@ app.MapPost("/api/v1/membership/applications", async (HttpContext context, Appli
         catch (DbUpdateException) when (attempt < 5)
         {
             db.Entry(entity).State = EntityState.Detached;
+            foreach (var ev in entity.StatusEvents)
+            {
+                db.Entry(ev).State = EntityState.Detached;
+            }
         }
     }
 
@@ -160,7 +177,7 @@ app.MapPost("/api/v1/membership/applications", async (HttpContext context, Appli
 })
 .WithName("CreateMembershipApplication")
 .WithSummary("Submit a membership application")
-.WithDescription("Accepts the full legacy application field set. Returns the application id and its public reference; attach the CV and photo afterwards with PUT /api/v1/membership/applications/{id}/attachments/{kind}.")
+.WithDescription("Accepts the full legacy application field set. Returns 409 INTAKE_CLOSED when recruitment seasons exist but none is open. Returns the application id and its public reference; attach the CV and photo afterwards with PUT /api/v1/membership/applications/{id}/attachments/{kind}.")
 .WithTags("Membership")
 .RequireIdempotency()
 .AllowAnonymous();
@@ -182,6 +199,38 @@ app.MapPost("/api/v1/membership/applications/check", async (HttpContext context,
 .WithDescription("Warn-only: re-applying (for example after a rejection) is legitimate, so a duplicate never blocks a submission. Rate limited at the gateway.")
 .WithTags("Membership")
 .AllowAnonymous();
+
+app.MapPost("/api/v1/membership/applications/status", async (HttpContext context, StatusLookupRequest payload, MembershipDbContext db, ContactHasher hasher) =>
+{
+    // One answer for "no such reference", "wrong email" and malformed input: nothing here confirms a reference exists.
+    var notFound = () => ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "No matching application.");
+    if (string.IsNullOrWhiteSpace(payload.Reference) || payload.Reference.Length > 64 || !ApplicationValidator.IsEmail(payload.Email))
+    {
+        return notFound();
+    }
+
+    var reference = ReferenceNumber.Normalize(payload.Reference);
+    var application = await db.Applications.AsNoTracking().Include(a => a.StatusEvents).FirstOrDefaultAsync(a => a.Reference == reference);
+    // Hash even when nothing was found, so the two failures cost the same.
+    var supplied = Encoding.UTF8.GetBytes(hasher.HashEmail(payload.Email!));
+    var stored = Encoding.UTF8.GetBytes(application?.EmailHash ?? new string('0', supplied.Length));
+    if (application is null || !CryptographicOperations.FixedTimeEquals(supplied, stored))
+    {
+        return notFound();
+    }
+
+    // Status and time only: reviewer notes and scores are never part of this response.
+    var timeline = application.StatusEvents.OrderBy(e => e.At).ThenBy(e => e.Id).Select(e => new StatusEvent(e.Status, e.At)).ToList();
+    return Results.Ok(new StatusTimeline(timeline));
+})
+.WithName("LookupMembershipStatus")
+.WithSummary("Look up an application's status")
+.WithDescription("Needs the reference AND the email used to apply. Any mismatch returns the same 404. Returns status transitions only. Rate limited at the gateway.")
+.WithTags("Membership")
+.AllowAnonymous();
+
+app.MapCampaignEndpoints();
+app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 
 app.MapPut("/api/v1/membership/applications/{id}/attachments/{kind}", async (HttpContext context, string id, string kind, MembershipDbContext db, IAttachmentStore store) =>
 {
