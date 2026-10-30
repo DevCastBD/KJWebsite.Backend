@@ -99,6 +99,7 @@ public static class SelfEndpoints
                 Set("name", member.ConsentName, payload.Name, v => member.ConsentName = v);
                 Set("photograph", member.ConsentPhotograph, payload.Photograph, v => member.ConsentPhotograph = v);
                 Set("expertise", member.ConsentExpertise, payload.Expertise, v => member.ConsentExpertise = v);
+                Set("alumni", member.ConsentAlumni, payload.Alumni ?? member.ConsentAlumni, v => member.ConsentAlumni = v);
                 await db.SaveChangesAsync();
                 return Results.Ok(ConsentsOf(member));
             }))
@@ -232,7 +233,7 @@ public static class SelfEndpoints
             : await action(member);
     }
 
-    internal static Consents ConsentsOf(MemberEntity m) => new(m.ConsentName, m.ConsentPhotograph, m.ConsentExpertise);
+    internal static Consents ConsentsOf(MemberEntity m) => new(m.ConsentName, m.ConsentPhotograph, m.ConsentExpertise, m.ConsentAlumni);
 
     internal static NotificationPrefs PrefsOf(MemberEntity m) => new(m.NotifyNews, m.NotifyEvents, m.NotifyMembership);
 
@@ -259,6 +260,7 @@ public static class SelfEndpoints
             member.Expertise ?? string.Empty,
             pending,
             deletion is null ? null : new DeletionRequestView(deletion.Reference, deletion.RequestedAt),
-            member.PhotoKey is not null);
+            member.PhotoKey is not null,
+            member.Status);
     }
 }

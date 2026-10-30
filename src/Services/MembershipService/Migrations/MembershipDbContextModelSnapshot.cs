@@ -558,6 +558,9 @@ namespace MembershipService.Migrations
                     b.Property<string>("BloodGroupProtected")
                         .HasColumnType("text");
 
+                    b.Property<bool>("ConsentAlumni")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("ConsentExpertise")
                         .HasColumnType("boolean");
 
@@ -649,6 +652,53 @@ namespace MembershipService.Migrations
                         .IsUnique();
 
                     b.ToTable("members", "membership");
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.MemberStatusEventEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ActorId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("EffectiveOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FromStatus")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ReasonProtected")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ToStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId");
+
+                    b.ToTable("member_status_events", "membership");
                 });
 
             modelBuilder.Entity("MembershipService.Data.Entities.NotificationOutboxEntity", b =>

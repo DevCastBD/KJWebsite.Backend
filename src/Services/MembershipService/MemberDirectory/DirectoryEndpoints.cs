@@ -11,9 +11,9 @@ using Microsoft.Extensions.Options;
 namespace MembershipService.MemberDirectory;
 
 /// <summary>One public directory row as it leaves the database: a field the member did not approve is NULL in the result set itself.</summary>
-public sealed record PublicRow(string Id, string? FirstName, string? LastName, string? NameBn, string? Expertise, bool Photo);
+public sealed record PublicRow(string Id, string? FirstName, string? LastName, string? NameBn, string? Expertise, bool Photo, bool Alumni);
 
-public sealed record PublicEntry(string Id, string? Name, string? NameBn, string? PhotoUrl, IReadOnlyList<string>? Expertise);
+public sealed record PublicEntry(string Id, string? Name, string? NameBn, string? PhotoUrl, IReadOnlyList<string>? Expertise, bool Alumni = false);
 
 public sealed record PublicPage(IReadOnlyList<PublicEntry> Items, int Total, int PageSize, IReadOnlyList<string> Chapters);
 
@@ -40,7 +40,8 @@ public static class DirectoryEndpoints
     public static IQueryable<PublicRow> PublicQuery(MembershipDbContext db, string? q, string? chapter = null, DateOnly? today = null)
     {
         var members = db.Members.AsNoTracking()
-            .Where(m => m.Status == "active" && (m.ConsentName || m.ConsentPhotograph || m.ConsentExpertise))
+            // Active members, and former members only if they opted in to being listed as alumni; leave, lapsed and terminated never appear.
+            .Where(m => (m.Status == "active" || (m.Status == "alumni" && m.ConsentAlumni)) && (m.ConsentName || m.ConsentPhotograph || m.ConsentExpertise))
             .Where(m => !db.DeletionRequests.Any(d => d.MemberId == m.Id));
 
         if (!string.IsNullOrEmpty(q))
@@ -66,7 +67,8 @@ public static class DirectoryEndpoints
             m.ConsentName ? m.LastName : null,
             m.ConsentName ? m.NameBn : null,
             m.ConsentExpertise ? m.Expertise : null,
-            m.ConsentPhotograph && m.PhotoKey != null && m.PhotoScanStatus == CleanScan));
+            m.ConsentPhotograph && m.PhotoKey != null && m.PhotoScanStatus == CleanScan,
+            m.Status == "alumni"));
     }
 
     public static string? CleanQuery(string? q) => string.IsNullOrWhiteSpace(q) ? null : (q.Trim().Length > MaxQuery ? q.Trim()[..MaxQuery] : q.Trim()).ToLowerInvariant();
@@ -97,7 +99,8 @@ public static class DirectoryEndpoints
                 r.FirstName is null ? null : $"{r.FirstName} {r.LastName}".Trim(),
                 string.IsNullOrWhiteSpace(r.NameBn) ? null : r.NameBn,
                 r.Photo ? $"{baseUrl}/api/v1/members/directory/{r.Id}/photo" : null,
-                SplitExpertise(r.Expertise))).ToList();
+                SplitExpertise(r.Expertise),
+                r.Alumni)).ToList();
             var chapters = await db.Committees.AsNoTracking().Where(c => c.Kind == "chapter" && c.ArchivedAt == null).Select(c => c.NameEn).OrderBy(n => n).ToListAsync();
             return Results.Ok(new PublicPage(items, total, PageSize, chapters));
         })
@@ -111,7 +114,7 @@ public static class DirectoryEndpoints
         {
             context.Response.Headers.CacheControl = "no-store";
             var photo = await db.Members.AsNoTracking()
-                .Where(m => m.Id == id && m.Status == "active" && m.ConsentPhotograph && m.PhotoKey != null && m.PhotoScanStatus == CleanScan && !db.DeletionRequests.Any(d => d.MemberId == m.Id))
+                .Where(m => m.Id == id && (m.Status == "active" || (m.Status == "alumni" && m.ConsentAlumni)) && m.ConsentPhotograph && m.PhotoKey != null && m.PhotoScanStatus == CleanScan && !db.DeletionRequests.Any(d => d.MemberId == m.Id))
                 .Select(m => new { m.PhotoKey, m.PhotoContentType })
                 .FirstOrDefaultAsync();
             var stream = photo is null ? null : await store.OpenReadAsync(photo.PhotoKey!, context.RequestAborted);

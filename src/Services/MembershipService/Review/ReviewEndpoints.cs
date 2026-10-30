@@ -263,6 +263,7 @@ public static class ReviewEndpoints
             application.Status = ApplicationStatuses.Approved;
             var evt = new ApplicationStatusEventEntity { ApplicationId = application.Id, Status = ApplicationStatuses.Approved, At = now, By = actor, Notified = true };
             db.Members.Add(member);
+            db.MemberStatusEvents.Add(new MemberStatusEventEntity { MemberId = member.Id, ToStatus = MemberStatuses.Active, EffectiveOn = DateOnly.FromDateTime(now.UtcDateTime), At = now, ActorId = actor });
             db.StatusEvents.Add(evt);
             db.NotificationOutbox.Add(welcome);
             try
@@ -274,6 +275,11 @@ public static class ReviewEndpoints
             {
                 // A concurrent approval took the number: draw again. Nothing was written, so the whole set is retried.
                 db.Entry(member).State = EntityState.Detached;
+                foreach (var added in db.ChangeTracker.Entries<MemberStatusEventEntity>().Where(e => e.State == EntityState.Added).ToList())
+                {
+                    added.State = EntityState.Detached;
+                }
+
                 db.Entry(evt).State = EntityState.Detached;
                 db.Entry(welcome).State = EntityState.Detached;
                 application.Status = previousStatus;

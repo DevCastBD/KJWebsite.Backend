@@ -3006,6 +3006,46 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/membership/members/{id}/lifecycle":
+    get:
+      tags:
+        - "Membership admin"
+      summary: "A member\u0027s status history and tenure"
+      description: "Termination reasons are returned only to callers with \u0060membership.terminate\u0060; others see \u0060reasonRestricted: true\u0060. Tenure is the time spent active, summed over every stretch of service."
+      operationId: "GetMemberLifecycle"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/members/{id}/status":
+    post:
+      tags:
+        - "Membership admin"
+      summary: "Move a member to on_leave, inactive, alumni, terminated or back to active"
+      description: "Allowed moves: active to on_leave/inactive/alumni/terminated; on_leave and inactive back to active or on to alumni/terminated; alumni to active/terminated; terminated to active. \u0060effectiveOn\u0060 defaults to today and may not be in the future or before the previous change. \u0060reason\u0060 is required to terminate and is readable only with \u0060membership.terminate\u0060. Terminating or reinstating needs that permission and switches the Identity login off or on; ending service (alumni, inactive, terminated) ends the member\u0027s open committee terms; terminating withdraws all publication consent. Reactivation restores nothing automatically: the member opts in again."
+      operationId: "ChangeMemberStatus"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusChangeRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/committees:
     get:
       tags:
@@ -3480,6 +3520,29 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/ProvisionMemberRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/auth/members/{userId}/status":
+    put:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Disable or re-enable a member\u0027s login"
+      description: "Disabling blocks sign-in and refresh at once and ends every session. Only accounts created by approving an application are accepted."
+      operationId: "SetMemberAccountStatus"
+      parameters:
+        -
+          name: "userId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberAccountStatusRequest"
         required: true
       responses:
         "200":
@@ -4199,6 +4262,10 @@ components:
           type: "boolean"
         expertise:
           type: "boolean"
+        alumni:
+          type:
+            - "null"
+            - "boolean"
     DecisionRequest:
       required:
         - "reason"
@@ -4265,6 +4332,31 @@ components:
             - "object"
           additionalProperties:
             type: "string"
+    StatusChangeRequest:
+      required:
+        - "to"
+        - "effectiveOn"
+        - "note"
+        - "reason"
+      type: "object"
+      properties:
+        to:
+          type:
+            - "null"
+            - "string"
+        effectiveOn:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        note:
+          type:
+            - "null"
+            - "string"
+        reason:
+          type:
+            - "null"
+            - "string"
     StatusLookupRequest:
       required:
         - "reference"
@@ -4490,6 +4582,15 @@ components:
           type: "string"
         password:
           type: "string"
+    MemberAccountStatusRequest:
+      required:
+        - "status"
+      type: "object"
+      properties:
+        status:
+          type:
+            - "null"
+            - "string"
     ProvisionMemberRequest:
       required:
         - "applicationId"

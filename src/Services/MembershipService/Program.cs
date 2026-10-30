@@ -9,6 +9,7 @@ using MembershipService.Contracts;
 using MembershipService.Data;
 using MembershipService.Data.Entities;
 using MembershipService.Intake;
+using MembershipService.Lifecycle;
 using MembershipService.MemberDirectory;
 using MembershipService.Review;
 using MembershipService.Self;
@@ -70,6 +71,7 @@ builder.Services.AddKjAuditing("membership", audit => audit
         nameof(MemberEntity.BloodGroupProtected), nameof(MemberEntity.PhotoKey))
     .Audit<ProfileChangeEntity>(nameof(ProfileChangeEntity.ValueProtected))
     .Audit<DeletionRequestEntity>()
+    .Audit<MemberStatusEventEntity>(nameof(MemberStatusEventEntity.ReasonProtected))
     .Audit<CommitteeEntity>()
     .Audit<CommitteeMemberEntity>()
     .Audit<ApplicationNoteEntity>(nameof(ApplicationNoteEntity.Text)));
@@ -262,6 +264,7 @@ app.MapProfileModeration();
 app.MapSelfEndpoints();
 app.MapDirectory();
 app.MapCommitteeAdmin();
+app.MapLifecycle();
 app.MapPublicCommittees();
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 

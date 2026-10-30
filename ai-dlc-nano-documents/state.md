@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 4 run: #49-#55 done; next #56 is blocked by decision #109; then #57, #58; #109, #110 skipped by user)
+- Active work item: none  (milestone 4 run: #49-#55, #57 done; #56 skipped (needs #109); next #58; #109, #110 skipped by user)
 - Phase: —
-- Branch: Feature/issue-55-committees-org-chart
+- Branch: Feature/issue-57-membership-lifecycle
 - Base SHA: —
-- Next step: #56 (BE-049 dues) needs decision #109 (dues? member types?) - ask user whether to skip it; then #57 (BE-050 lifecycle), #58 (BE-052 retention) stacked on Feature/issue-55-committees-org-chart. Push/PRs only on request
+- Next step: start #58 (BE-052 retention, consent records, export, erasure) on a new branch stacked on Feature/issue-57-membership-lifecycle; it leans on decision #110 (retention windows, skipped) so ask. Push/PRs only on request
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

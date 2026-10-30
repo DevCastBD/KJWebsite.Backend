@@ -18,6 +18,10 @@ public static class Permissions
     public const string MembershipManage = "membership.manage";
     /// <summary>Approving an application creates the applicant's login in Identity; held by the officers who may approve.</summary>
     public const string MembershipProvision = "membership.provision";
+    /// <summary>Move members through leave, inactive, alumni and back to active.</summary>
+    public const string MembershipLifecycle = "membership.lifecycle";
+    /// <summary>Terminate a member, reactivate a terminated one, and read termination reasons: tighter than ordinary profile access.</summary>
+    public const string MembershipTerminate = "membership.terminate";
     public const string EventsManage = "events.manage";
     public const string FinanceView = "finance.view";
     public const string FinanceExpenseSubmit = "finance.expense.submit";
@@ -61,6 +65,8 @@ public static class PermissionCatalog
         new("users", Permissions.RolesManage, "Create roles and change what a role may do"),
         new("membership", Permissions.MembershipManage, "Handle membership applications"),
         new("membership", Permissions.MembershipProvision, "Create the login for an approved applicant"),
+        new("membership", Permissions.MembershipLifecycle, "Change a member's status: leave, inactive, alumni, reactivation"),
+        new("membership", Permissions.MembershipTerminate, "Terminate or reinstate a member and read termination reasons"),
         new("membership", Permissions.MemberProfileView, "View member profiles"),
         new("membership", Permissions.MemberProfileEdit, "Edit a member profile (members: their own only)"),
         new("events", Permissions.EventsManage, "Manage events"),
@@ -95,7 +101,7 @@ public static class KjRoles
         [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate, Permissions.MediaView, Permissions.MediaUpload, Permissions.DashboardView],
         [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],
-        [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MemberProfileView, Permissions.UsersView],
+        [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MembershipLifecycle, Permissions.MemberProfileView, Permissions.UsersView],
         [Member] = [Permissions.MemberProfileEdit],
         [Volunteer] = []
     };

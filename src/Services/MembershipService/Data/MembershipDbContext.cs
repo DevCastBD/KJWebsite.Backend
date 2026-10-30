@@ -16,6 +16,7 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<DeletionRequestEntity> DeletionRequests => Set<DeletionRequestEntity>();
     public DbSet<CommitteeEntity> Committees => Set<CommitteeEntity>();
     public DbSet<CommitteeMemberEntity> CommitteeMembers => Set<CommitteeMemberEntity>();
+    public DbSet<MemberStatusEventEntity> MemberStatusEvents => Set<MemberStatusEventEntity>();
     public DbSet<MemberEntity> Members => Set<MemberEntity>();
     public DbSet<NotificationOutboxEntity> NotificationOutbox => Set<NotificationOutboxEntity>();
 
@@ -221,6 +222,18 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.PositionEn).HasMaxLength(100).IsRequired();
             entity.Property(x => x.PositionBn).HasMaxLength(100).IsRequired();
             entity.HasIndex(x => x.CommitteeId);
+            entity.HasIndex(x => x.MemberId);
+        });
+
+        modelBuilder.Entity<MemberStatusEventEntity>(entity =>
+        {
+            entity.ToTable("member_status_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.FromStatus).HasMaxLength(16);
+            entity.Property(x => x.ToStatus).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ActorId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(1000);
             entity.HasIndex(x => x.MemberId);
         });
 
