@@ -19,6 +19,7 @@ The backend master plan is the single source of truth for backend development. I
 - Use the [master plan](docs/MASTER_PLAN.md) to establish scope, phase, engineering standards, and planned architecture before proposing implementation.
 - Treat [`openapi.v1.yaml`](openapi.v1.yaml) as the checked-in gateway-level API contract; consult the README for regeneration and verification.
 - Service entry points and endpoint mappings are in [`src/Services/`](src/Services/); shared code is in [`src/BuildingBlocks/`](src/BuildingBlocks/).
+- The frontend checkout lives next to this repository at `/Users/fhshubho/Workspace/Repo/kolpojontro/KJWebsite.FrontEnd` (the `KJWebsite.FrontEnd` repository). Build and change the backend **aligned with it**: before implementing or editing an endpoint, contract, setting or language behaviour, read how the frontend consumes it there (its API client, `config.json` capability flags, static fallbacks) and keep responses additive so the static build keeps working. If the frontend and this repo disagree, raise it rather than guessing. That path is specific to this developer's machine; elsewhere use your own clone of the frontend repository.
 - [`legacy/kj-registration/`](legacy/kj-registration/) and [`legacy/kj-registration-AwaitingUserFeatures/`](legacy/kj-registration-AwaitingUserFeatures/) are historical snapshots. Read [`legacy/README.md`](legacy/README.md) before consulting them.
 
 ## Keeping this file useful
