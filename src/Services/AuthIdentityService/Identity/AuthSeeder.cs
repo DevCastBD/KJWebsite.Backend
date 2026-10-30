@@ -78,21 +78,28 @@ public static partial class AuthSeeder
     }
 
     /// <summary>
-    /// Adds any role or permission from the catalog that is missing. The migration seeds the same rows on PostgreSQL;
-    /// this keeps SQLite (tests) and later catalog additions in step. It never removes a claim someone granted.
+    /// Creates any built-in role that is missing, with its seeded permissions. A role that already exists keeps whatever permissions an
+    /// administrator gave it, so a restart never undoes a change made through the role-management API. SuperAdmin is the exception: it
+    /// always holds every permission in the catalog, so a key added in code reaches it at once and it can never be locked out.
     /// </summary>
     public static async Task SeedRolesAsync(RoleManager<AuthRoleEntity> roles)
     {
         foreach (var (name, permissions) in KjRoles.Seed)
         {
             var role = await roles.FindByNameAsync(name);
-            if (role is null)
+            var isNew = role is null;
+            if (isNew)
             {
                 await roles.CreateAsync(new AuthRoleEntity(name));
                 role = await roles.FindByNameAsync(name);
             }
 
             var held = (await roles.GetClaimsAsync(role!)).Where(c => c.Type == KjClaims.Permission).Select(c => c.Value).ToHashSet(StringComparer.Ordinal);
+            if (!isNew && name != KjRoles.SuperAdmin)
+            {
+                continue;
+            }
+
             foreach (var permission in permissions.Where(p => !held.Contains(p)))
             {
                 await roles.AddClaimAsync(role!, new Claim(KjClaims.Permission, permission));

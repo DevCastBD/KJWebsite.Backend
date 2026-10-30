@@ -1776,6 +1776,150 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/auth/permissions:
+    get:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "List every permission key, grouped by module"
+      operationId: "ListPermissions"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/auth/roles:
+    get:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "List roles with their permissions and member counts"
+      operationId: "ListRoles"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Create a role"
+      description: "You can only grant permissions you hold yourself. Changes are logged with before/after."
+      operationId: "CreateRole"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/auth/roles/{name}":
+    get:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Get a role"
+      operationId: "GetRole"
+      parameters:
+        -
+          name: "name"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Delete a custom role"
+      description: "Built-in roles and \u0060SuperAdmin\u0060 cannot be deleted, nor can a role that still has members."
+      operationId: "DeleteRole"
+      parameters:
+        -
+          name: "name"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/auth/roles/{name}/permissions":
+    put:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Replace the permissions of a role"
+      description: "\u0060SuperAdmin\u0060 cannot be changed (409 SUPERADMIN_PROTECTED). Members\u0027 sessions end so the new permissions apply at their next sign-in."
+      operationId: "SetRolePermissions"
+      parameters:
+        -
+          name: "name"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetPermissionsRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/auth/users:
+    get:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "List users with their roles"
+      operationId: "ListUsers"
+      parameters:
+        -
+          name: "role"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/auth/users/{id}/roles":
+    put:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Replace the roles of a user"
+      description: "Granting a role needs every permission the role holds. Only a SuperAdmin can grant or remove \u0060SuperAdmin\u0060, and the last active SuperAdmin cannot be removed (409 LAST_SUPERADMIN). The user\u0027s sessions end."
+      operationId: "SetUserRoles"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetUserRolesRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
 tags:
   -
     name: "System"
@@ -1799,6 +1943,8 @@ tags:
     name: "CTA"
   -
     name: "Auth"
+  -
+    name: "Admin \u2014 Roles and users"
 components:
   schemas:
     ContentTranslationInput:
@@ -2098,6 +2244,22 @@ components:
           type: "string"
         token:
           type: "string"
+    CreateRoleRequest:
+      required:
+        - "name"
+        - "permissions"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        permissions:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
     ForgotPasswordRequest:
       required:
         - "email"
@@ -2252,3 +2414,25 @@ components:
           type: "string"
         newPassword:
           type: "string"
+    SetPermissionsRequest:
+      required:
+        - "permissions"
+      type: "object"
+      properties:
+        permissions:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+    SetUserRolesRequest:
+      required:
+        - "roles"
+      type: "object"
+      properties:
+        roles:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"

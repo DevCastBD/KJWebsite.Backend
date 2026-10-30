@@ -1,5 +1,6 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] auth — RBAC changes are log events only; #43 must persist them (EventId 4101); SuperAdmin guard is in-process + serializable tx, untested on PG (found: 037-issue-42)
 - [2026-10-31] content — redirects need a frontend/edge hook (resolve on 404); public path convention /{segment}/{slug} assumed (found: 036-issue-38)
 - [2026-10-31] backend/tests — AuthSmokeTests.RegisterReturnsCreated failed once in a full run, passed 3 reruns (found: 035-issue-48)
 - [2026-10-31] backend/idempotency — Redis store and Redis output cache never run live (no Docker) (found: 035-issue-48)

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using AuthIdentityService;
 using AuthIdentityService.Contracts;
 using AuthIdentityService.Data;
 using AuthIdentityService.Data.Entities;
@@ -60,6 +61,7 @@ builder.Services.AddSingleton(services => KjJwtSettings.From(services.GetRequire
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<AccessTokenIssuer>();
 builder.Services.AddScoped<RefreshTokenService>();
+builder.Services.AddScoped<RoleAdministration>();
 builder.Services.AddKjJwtAuthentication(services => services.GetRequiredService<AuthSigningKey>().VerificationKeys, async context =>
 {
     // Access tokens are stateless, but a revoked session should stop working here at once, not after 15 minutes.
@@ -455,6 +457,8 @@ static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, Role
 
 static async Task<string> RoleOf(UserManager<AuthUserEntity> users, AuthUserEntity user) =>
     (await users.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
+
+app.MapAdminAuth();
 
 app.Run();
 
