@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] tests — auth integration tests flake ~1 in 5 full runs (RoleManagement/Token/Register); passes alone; suspect shared SQLite/timing under parallel load (found: 042-issue-44)
+- [2026-10-31] back office — dashboard/search/bulk cover ContentService only; add submissions, media, users when #34/#41 land; cache is per instance (found: 042-issue-44)
 - [2026-10-31] settings — secret custom.* values stored plain; wire to #36 secrets store before real credentials (found: 041-issue-45)
 - [2026-10-31] tests — TokenTests.SessionsCanBeListedAndOneEnded 500 once in a full run (with RegisterReturnsCreated: auth flakiness) (found: 041-issue-45)
 - [2026-10-31] media(#41) — depends on #33 runner (not on base), R2 client, virus scan, image lib (ImageSharp licence vs SkiaSharp) — needs decisions before build (found: 040-run)

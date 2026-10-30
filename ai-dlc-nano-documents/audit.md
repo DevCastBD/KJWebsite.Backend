@@ -199,3 +199,5 @@
 - 2026-10-30T19:34Z [claude] 040-issue-40-translation-completeness DONE @0b2f9be: completeness, report, fallback (user-decided); 195 tests green (+PG); not pushed
 - 2026-10-30T19:36Z [claude] 041-issue-45-site-settings CREATED @31fec26: stacked on #40 branch; plan awaiting approval
 - 2026-10-30T19:43Z [claude] 041-issue-45-site-settings DONE @31fec26: settings+flags, 202 tests green (+PG); not pushed
+- 2026-10-30T19:43Z [claude] 042-issue-44-backoffice-apis CREATED @45618ff: stacked on #45 branch; plan awaiting approval
+- 2026-10-30T19:46Z [claude] 042-issue-44-backoffice-apis DONE @45618ff: dashboard, search, bulk; 210 tests green (+PG); not pushed
