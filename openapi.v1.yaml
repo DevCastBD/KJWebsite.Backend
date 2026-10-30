@@ -1417,6 +1417,251 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/workflow":
+    post:
+      tags:
+        - "Admin \u2014 Editorial workflow"
+      summary: "Move an item to draft, in_review, scheduled, published or archived"
+      description: "draft \u2192 in_review / scheduled / published; in_review \u2192 draft / scheduled / published; scheduled \u2192 draft / scheduled (reschedule) / published; published \u2192 draft / archived; archived \u2192 draft. \u0060scheduled\u0060 needs \u0060publishAt\u0060 (a future time); the item then goes live by itself. Sending to review and pulling back to draft need content.update; everything into or out of scheduled, published and archived needs content.publish."
+      operationId: "MoveItemThroughWorkflow"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/revisions":
+    get:
+      tags:
+        - "Admin \u2014 Editorial workflow"
+      summary: "Revision history, newest first"
+      operationId: "ListRevisions"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/revisions/{number}":
+    get:
+      tags:
+        - "Admin \u2014 Editorial workflow"
+      summary: "One revision with its full snapshot (all languages)"
+      operationId: "GetRevision"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "number"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/revisions/diff":
+    get:
+      tags:
+        - "Admin \u2014 Editorial workflow"
+      summary: "Field-level changes between two revisions"
+      description: "\u0060from\u0060 defaults to the revision before \u0060to\u0060; \u0060to\u0060 defaults to the latest. Translations are compared per language (\u0060translations.bn.title\u0060)."
+      operationId: "DiffRevisions"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/revisions/{number}/restore":
+    post:
+      tags:
+        - "Admin \u2014 Editorial workflow"
+      summary: "Restore an earlier revision as a new revision"
+      description: "Restores translations, images, tags and related items. The slug, status and publication date are not rolled back."
+      operationId: "RestoreRevision"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "number"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/trash:
+    get:
+      tags:
+        - "Admin \u2014 Editorial workflow"
+      summary: "Soft-deleted items, newest first"
+      operationId: "ListTrash"
+      parameters:
+        -
+          name: "type"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/restore":
+    post:
+      tags:
+        - "Admin \u2014 Editorial workflow"
+      summary: "Bring a soft-deleted item back"
+      description: "The item returns as a draft; restoring never publishes by itself."
+      operationId: "RestoreDeletedItem"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/preview-token":
+    post:
+      tags:
+        - "Admin \u2014 Editorial workflow"
+      summary: "Create a preview link for an unpublished item"
+      description: "The token is valid for this one item only and expires (default 60 minutes, at most 7 days). Anyone holding the link can read the item, so treat it as a secret."
+      operationId: "CreatePreviewToken"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                -
+                  type: "null"
+                -
+                  $ref: "#/components/schemas/PreviewTokenRequest"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/preview/{token}":
+    get:
+      tags:
+        - "Content"
+      summary: "Read one item, in any status, with a preview token"
+      description: "Not cached, not indexable. 404 for an invalid, altered or expired token."
+      operationId: "GetPreview"
+      parameters:
+        -
+          name: "token"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/content/tags:
     get:
       tags:
@@ -2108,6 +2353,8 @@ tags:
   -
     name: "Content \u2014 Press"
   -
+    name: "Admin \u2014 Editorial workflow"
+  -
     name: "Admin \u2014 Audit log"
   -
     name: "CTA"
@@ -2248,6 +2495,18 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/NewsTranslationInput"
+    PreviewTokenRequest:
+      required:
+        - "ttlMinutes"
+      type: "object"
+      properties:
+        ttlMinutes:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
     ProjectTranslationInput:
       required:
         - "lang"
@@ -2381,6 +2640,19 @@ components:
           type: "object"
           additionalProperties:
             type: "string"
+    WorkflowRequest:
+      required:
+        - "to"
+        - "publishAt"
+      type: "object"
+      properties:
+        to:
+          type: "string"
+        publishAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
     CtaSubmissionRequest:
       required:
         - "formName"

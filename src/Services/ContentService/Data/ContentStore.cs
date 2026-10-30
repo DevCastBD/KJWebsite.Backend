@@ -14,7 +14,10 @@ public enum UpsertOutcome
     Invalid,
 
     /// <summary>`If-Match` did not match the stored version, or another editor saved first.</summary>
-    Conflict
+    Conflict,
+
+    /// <summary>The change needs a permission the caller lacks (content.publish).</summary>
+    Forbidden
 }
 
 public sealed record UpsertResult<T>(UpsertOutcome Outcome, T? Value = default, string? Error = null, string? ETag = null);
@@ -38,10 +41,10 @@ public static class ContentETag
 }
 
 /// <summary>Reads and writes content, and maps it to the public and admin shapes. Deleting is soft: the row stays and its slug stays reserved.</summary>
-public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
+public sealed partial class ContentStore(ContentDbContext db, TimeProvider time, RevisionStore revisions)
 {
-    private static readonly string[] ProjectStatuses = ["active", "draft", "archived"];
-    private static readonly string[] NewsStatuses = ["published", "draft", "archived"];
+    private static readonly string[] ProjectStatuses = ["active", "draft", "in_review", "scheduled", "archived"];
+    private static readonly string[] NewsStatuses = ["published", "draft", "in_review", "scheduled", "archived"];
     private static readonly string[] Languages = ["en", "bn"];
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -64,7 +67,7 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
     public async Task<ProjectAdminView?> AdminProjectAsync(string slug) =>
         (await LiveAsync(ContentTypes.Project, slug)).Select(ToProjectAdminView).FirstOrDefault();
 
-    public async Task<UpsertResult<ProjectItem>> UpsertProjectAsync(string slug, ProjectUpsertRequest request, bool mustExist, IReadOnlyCollection<string>? ifMatch = null)
+    public async Task<UpsertResult<ProjectItem>> UpsertProjectAsync(string slug, ProjectUpsertRequest request, bool mustExist, IReadOnlyCollection<string>? ifMatch = null, bool canPublish = true)
     {
         if (Validate(slug, request.Status, ProjectStatuses, request.Translations.Select(t => (t.Lang, t.Title))) is { } error)
         {
@@ -82,7 +85,13 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
             return new UpsertResult<ProjectItem>(UpsertOutcome.Conflict);
         }
 
+        if (StatusRules.GuardUpsert(created ? null : item.Status, request.Status, canPublish) is { } guard)
+        {
+            return new UpsertResult<ProjectItem>(guard.Outcome, Error: guard.Error);
+        }
+
         item.Status = request.Status;
+        item.ScheduledPublishAt = request.Status == StatusRules.Scheduled ? item.ScheduledPublishAt : null;
         item.Project ??= new ProjectEntity();
         item.Project.ImageUrl = request.ImageUrl ?? string.Empty;
         item.Project.Icon = request.Icon ?? string.Empty;
@@ -100,6 +109,8 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
             return new UpsertResult<ProjectItem>(UpsertOutcome.Conflict);
         }
 
+        await revisions.RecordAsync(item.Id, created ? "create" : "update");
+
         return new UpsertResult<ProjectItem>(created ? UpsertOutcome.Created : UpsertOutcome.Updated, ToProjectItems(item).First(), ETag: ContentETag.For(item.UpdatedAt));
     }
 
@@ -116,7 +127,7 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
     public async Task<NewsAdminView?> AdminNewsItemAsync(string slug) =>
         (await LiveAsync(ContentTypes.News, slug)).Select(ToNewsAdminView).FirstOrDefault();
 
-    public async Task<UpsertResult<NewsItem>> UpsertNewsAsync(string slug, NewsUpsertRequest request, bool mustExist, IReadOnlyCollection<string>? ifMatch = null)
+    public async Task<UpsertResult<NewsItem>> UpsertNewsAsync(string slug, NewsUpsertRequest request, bool mustExist, IReadOnlyCollection<string>? ifMatch = null, bool canPublish = true)
     {
         if (Validate(slug, request.Status, NewsStatuses, request.Translations.Select(t => (t.Lang, t.Title))) is { } error)
         {
@@ -134,8 +145,14 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
             return new UpsertResult<NewsItem>(UpsertOutcome.Conflict);
         }
 
+        if (StatusRules.GuardUpsert(created ? null : item.Status, request.Status, canPublish) is { } guard)
+        {
+            return new UpsertResult<NewsItem>(guard.Outcome, Error: guard.Error);
+        }
+
         var publishedAt = request.PublishedAt ?? item.PublishedAt ?? time.GetUtcNow();
         item.Status = request.Status;
+        item.ScheduledPublishAt = request.Status == StatusRules.Scheduled ? item.ScheduledPublishAt : null;
         item.PublishedAt = publishedAt;
         item.News ??= new NewsArticleEntity();
         item.News.ImageUrl = request.ImageUrl ?? string.Empty;
@@ -152,6 +169,8 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
         {
             return new UpsertResult<NewsItem>(UpsertOutcome.Conflict);
         }
+
+        await revisions.RecordAsync(item.Id, created ? "create" : "update");
 
         return new UpsertResult<NewsItem>(created ? UpsertOutcome.Created : UpsertOutcome.Updated, ToNewsItems(item).First(), ETag: ContentETag.For(item.UpdatedAt));
     }

@@ -45,6 +45,7 @@ public sealed record ContentItemAdminView(
     string ImageUrl,
     int SortOrder,
     DateTimeOffset? PublishedAt,
+    DateTimeOffset? ScheduledPublishAt,
     List<ContentTranslationView> Translations,
     List<string> Tags,
     List<RelatedRef> Related);
@@ -64,3 +65,13 @@ public sealed record RedirectCreateRequest(string From, string To, int? StatusCo
 public sealed record RedirectView(string Id, string From, string To, int StatusCode, string Source, DateTimeOffset CreatedAt);
 
 public sealed record RedirectResolution(string From, string To, int StatusCode);
+
+public sealed record WorkflowRequest(string To, DateTimeOffset? PublishAt);
+
+public sealed record WorkflowView(string Type, string Slug, string Status, DateTimeOffset? ScheduledPublishAt, DateTimeOffset? PublishedAt);
+
+public sealed record TrashItemView(string Type, string Slug, DateTimeOffset DeletedAt, string Title);
+
+public sealed record PreviewTokenRequest(int? TtlMinutes);
+
+public sealed record PreviewTokenView(string Token, DateTimeOffset ExpiresAt, string Path);

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ContentService.Data;
 using ContentService.Data.Entities;
 using KJWebsite.BuildingBlocks;
@@ -23,6 +24,7 @@ public static class GenericContentEndpoints
         }
 
         MapItems(app);
+        MapEditorial(app);
         MapTags(app);
         MapRedirects(app);
     }
@@ -72,9 +74,9 @@ public static class GenericContentEndpoints
         .WithDescription("The `ETag` header is the version to send back as `If-Match` on update.")
         .WithTags(adminTag).RequirePermission(Permissions.ContentView);
 
-        app.MapPost($"{Admin}/{kind.Segment}", async (HttpRequest request, GenericContentStore store, ContentUpsertRequest payload) =>
+        app.MapPost($"{Admin}/{kind.Segment}", async (HttpRequest request, GenericContentStore store, ClaimsPrincipal user, ContentUpsertRequest payload) =>
         {
-            var result = await store.UpsertAsync(type, payload.Slug, payload, mustExist: false, ifMatch: null);
+            var result = await store.UpsertAsync(type, payload.Slug, payload, mustExist: false, ifMatch: null, canPublish: user.HasPermission(Permissions.ContentPublish));
             SetETag(request, result.ETag);
             return Respond(request, result, created: $"{Public}/{kind.Segment}/{payload.Slug}");
         })
@@ -82,9 +84,9 @@ public static class GenericContentEndpoints
         .WithDescription("Replaces (or restores) any existing item with the same slug.")
         .WithTags(adminTag).EvictsContentCache().RequirePermission(Permissions.ContentCreate);
 
-        app.MapPut($"{Admin}/{kind.Segment}/{{slug}}", async (HttpRequest request, GenericContentStore store, string slug, ContentUpsertRequest payload) =>
+        app.MapPut($"{Admin}/{kind.Segment}/{{slug}}", async (HttpRequest request, GenericContentStore store, ClaimsPrincipal user, string slug, ContentUpsertRequest payload) =>
         {
-            var result = await store.UpsertAsync(type, slug, payload, mustExist: true, request.Headers.IfMatch.ToArray()!);
+            var result = await store.UpsertAsync(type, slug, payload, mustExist: true, request.Headers.IfMatch.ToArray()!, user.HasPermission(Permissions.ContentPublish));
             SetETag(request, result.ETag);
             return Respond(request, result, created: null);
         })
@@ -139,6 +141,112 @@ public static class GenericContentEndpoints
         .WithName("RenameItem").WithSummary("Change the slug of any content item")
         .WithDescription("Creates a 301 redirect from the old public path (`/{segment}/{old}`) to the new one in the same transaction.")
         .WithTags("Admin — Content").EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
+    }
+
+    private static void MapEditorial(WebApplication app)
+    {
+        const string items = $"{Admin}/items/{{type}}/{{slug}}";
+        const string adminTag = "Admin — Editorial workflow";
+
+        app.MapPost($"{items}/workflow", async (HttpRequest request, ClaimsPrincipal user, EditorialWorkflow workflow, string type, string slug, WorkflowRequest payload) =>
+        {
+            if (ContentKinds.ByType(type) is null)
+            {
+                return NotFound(request, "Unknown content type.");
+            }
+
+            var result = await workflow.TransitionAsync(type, slug, payload.To, payload.PublishAt, user.HasPermission(Permissions.ContentPublish), request.Headers.IfMatch.ToArray()!);
+            SetETag(request, result.ETag);
+            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result.Outcome, result.Error);
+        })
+        .WithName("MoveItemThroughWorkflow").WithSummary("Move an item to draft, in_review, scheduled, published or archived")
+        .WithDescription("draft → in_review / scheduled / published; in_review → draft / scheduled / published; scheduled → draft / scheduled (reschedule) / published; published → draft / archived; archived → draft. `scheduled` needs `publishAt` (a future time); the item then goes live by itself. Sending to review and pulling back to draft need content.update; everything into or out of scheduled, published and archived needs content.publish.")
+        .WithTags(adminTag).EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
+
+        app.MapGet($"{items}/revisions", async (HttpRequest request, RevisionStore store, string type, string slug) =>
+            await store.ListAsync(type, slug) is { } list ? Results.Ok(new { items = list }) : NotFound(request, "Item not found."))
+        .WithName("ListRevisions").WithSummary("Revision history, newest first").WithTags(adminTag).RequirePermission(Permissions.ContentView);
+
+        app.MapGet($"{items}/revisions/{{number:int}}", async (HttpRequest request, RevisionStore store, string type, string slug, int number) =>
+            await store.GetAsync(type, slug, number) is { } detail ? Results.Ok(detail) : NotFound(request, "Revision not found."))
+        .WithName("GetRevision").WithSummary("One revision with its full snapshot (all languages)").WithTags(adminTag).RequirePermission(Permissions.ContentView);
+
+        app.MapGet($"{items}/revisions/diff", async (HttpRequest request, RevisionStore store, string type, string slug, int? from, int? to) =>
+            await store.DiffAsync(type, slug, from, to) is { } diff ? Results.Ok(diff) : NotFound(request, "Revision not found."))
+        .WithName("DiffRevisions").WithSummary("Field-level changes between two revisions")
+        .WithDescription("`from` defaults to the revision before `to`; `to` defaults to the latest. Translations are compared per language (`translations.bn.title`).")
+        .WithTags(adminTag).RequirePermission(Permissions.ContentView);
+
+        app.MapPost($"{items}/revisions/{{number:int}}/restore", async (HttpRequest request, GenericContentStore store, string type, string slug, int number) =>
+        {
+            var result = await store.RestoreRevisionAsync(type, slug, number, request.Headers.IfMatch.ToArray()!);
+            SetETag(request, result.ETag);
+            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result.Outcome, result.Error);
+        })
+        .WithName("RestoreRevision").WithSummary("Restore an earlier revision as a new revision")
+        .WithDescription("Restores translations, images, tags and related items. The slug, status and publication date are not rolled back.")
+        .WithTags(adminTag).EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
+
+        app.MapGet($"{Admin}/trash", async (HttpRequest request, GenericContentStore store, string? type) =>
+        {
+            if (type is not null && ContentKinds.ByType(type) is null)
+            {
+                return Invalid(request, "Unknown content type.");
+            }
+
+            request.HttpContext.Response.Headers.CacheControl = "no-store";
+            return Results.Ok(new { items = await store.TrashAsync(type) });
+        })
+        .WithName("ListTrash").WithSummary("Soft-deleted items, newest first").WithTags(adminTag).RequirePermission(Permissions.ContentView);
+
+        app.MapPost($"{items}/restore", async (HttpRequest request, GenericContentStore store, string type, string slug) =>
+        {
+            var result = await store.UndeleteAsync(type, slug);
+            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result.Outcome, result.Error);
+        })
+        .WithName("RestoreDeletedItem").WithSummary("Bring a soft-deleted item back")
+        .WithDescription("The item returns as a draft; restoring never publishes by itself.")
+        .WithTags(adminTag).EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
+
+        app.MapPost($"{items}/preview-token", async (HttpRequest request, GenericContentStore store, PreviewTokens tokens, string type, string slug, PreviewTokenRequest? payload) =>
+        {
+            if (!tokens.IsConfigured)
+            {
+                return ApiError.Create(request.HttpContext, StatusCodes.Status503ServiceUnavailable, "PREVIEW_NOT_CONFIGURED", "Preview:SigningKey is not configured.");
+            }
+
+            var lifetime = payload?.TtlMinutes is { } minutes ? TimeSpan.FromMinutes(minutes) : PreviewTokens.DefaultLifetime;
+            if (lifetime <= TimeSpan.Zero || lifetime > PreviewTokens.MaxLifetime)
+            {
+                return Invalid(request, $"ttlMinutes must be between 1 and {(int)PreviewTokens.MaxLifetime.TotalMinutes}.");
+            }
+
+            var id = ContentKinds.ByType(type) is null ? null : await store.ItemIdAsync(type, slug);
+            if (id is null)
+            {
+                return NotFound(request, "Item not found.");
+            }
+
+            var (token, expires) = tokens.Create(id, lifetime);
+            request.HttpContext.Response.Headers.CacheControl = "no-store";
+            return Results.Ok(new PreviewTokenView(token, expires, $"{Public}/preview/{token}"));
+        })
+        .WithName("CreatePreviewToken").WithSummary("Create a preview link for an unpublished item")
+        .WithDescription("The token is valid for this one item only and expires (default 60 minutes, at most 7 days). Anyone holding the link can read the item, so treat it as a secret.")
+        .WithTags(adminTag).RequirePermission(Permissions.ContentUpdate);
+
+        app.MapGet($"{Public}/preview/{{token}}", async (HttpRequest request, GenericContentStore store, PreviewTokens tokens, string token, string? lang) =>
+        {
+            request.HttpContext.Response.Headers.CacheControl = "no-store";
+            request.HttpContext.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+            var id = tokens.Validate(token);
+            var language = LanguageResolver.Resolve(lang, request.Headers.AcceptLanguage.ToString());
+            var item = id is null ? null : await store.PreviewAsync(id, language);
+            return item is null ? NotFound(request, "This preview link is invalid or has expired.") : Results.Ok(item);
+        })
+        .WithName("GetPreview").WithSummary("Read one item, in any status, with a preview token")
+        .WithDescription("Not cached, not indexable. 404 for an invalid, altered or expired token.")
+        .WithTags("Content").AllowAnonymous();
     }
 
     private static void MapTags(WebApplication app)
@@ -229,10 +337,7 @@ public static class GenericContentEndpoints
 
     private static IResult Respond<T>(HttpRequest request, UpsertResult<T> result, string? created) => result.Outcome switch
     {
-        UpsertOutcome.NotFound => NotFound(request, "Item not found."),
-        UpsertOutcome.Invalid => Invalid(request, result.Error!),
-        UpsertOutcome.Conflict when result.Error is null => ConflictResponse(request),
-        UpsertOutcome.Conflict => ApiError.Create(request.HttpContext, StatusCodes.Status409Conflict, "CONFLICT", result.Error!),
+        UpsertOutcome.NotFound or UpsertOutcome.Invalid or UpsertOutcome.Conflict or UpsertOutcome.Forbidden => Failure(request, result.Outcome, result.Error),
         // POST creates or restores (replacing), so both outcomes are a 201, as for projects and news.
         UpsertOutcome.Created or UpsertOutcome.Updated when created is not null => Results.Created(created, result.Value),
         _ => Results.Ok(result.Value)
