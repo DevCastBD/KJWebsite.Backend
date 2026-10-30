@@ -1,11 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (#22, #23, #24, #25 done as stacked local branches; #15-#18 closed by them; #19/#20 already merged)
-- Phase: —
-- Branch: feature/issue-25-content-persistence
+- Active work item: work-items/035-issue-48-idempotency-caching-etag
+- Phase: PLAN
+- Branch: Feature/issue-48-idempotency-caching-etag
 - Base SHA: —
-- Next step: push stacked branches + open PRs on request (22→develop, 23→22, 24→23, 25→24); post tracker comments / close #15-#20 on request
-- Paused work items:
-  - work-items/011-issue-116-p1-platform-core (CLARIFY, blocked on #30/#27 next; #12 done)
-  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED — Compose never started; see backlog)
+- Next step: get plan approval for #48, then construct; then #38,#42,#43,#39,#40,#41,#45,#44,#46,#47 each stacked on the previous
+- Paused work items:  (see git grep phase: in plan.md files; P1 stack branches up to feature/issue-37-contract-tests unpushed)
 - Uncommitted code: no
-- Last updated: 2026-10-30 by claude
+- Last updated: 2026-10-31 by claude

@@ -11,10 +11,31 @@ public enum UpsertOutcome
     Created,
     Updated,
     NotFound,
-    Invalid
+    Invalid,
+
+    /// <summary>`If-Match` did not match the stored version, or another editor saved first.</summary>
+    Conflict
 }
 
-public sealed record UpsertResult<T>(UpsertOutcome Outcome, T? Value = default, string? Error = null);
+public sealed record UpsertResult<T>(UpsertOutcome Outcome, T? Value = default, string? Error = null, string? ETag = null);
+
+/// <summary>Admin entity tags. The version of an item is its `UpdatedAt` (microsecond precision, the database's own), also the EF concurrency token.</summary>
+public static class ContentETag
+{
+    public static string For(DateTimeOffset updatedAt) => $"\"{updatedAt.UtcTicks / 10}\"";
+
+    /// <summary>True when the header is absent (no precondition), `*`, or lists the current tag (weak or strong).</summary>
+    public static bool Satisfies(IReadOnlyCollection<string> ifMatch, DateTimeOffset updatedAt)
+    {
+        if (ifMatch.Count == 0)
+        {
+            return true;
+        }
+
+        var current = For(updatedAt);
+        return ifMatch.SelectMany(v => v.Split(',')).Select(t => t.Trim()).Any(t => t == "*" || (t.StartsWith("W/", StringComparison.Ordinal) ? t[2..] : t) == current);
+    }
+}
 
 /// <summary>Reads and writes content, and maps it to the public and admin shapes. Deleting is soft: the row stays and its slug stays reserved.</summary>
 public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
@@ -43,7 +64,7 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
     public async Task<ProjectAdminView?> AdminProjectAsync(string slug) =>
         (await LiveAsync(ContentTypes.Project, slug)).Select(ToProjectAdminView).FirstOrDefault();
 
-    public async Task<UpsertResult<ProjectItem>> UpsertProjectAsync(string slug, ProjectUpsertRequest request, bool mustExist)
+    public async Task<UpsertResult<ProjectItem>> UpsertProjectAsync(string slug, ProjectUpsertRequest request, bool mustExist, IReadOnlyCollection<string>? ifMatch = null)
     {
         if (Validate(slug, request.Status, ProjectStatuses, request.Translations.Select(t => (t.Lang, t.Title))) is { } error)
         {
@@ -54,6 +75,11 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
         if (item is null)
         {
             return new UpsertResult<ProjectItem>(UpsertOutcome.NotFound);
+        }
+
+        if (!created && ifMatch is not null && !ContentETag.Satisfies(ifMatch, item.UpdatedAt))
+        {
+            return new UpsertResult<ProjectItem>(UpsertOutcome.Conflict);
         }
 
         item.Status = request.Status;
@@ -69,8 +95,12 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
             Body = t.FullDescription ?? string.Empty,
             AttributesJson = JsonSerializer.Serialize(new ProjectAttributes(t.ShortTitle ?? t.Title, t.Category ?? request.Category ?? string.Empty, t.Year ?? request.Year ?? string.Empty), Json)
         }));
-        await SaveAsync(item, created);
-        return new UpsertResult<ProjectItem>(created ? UpsertOutcome.Created : UpsertOutcome.Updated, ToProjectItems(item).First());
+        if (!await SaveAsync(item, created))
+        {
+            return new UpsertResult<ProjectItem>(UpsertOutcome.Conflict);
+        }
+
+        return new UpsertResult<ProjectItem>(created ? UpsertOutcome.Created : UpsertOutcome.Updated, ToProjectItems(item).First(), ETag: ContentETag.For(item.UpdatedAt));
     }
 
     // ---- news
@@ -86,7 +116,7 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
     public async Task<NewsAdminView?> AdminNewsItemAsync(string slug) =>
         (await LiveAsync(ContentTypes.News, slug)).Select(ToNewsAdminView).FirstOrDefault();
 
-    public async Task<UpsertResult<NewsItem>> UpsertNewsAsync(string slug, NewsUpsertRequest request, bool mustExist)
+    public async Task<UpsertResult<NewsItem>> UpsertNewsAsync(string slug, NewsUpsertRequest request, bool mustExist, IReadOnlyCollection<string>? ifMatch = null)
     {
         if (Validate(slug, request.Status, NewsStatuses, request.Translations.Select(t => (t.Lang, t.Title))) is { } error)
         {
@@ -97,6 +127,11 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
         if (item is null)
         {
             return new UpsertResult<NewsItem>(UpsertOutcome.NotFound);
+        }
+
+        if (!created && ifMatch is not null && !ContentETag.Satisfies(ifMatch, item.UpdatedAt))
+        {
+            return new UpsertResult<NewsItem>(UpsertOutcome.Conflict);
         }
 
         var publishedAt = request.PublishedAt ?? item.PublishedAt ?? time.GetUtcNow();
@@ -113,8 +148,12 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
             Body = string.Join("\n\n", t.Content ?? []),
             AttributesJson = JsonSerializer.Serialize(new NewsAttributes(t.Date ?? publishedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), t.Tags ?? []), Json)
         }));
-        await SaveAsync(item, created);
-        return new UpsertResult<NewsItem>(created ? UpsertOutcome.Created : UpsertOutcome.Updated, ToNewsItems(item).First());
+        if (!await SaveAsync(item, created))
+        {
+            return new UpsertResult<NewsItem>(UpsertOutcome.Conflict);
+        }
+
+        return new UpsertResult<NewsItem>(created ? UpsertOutcome.Created : UpsertOutcome.Updated, ToNewsItems(item).First(), ETag: ContentETag.For(item.UpdatedAt));
     }
 
     // ---- shared
@@ -127,7 +166,7 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
             return false;
         }
 
-        item.DeletedAt = time.GetUtcNow();
+        item.DeletedAt = Now();
         item.UpdatedAt = item.DeletedAt.Value;
         await db.SaveChangesAsync();
         return true;
@@ -207,15 +246,35 @@ public sealed partial class ContentStore(ContentDbContext db, TimeProvider time)
         }
     }
 
-    private async Task SaveAsync(ContentItemEntity item, bool created)
+    /// <summary>Saves the item; false when another editor saved it first (the `UpdatedAt` concurrency token no longer matched).</summary>
+    private async Task<bool> SaveAsync(ContentItemEntity item, bool created)
     {
-        item.UpdatedAt = time.GetUtcNow();
+        item.UpdatedAt = Now();
         if (created)
         {
             item.CreatedAt = item.UpdatedAt;
         }
 
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
+    }
+
+    // Truncated to microseconds, what PostgreSQL stores, so the in-memory value and the persisted one give the same ETag.
+    private DateTimeOffset Now() => new(time.GetUtcNow().UtcTicks / 10 * 10, TimeSpan.Zero);
+
+    /// <summary>The current ETag of a live item, or null when it does not exist.</summary>
+    public async Task<string?> ETagAsync(string type, string slug)
+    {
+        var updatedAt = await db.Items.AsNoTracking().Where(i => i.Type == type && i.Slug == slug && i.DeletedAt == null)
+            .Select(i => (DateTimeOffset?)i.UpdatedAt).FirstOrDefaultAsync();
+        return updatedAt is null ? null : ContentETag.For(updatedAt.Value);
     }
 
     private static string? Validate(string slug, string status, string[] allowedStatuses, IEnumerable<(string Lang, string Title)> translations)

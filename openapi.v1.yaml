@@ -199,7 +199,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Get a project with all translations"
-      description: "Requires the \u0060content.view\u0060 permission."
+      description: "Requires the \u0060content.view\u0060 permission. The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
       operationId: "GetAdminProject"
       parameters:
         -
@@ -215,7 +215,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update a project"
-      description: "Replaces all translations for the given project. Requires the matching \u0060content.*\u0060 permission."
+      description: "Replaces all translations for the given project. Requires the matching \u0060content.*\u0060 permission. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT and nothing is saved. Without \u0060If-Match\u0060 the last write wins."
       operationId: "UpdateProject"
       parameters:
         -
@@ -298,7 +298,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Get a news article with all translations"
-      description: "Requires the \u0060content.view\u0060 permission."
+      description: "Requires the \u0060content.view\u0060 permission. The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
       operationId: "GetAdminNews"
       parameters:
         -
@@ -314,7 +314,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update a news article"
-      description: "Replaces all translations for the given news article. Requires the matching \u0060content.*\u0060 permission."
+      description: "Replaces all translations for the given news article. Requires the matching \u0060content.*\u0060 permission. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT and nothing is saved. Without \u0060If-Match\u0060 the last write wins."
       operationId: "UpdateNews"
       parameters:
         -
@@ -355,6 +355,13 @@ paths:
       summary: "Submit a CTA form"
       description: "Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact."
       operationId: "CreateCtaSubmission"
+      parameters:
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
       requestBody:
         content:
           application/json:

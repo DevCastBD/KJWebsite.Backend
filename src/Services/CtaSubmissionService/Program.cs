@@ -2,6 +2,7 @@ using CtaSubmissionService.Contracts;
 using CtaSubmissionService.Data;
 using CtaSubmissionService.Data.Entities;
 using KJWebsite.BuildingBlocks;
+using KJWebsite.BuildingBlocks.Idempotency;
 using KJWebsite.BuildingBlocks.Security;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
@@ -16,6 +17,23 @@ builder.Services.AddOpenApi(options =>
         document.Info.Version = "v1";
         return Task.CompletedTask;
     });
+    options.AddOperationTransformer((operation, context, ct) =>
+    {
+        if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IdempotentEndpointMetadata>().Any())
+        {
+            operation.Parameters ??= [];
+            operation.Parameters.Add(new Microsoft.OpenApi.OpenApiParameter
+            {
+                Name = IdempotencyExtensions.HeaderName,
+                In = Microsoft.OpenApi.ParameterLocation.Header,
+                Required = false,
+                Description = "Optional. A repeat with the same key and body returns the original response (header `Idempotency-Replayed: true`) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours.",
+                Schema = new Microsoft.OpenApi.OpenApiSchema { Type = Microsoft.OpenApi.JsonSchemaType.String }
+            });
+        }
+
+        return Task.CompletedTask;
+    });
 });
 
 builder.Services.AddDbContext<CtaDbContext>((services, options) =>
@@ -27,6 +45,7 @@ builder.Services.AddDbContext<CtaDbContext>((services, options) =>
 });
 
 builder.Services.AddKjJwtAuthentication();
+builder.Services.AddKjIdempotency(builder.Configuration);
 
 var app = builder.Build();
 
@@ -74,6 +93,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseKjIdempotency();
 
 var allowedForms = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "registration", "contact", "footer-contact", "project-involved" };
 var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "join", "donate", "partnership", "get-involved", "contact" };
@@ -131,6 +151,7 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
 .WithSummary("Submit a CTA form")
 .WithDescription("Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact.")
 .WithTags("CTA")
+.RequireIdempotency()
 .AllowAnonymous();
 
 app.Run();

@@ -33,6 +33,7 @@ builder.Services.AddDbContext<ContentDbContext>((services, options) =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ContentStore>();
 builder.Services.AddKjJwtAuthentication();
+builder.Services.AddContentCaching(builder.Configuration);
 
 var app = builder.Build();
 
@@ -66,6 +67,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseOutputCache();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ContentService" }))
    .WithName("ContentHealth")
@@ -92,6 +94,7 @@ app.MapGet("/api/v1/content/projects", async (HttpRequest request, ContentStore 
 .WithSummary("List projects (paginated)")
 .WithDescription("Returns `{ items, total, limit, offset, lang }`. `lang`: en/bn (default en). `status`: active/all (default active). `limit`: 1–100 (default 20). `offset`: default 0. ETag + Cache-Control are set.")
 .WithTags("Content")
+.CachePublicContent()
 .AllowAnonymous();
 
 app.MapGet("/api/v1/content/projects/{id}", async (HttpRequest request, ContentStore store, string id, string? lang) =>
@@ -106,6 +109,7 @@ app.MapGet("/api/v1/content/projects/{id}", async (HttpRequest request, ContentS
 .WithSummary("Get project by ID")
 .WithDescription("Returns a single project by slug ID in the requested language (`lang`: en/bn, default en).")
 .WithTags("Content")
+.CachePublicContent()
 .AllowAnonymous();
 
 app.MapGet("/api/v1/content/news", async (HttpRequest request, ContentStore store, string? lang, int? limit, int? offset) =>
@@ -122,6 +126,7 @@ app.MapGet("/api/v1/content/news", async (HttpRequest request, ContentStore stor
 .WithSummary("List news articles (paginated)")
 .WithDescription("Returns `{ items, total, limit, offset, lang }`. `lang`: en/bn (default en). `limit`: 1–100 (default 20). `offset`: default 0. ETag + Cache-Control are set.")
 .WithTags("Content")
+.CachePublicContent()
 .AllowAnonymous();
 
 app.MapGet("/api/v1/content/news/{id}", async (HttpRequest request, ContentStore store, string id, string? lang) =>
@@ -136,6 +141,7 @@ app.MapGet("/api/v1/content/news/{id}", async (HttpRequest request, ContentStore
 .WithSummary("Get news article by ID")
 .WithDescription("Returns a single news article by slug ID in the requested language (`lang`: en/bn, default en).")
 .WithTags("Content")
+.CachePublicContent()
 .AllowAnonymous();
 
 app.MapGet("/api/v1/content/bootstrap", async (HttpRequest request, ContentStore store, string? lang) =>
@@ -153,6 +159,7 @@ app.MapGet("/api/v1/content/bootstrap", async (HttpRequest request, ContentStore
 .WithSummary("Cold-start bundle")
 .WithDescription("Returns `{ projects, news, settings, lang }` in one call for the SPA's first render (up to 100 active projects and 100 news items). ETag + Cache-Control are set.")
 .WithTags("Content")
+.CachePublicContent()
 .AllowAnonymous();
 
 app.MapGet("/api/v1/admin/content/projects", async (HttpRequest request, ContentStore store, int? limit, int? offset) =>
@@ -177,13 +184,14 @@ app.MapGet("/api/v1/admin/content/projects/{id}", async (HttpRequest request, Co
 
     var view = await store.AdminProjectAsync(id);
     request.HttpContext.Response.Headers.CacheControl = "no-store";
+    SetETag(request, await store.ETagAsync(ContentTypes.Project, id));
     return view is null
         ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found.")
         : Results.Ok(view);
 })
 .WithName("GetAdminProject")
 .WithSummary("Get a project with all translations")
-.WithDescription("Requires the `content.view` permission.")
+.WithDescription("Requires the `content.view` permission. The `ETag` header is the version to send back as `If-Match` on update.")
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
@@ -209,19 +217,21 @@ app.MapGet("/api/v1/admin/content/news/{id}", async (HttpRequest request, Conten
 
     var view = await store.AdminNewsItemAsync(id);
     request.HttpContext.Response.Headers.CacheControl = "no-store";
+    SetETag(request, await store.ETagAsync(ContentTypes.News, id));
     return view is null
         ? ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found.")
         : Results.Ok(view);
 })
 .WithName("GetAdminNews")
 .WithSummary("Get a news article with all translations")
-.WithDescription("Requires the `content.view` permission.")
+.WithDescription("Requires the `content.view` permission. The `ETag` header is the version to send back as `If-Match` on update.")
 .WithTags("Admin — Content")
 .RequirePermission(Permissions.ContentView);
 
 app.MapPost("/api/v1/admin/content/projects", async (HttpRequest request, ContentStore store, ProjectUpsertRequest payload) =>
 {
     var result = await store.UpsertProjectAsync(payload.Slug, payload, mustExist: false);
+    SetETag(request, result.ETag);
     return result.Outcome == UpsertOutcome.Invalid
         ? ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!)
         : Results.Created($"/api/v1/content/projects/{payload.Slug}", result.Value);
@@ -230,13 +240,16 @@ app.MapPost("/api/v1/admin/content/projects", async (HttpRequest request, Conten
 .WithSummary("Create or replace a project")
 .WithDescription("Creates a project with all provided language translations. Replaces (or restores) any existing project with the same slug. Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
+.EvictsContentCache()
 .RequirePermission(Permissions.ContentCreate);
 
 app.MapPut("/api/v1/admin/content/projects/{id}", async (HttpRequest request, ContentStore store, string id, ProjectUpsertRequest payload) =>
 {
-    var result = await store.UpsertProjectAsync(id, payload, mustExist: true);
+    var result = await store.UpsertProjectAsync(id, payload, mustExist: true, request.Headers.IfMatch.ToArray()!);
+    SetETag(request, result.ETag);
     return result.Outcome switch
     {
+        UpsertOutcome.Conflict => ConflictResponse(request),
         UpsertOutcome.NotFound => ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found."),
         UpsertOutcome.Invalid => ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!),
         _ => Results.Ok(result.Value)
@@ -244,8 +257,9 @@ app.MapPut("/api/v1/admin/content/projects/{id}", async (HttpRequest request, Co
 })
 .WithName("UpdateProject")
 .WithSummary("Update a project")
-.WithDescription("Replaces all translations for the given project. Requires the matching `content.*` permission.")
+.WithDescription("Replaces all translations for the given project. Requires the matching `content.*` permission. Send the `ETag` from the last read as `If-Match`: if the item changed since, the response is 409 CONFLICT and nothing is saved. Without `If-Match` the last write wins.")
 .WithTags("Admin — Content")
+.EvictsContentCache()
 .RequirePermission(Permissions.ContentUpdate);
 
 app.MapDelete("/api/v1/admin/content/projects/{id}", async (HttpRequest request, ContentStore store, string id) =>
@@ -256,11 +270,13 @@ app.MapDelete("/api/v1/admin/content/projects/{id}", async (HttpRequest request,
 .WithSummary("Delete a project")
 .WithDescription("Soft-deletes the project (the slug stays reserved). Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
+.EvictsContentCache()
 .RequirePermission(Permissions.ContentDelete);
 
 app.MapPost("/api/v1/admin/content/news", async (HttpRequest request, ContentStore store, NewsUpsertRequest payload) =>
 {
     var result = await store.UpsertNewsAsync(payload.Slug, payload, mustExist: false);
+    SetETag(request, result.ETag);
     return result.Outcome == UpsertOutcome.Invalid
         ? ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!)
         : Results.Created($"/api/v1/content/news/{payload.Slug}", result.Value);
@@ -269,13 +285,16 @@ app.MapPost("/api/v1/admin/content/news", async (HttpRequest request, ContentSto
 .WithSummary("Create or replace a news article")
 .WithDescription("Creates a news article with all provided language translations. Replaces (or restores) any existing article with the same slug. Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
+.EvictsContentCache()
 .RequirePermission(Permissions.ContentCreate);
 
 app.MapPut("/api/v1/admin/content/news/{id}", async (HttpRequest request, ContentStore store, string id, NewsUpsertRequest payload) =>
 {
-    var result = await store.UpsertNewsAsync(id, payload, mustExist: true);
+    var result = await store.UpsertNewsAsync(id, payload, mustExist: true, request.Headers.IfMatch.ToArray()!);
+    SetETag(request, result.ETag);
     return result.Outcome switch
     {
+        UpsertOutcome.Conflict => ConflictResponse(request),
         UpsertOutcome.NotFound => ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found."),
         UpsertOutcome.Invalid => ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!),
         _ => Results.Ok(result.Value)
@@ -283,8 +302,9 @@ app.MapPut("/api/v1/admin/content/news/{id}", async (HttpRequest request, Conten
 })
 .WithName("UpdateNews")
 .WithSummary("Update a news article")
-.WithDescription("Replaces all translations for the given news article. Requires the matching `content.*` permission.")
+.WithDescription("Replaces all translations for the given news article. Requires the matching `content.*` permission. Send the `ETag` from the last read as `If-Match`: if the item changed since, the response is 409 CONFLICT and nothing is saved. Without `If-Match` the last write wins.")
 .WithTags("Admin — Content")
+.EvictsContentCache()
 .RequirePermission(Permissions.ContentUpdate);
 
 app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, ContentStore store, string id) =>
@@ -295,9 +315,21 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 .WithSummary("Delete a news article")
 .WithDescription("Soft-deletes the article (the slug stays reserved). Requires the matching `content.*` permission.")
 .WithTags("Admin — Content")
+.EvictsContentCache()
 .RequirePermission(Permissions.ContentDelete);
 
 app.Run();
+
+static void SetETag(HttpRequest request, string? etag)
+{
+    if (etag is not null)
+    {
+        request.HttpContext.Response.Headers.ETag = etag;
+    }
+}
+
+static IResult ConflictResponse(HttpRequest request) =>
+    ApiError.Create(request.HttpContext, StatusCodes.Status409Conflict, "CONFLICT", "The item was changed by someone else. Reload it and apply your edit again.");
 
 static bool TryReadStatus(string? status, out string normalized)
 {

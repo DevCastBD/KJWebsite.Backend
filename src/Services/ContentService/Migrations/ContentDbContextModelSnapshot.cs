@@ -58,6 +58,7 @@ namespace ContentService.Migrations
                         .HasColumnType("character varying(32)");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
