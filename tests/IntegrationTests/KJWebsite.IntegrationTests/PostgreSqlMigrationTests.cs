@@ -22,7 +22,7 @@ public sealed class PostgreSqlMigrationTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
-        db.Database.GetAppliedMigrations().Should().HaveCount(3);
+        db.Database.GetAppliedMigrations().Should().HaveCount(4);
         (await TableExists(connectionString, "auth", "users")).Should().BeTrue();
         (await TableExists(connectionString, "auth", "member_profiles")).Should().BeTrue();
         (await TableExists(connectionString, "auth", "roles")).Should().BeTrue();
@@ -56,6 +56,9 @@ public sealed class PostgreSqlMigrationTests
             (await Scalar(connectionString, "SELECT count(*) FROM auth.users WHERE \"PasswordHash\" IS NOT NULL")).Should().Be(0);
             (await Scalar(connectionString, "SELECT count(*) FROM auth.users WHERE \"PasswordHash\" ILIKE '%secret%' OR \"SecurityStamp\" ILIKE '%secret%' OR \"PhoneNumber\" IS NOT NULL")).Should().Be(0);
             (await Scalar(connectionString, "SELECT count(*) FROM auth.member_profiles WHERE \"UserId\"='usr_a' AND \"FirstName\"='বাংলা' AND \"VolunteeingExperience\"='5 years' AND \"IsMailingAddressSameAsPermanentAddress\"")).Should().Be(1);
+            (await Scalar(connectionString, "SELECT count(*) FROM auth.roles")).Should().Be(9);
+            (await Scalar(connectionString, "SELECT count(*) FROM auth.role_claims rc JOIN auth.roles r ON r.\"Id\"=rc.\"RoleId\" WHERE r.\"Name\"='SuperAdmin'")).Should().Be(15);
+            (await Scalar(connectionString, "SELECT count(*) FROM auth.role_claims rc JOIN auth.roles r ON r.\"Id\"=rc.\"RoleId\" WHERE r.\"Name\"='Admin' AND rc.\"ClaimValue\"='roles.manage'")).Should().Be(0);
             (await Scalar(connectionString, "SELECT count(*) FROM auth.user_roles ur JOIN auth.roles r ON r.\"Id\"=ur.\"RoleId\" WHERE (ur.\"UserId\"='usr_a' AND r.\"Name\"='Admin') OR (ur.\"UserId\"='usr_b' AND r.\"Name\"='Member')")).Should().Be(2);
         }
         finally

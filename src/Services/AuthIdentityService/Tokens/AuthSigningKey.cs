@@ -10,8 +10,6 @@ namespace AuthIdentityService.Tokens;
 /// </summary>
 public sealed class AuthSigningKey
 {
-    public const string DevKeyFileName = "dev-jwt-private.pem";
-
     private AuthSigningKey(RSA rsa, IReadOnlyList<SecurityKey> retired)
     {
         var keyId = KjJwtKeys.KeyId(rsa);
@@ -77,15 +75,14 @@ public sealed class AuthSigningKey
             return;
         }
 
-        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KJWebsite");
-        var path = Path.Combine(folder, DevKeyFileName);
+        var path = KjJwtKeys.DevKeyPath;
         if (File.Exists(path))
         {
             rsa.ImportFromPem(File.ReadAllText(path));
             return;
         }
 
-        Directory.CreateDirectory(folder);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         using var generated = RSA.Create(2048);
         File.WriteAllText(path, generated.ExportPkcs8PrivateKeyPem());
         if (!OperatingSystem.IsWindows())

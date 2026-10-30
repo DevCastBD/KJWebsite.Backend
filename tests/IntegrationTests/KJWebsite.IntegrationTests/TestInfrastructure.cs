@@ -70,6 +70,41 @@ public static class TestJwtKeys
     }
 }
 
+/// <summary>Access tokens signed with the test key, for services that only verify (Content, CTA).</summary>
+public static class TestTokens
+{
+    public static string PublicKeyPem(string privatePem)
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create();
+        rsa.ImportFromPem(privatePem);
+        return rsa.ExportSubjectPublicKeyInfoPem();
+    }
+
+    public static string Issue(string[] permissions, string? signingPem = null, TimeSpan? lifetime = null)
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create();
+        rsa.ImportFromPem(signingPem ?? TestJwtKeys.Primary);
+        var claims = new List<System.Security.Claims.Claim> { new("sub", "usr_test"), new("sid", "ses_test") };
+        claims.AddRange(permissions.Select(p => new System.Security.Claims.Claim("permissions", p)));
+        var now = DateTime.UtcNow;
+        return new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler().CreateToken(new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor
+        {
+            Issuer = "kjwebsite-auth",
+            Audience = "kjwebsite-api",
+            Subject = new System.Security.Claims.ClaimsIdentity(claims),
+            NotBefore = now.AddMinutes(-1),
+            Expires = now.Add(lifetime ?? TimeSpan.FromMinutes(15)),
+            SigningCredentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(
+                new Microsoft.IdentityModel.Tokens.RsaSecurityKey(rsa.ExportParameters(true)), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256)
+        });
+    }
+
+    /// <summary>A token holding every content permission.</summary>
+    public static string ContentAdmin() => Issue(
+        [KJWebsite.BuildingBlocks.Security.Permissions.ContentView, KJWebsite.BuildingBlocks.Security.Permissions.ContentCreate,
+         KJWebsite.BuildingBlocks.Security.Permissions.ContentUpdate, KJWebsite.BuildingBlocks.Security.Permissions.ContentDelete]);
+}
+
 public sealed class AuthApiFactory : SqliteWebApplicationFactory<AuthIdentityService.AuthIdentityServiceTestEntryPoint, AuthDbContext>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -119,7 +154,12 @@ public sealed class PostgresCtaApiFactory(string connectionString)
 
 public sealed class ContentApiFactory : WebApplicationFactory<ContentService.ContentServiceTestEntryPoint>
 {
-    protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Development");
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Development");
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+    }
 }
 
 public sealed class GatewayApiFactory : WebApplicationFactory<ApiGateway.ApiGatewayTestEntryPoint>
