@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Cors.Infrastructure;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var health = builder.AddKjObservability("ApiGateway");
 builder.Services.Configure<ApiGateway.CorsOptions>(builder.Configuration.GetSection(ApiGateway.CorsOptions.SectionName));
 builder.Services.AddCors();
 builder.Services.AddGatewayRateLimiting(builder.Configuration);
@@ -20,8 +21,11 @@ builder.Services.AddOpenApi(options =>
 });
 builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 builder.Services.AddGatewayCompression();
+builder.Services.AddHttpClient(DownstreamHealthCheck.ClientName);
+health.AddCheck<DownstreamHealthCheck>("downstream", tags: [KjObservability.ReadyTag]);
 
 var app = builder.Build();
+app.UseKjObservability();
 
 GatewayConfigurationGuard.EnsureDestinations(app.Environment, app.Configuration);
 
@@ -29,7 +33,6 @@ GatewayConfigurationGuard.EnsureDestinations(app.Environment, app.Configuration)
 _ = app.Services.GetRequiredService<ICorsPolicyProvider>();
 
 app.UseForwardedHeaders();
-app.UseCorrelationId();
 app.UseGatewayCompression();
 app.UseSecurityHeaders();
 app.UseCors();
@@ -45,6 +48,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.MapKjObservability();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "ApiGateway" }))
    .WithName("GatewayHealth")
    .WithSummary("Gateway health check")

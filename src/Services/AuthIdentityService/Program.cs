@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var health = builder.AddKjObservability("AuthIdentityService");
 builder.Services.AddKjValidation<AuthIdentityService.Validation.LoginRequestValidator>();
 builder.Services.AddOpenApi(options =>
 {
@@ -73,7 +74,10 @@ builder.Services.AddKjJwtAuthentication(services => services.GetRequiredService<
     }
 });
 
+health.AddDbContextCheck<AuthDbContext>("database", tags: [KjObservability.ReadyTag, KjObservability.StartupTag]);
+
 var app = builder.Build();
+app.UseKjObservability();
 _ = app.Services.GetRequiredService<AuthSigningKey>();
 
 if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
@@ -107,6 +111,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapKjObservability();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "AuthIdentityService" }))
    .WithName("AuthHealth")
    .WithSummary("Auth service health check")

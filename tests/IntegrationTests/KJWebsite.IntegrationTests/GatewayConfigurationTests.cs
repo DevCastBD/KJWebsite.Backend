@@ -30,7 +30,7 @@ internal sealed class StubService : IAsyncDisposable
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
         var app = builder.Build();
-        app.MapGet("/health", () => healthy ? Results.Ok() : Results.StatusCode(503));
+        app.MapGet("/health/ready", () => healthy ? Results.Ok() : Results.StatusCode(503));
         app.MapGet("/api/v1/content/projects", (HttpContext c) =>
             Results.Json(new { name, correlation = c.Request.Headers["X-Correlation-Id"].ToString(), padding = new string('a', 4000) }));
         app.MapGet("/api/v1/cta/echo", (HttpContext c) =>
@@ -130,7 +130,7 @@ public sealed class GatewayConfigurationTests
             b.UseSetting("ReverseProxy:Clusters:content:HealthCheck:Active:Interval", "00:00:01");
             b.UseSetting("ReverseProxy:Clusters:content:HealthCheck:Active:Timeout", "00:00:01");
             b.UseSetting("ReverseProxy:Clusters:content:HealthCheck:Active:Policy", "ConsecutiveFailures");
-            b.UseSetting("ReverseProxy:Clusters:content:HealthCheck:Active:Path", "/health");
+            b.UseSetting("ReverseProxy:Clusters:content:HealthCheck:Active:Path", "/health/ready");
         });
         using var client = gateway.CreateClient();
 
