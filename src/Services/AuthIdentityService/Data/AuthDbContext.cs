@@ -44,9 +44,13 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options)
             entity.ToTable("refresh_tokens");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasMaxLength(64);
-            entity.Property(x => x.Token).HasMaxLength(128).IsRequired();
+            entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.FamilyId).HasMaxLength(64).IsRequired();
             entity.Property(x => x.UserId).HasMaxLength(64).IsRequired();
-            entity.HasIndex(x => x.Token).IsUnique();
+            entity.Property(x => x.ReplacedById).HasMaxLength(64);
+            entity.Property(x => x.UserAgent).HasMaxLength(256);
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => x.FamilyId);
             entity.HasIndex(x => x.UserId);
         });
     }
