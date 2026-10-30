@@ -41,7 +41,7 @@ public sealed class MembershipIntakeTests : IDisposable
         var body = await Json(first);
         body.GetProperty("id").GetString().Should().StartWith("app_");
         body.GetProperty("reference").GetString().Should().MatchRegex($"^KJ-{DateTime.UtcNow.Year}-[0-9A-HJKMNP-TV-Z]{{8}}$");
-        body.GetProperty("status").GetString().Should().Be("received");
+        body.GetProperty("status").GetString().Should().Be("awaiting");
         (await Json(second)).GetProperty("reference").GetString().Should().NotBe(body.GetProperty("reference").GetString());
     }
 

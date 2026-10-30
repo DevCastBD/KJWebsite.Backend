@@ -10,6 +10,29 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<AttachmentEntity> Attachments => Set<AttachmentEntity>();
     public DbSet<CampaignEntity> Campaigns => Set<CampaignEntity>();
     public DbSet<ApplicationStatusEventEntity> StatusEvents => Set<ApplicationStatusEventEntity>();
+    public DbSet<ApplicationNoteEntity> Notes => Set<ApplicationNoteEntity>();
+    public DbSet<NotificationOutboxEntity> NotificationOutbox => Set<NotificationOutboxEntity>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        RefuseHistoryEdits();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        RefuseHistoryEdits();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    // A past transition is never rewritten. (Deleting a whole application, for retention or erasure, removes its history with it.)
+    private void RefuseHistoryEdits()
+    {
+        if (ChangeTracker.Entries<ApplicationStatusEventEntity>().Any(e => e.State == EntityState.Modified))
+        {
+            throw new InvalidOperationException("Application status history is append-only.");
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -30,6 +53,7 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.Id).HasMaxLength(64);
             entity.Property(x => x.Reference).HasMaxLength(32).IsRequired();
             entity.Property(x => x.CampaignId).HasMaxLength(64);
+            entity.Property(x => x.ReviewerId).HasMaxLength(64);
             entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
             entity.Property(x => x.FirstName).HasMaxLength(100).IsRequired();
@@ -60,6 +84,8 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.HasIndex(x => x.PhoneHash);
             entity.HasIndex(x => x.CreatedAt);
             entity.HasIndex(x => x.CampaignId);
+            entity.HasIndex(x => x.Status);
+            entity.HasMany(x => x.Notes).WithOne().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(x => x.StatusEvents).WithOne().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
             entity.HasMany(x => x.Attachments).WithOne().HasForeignKey(x => x.ApplicationId).OnDelete(DeleteBehavior.Cascade);
         });
@@ -82,7 +108,30 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.HasKey(x => x.Id);
             entity.Property(x => x.ApplicationId).HasMaxLength(64).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.By).HasMaxLength(64).IsRequired();
             entity.HasIndex(x => x.ApplicationId);
+        });
+
+        modelBuilder.Entity<ApplicationNoteEntity>(entity =>
+        {
+            entity.ToTable("application_notes");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ApplicationId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.By).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Text).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(x => x.ApplicationId);
+        });
+
+        modelBuilder.Entity<NotificationOutboxEntity>(entity =>
+        {
+            entity.ToTable("notification_outbox");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.ApplicationId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Template).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.RecipientProtected).IsRequired();
+            entity.HasIndex(x => x.SentAt);
         });
 
         modelBuilder.Entity<CampaignEntity>(entity =>

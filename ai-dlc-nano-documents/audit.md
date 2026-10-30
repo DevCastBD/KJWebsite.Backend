@@ -209,3 +209,6 @@
 - 2026-10-30T20:19Z [claude] 045-issue-50-campaigns-status-lookup CREATED @178dfd9: stacked on #49 branch; plan awaiting approval
 - 2026-10-30T20:26Z [claude] 045-issue-50-campaigns-status-lookup PHASE PLAN→CONSTRUCT @178dfd9: plan approved (random refs, unrestricted when no campaign, audit)
 - 2026-10-30T20:26Z [claude] 045-issue-50-campaigns-status-lookup DONE @178dfd9: campaigns, random refs, status lookup; 246 tests green; not pushed
+- 2026-10-30T20:27Z [claude] 046-issue-51-review-pipeline CREATED @8498f33: stacked on #50 branch; plan awaiting approval
+- 2026-10-30T20:31Z [claude] 046-issue-51-review-pipeline PHASE PLAN→CONSTRUCT @8498f33: plan approved (awaiting rename, queued outbox)
+- 2026-10-30T20:31Z [claude] 046-issue-51-review-pipeline DONE @8498f33: pipeline, bulk transition, outbox, immutable history; 285 tests green incl PG; not pushed

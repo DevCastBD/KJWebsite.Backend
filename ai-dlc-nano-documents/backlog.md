@@ -1,8 +1,10 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
-- [2026-10-31] membership — status lookup throttled per IP only; add per-reference attempt limit if enumeration shows up; second migration not run on PG (found: 045-issue-50)
+- [2026-10-31] membership — notification_outbox rows (SentAt null) need a sender once #32/#33 land; no reviewers list (Identity data), rubric or .ics invites yet (found: 046-issue-51)
+- [2026-10-31] membership/frontend — admin client expects campaigns POST /open|/publish and draft state; #50 has create/update/close only (found: 046-issue-51)
+- [2026-10-31] membership — status lookup throttled per IP only; add per-reference attempt limit if enumeration shows up (found: 045-issue-50)
 - [2026-10-31] tests — AuditLogTests.TheDataLayerRefusesToChangeOrRemoveAnEntry failed once in a full run, passed 3 reruns (audit flake family) (found: 045-issue-50)
-- [2026-10-31] membership — attachments on local disk, scan=pending until #41 (virus scan, EXIF strip, object storage); do not serve them; Postgres migration not run on PG (found: 044-issue-49)
+- [2026-10-31] membership — attachments on local disk, scan=pending until #41 (virus scan, EXIF strip, object storage); do not serve them (found: 044-issue-49)
 - [2026-10-31] membership — set Membership:HashKey and DataProtection:KeysPath in every non-dev env; key loss makes PII unreadable (found: 044-issue-49)
 - [2026-10-31] tests — AuditLogTests.AnUpdateRecordsOnlyWhatChanged failed once in a full run, passed on rerun (auth/audit flake family) (found: 044-issue-49)
 - [2026-10-31] search — term index is prefix-LIKE; add trigram/GIN or a real FTS index when the corpus grows; sitemap vs frontend sitemap must be merged as an index (found: 043-issue-47)
