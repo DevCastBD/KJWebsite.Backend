@@ -24,6 +24,8 @@ public sealed class AuthDbContext(DbContextOptions<AuthDbContext> options)
             entity.Property(x => x.Id).HasMaxLength(64);
             entity.Property(x => x.Email).HasMaxLength(320);
             entity.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.ProvisionedFor).HasMaxLength(64);
+            entity.HasIndex(x => x.ProvisionedFor).IsUnique();
             entity.HasOne(x => x.Profile).WithOne().HasForeignKey<MemberProfileEntity>(p => p.UserId);
         });
 

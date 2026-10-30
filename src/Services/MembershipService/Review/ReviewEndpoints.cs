@@ -35,7 +35,9 @@ public static class ReviewEndpoints
                 .Include(a => a.Notes).Include(a => a.StatusEvents)
                 .Skip(Math.Max(0, offset ?? 0)).Take(Math.Clamp(limit ?? 200, 1, 500))
                 .ToListAsync();
-            return Results.Ok(new ApplicationPage([.. page.Select(a => ToRecord(a, protector))], total));
+            var pageIds = page.Select(a => a.Id).ToList();
+            var codes = await db.Members.AsNoTracking().Where(m => pageIds.Contains(m.ApplicationId)).ToDictionaryAsync(m => m.ApplicationId, m => m.MemberCode);
+            return Results.Ok(new ApplicationPage([.. page.Select(a => ToRecord(a, protector, codes.GetValueOrDefault(a.Id)))], total));
         })
         .WithName("ListMembershipApplications")
         .WithSummary("List applications for review")
@@ -48,7 +50,7 @@ public static class ReviewEndpoints
             var application = await Load(db, id, track: false);
             return application is null
                 ? ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Application not found.")
-                : Results.Ok(ToRecord(application, protector));
+                : Results.Ok(ToRecord(application, protector, await MemberCodeFor(db, id)));
         })
         .WithName("GetMembershipApplication").WithSummary("One application with notes and history").WithTags("Membership admin")
         .RequirePermission(Permissions.MembershipManage);
@@ -122,7 +124,7 @@ public static class ReviewEndpoints
             }
 
             await db.SaveChangesAsync();
-            return Results.Ok(ToRecord(application, protector));
+            return Results.Ok(ToRecord(application, protector, await MemberCodeFor(db, id)));
         })
         .WithName("UpdateMembershipApplication")
         .WithSummary("Assign a reviewer, set the score or the interview time")
@@ -157,7 +159,7 @@ public static class ReviewEndpoints
         .WithName("AddMembershipNote").WithSummary("Add an internal reviewer note").WithTags("Membership admin")
         .RequirePermission(Permissions.MembershipManage);
 
-        app.MapPost($"{Route}/transition", async (HttpContext context, TransitionRequest payload, MembershipDbContext db, IFieldProtector protector, TimeProvider clock) =>
+        app.MapPost($"{Route}/transition", async (HttpContext context, TransitionRequest payload, MembershipDbContext db, IFieldProtector protector, IAuthProvisioningClient identity, TimeProvider clock) =>
         {
             var ids = payload.Ids?.Where(i => !string.IsNullOrWhiteSpace(i)).Distinct().ToList() ?? [];
             if (ids.Count == 0 || ids.Count > MaxBulk || payload.To is null || !ApplicationStatuses.All.Contains(payload.To))
@@ -184,6 +186,12 @@ public static class ReviewEndpoints
                     continue;
                 }
 
+                if (payload.To == ApplicationStatuses.Approved)
+                {
+                    results.Add(await Approve(context, application, db, protector, identity, actor, now));
+                    continue;
+                }
+
                 if (payload.InterviewAt is not null)
                 {
                     application.InterviewAt = interviewAt;
@@ -192,15 +200,7 @@ public static class ReviewEndpoints
                 application.Status = payload.To;
                 db.StatusEvents.Add(new ApplicationStatusEventEntity { ApplicationId = id, Status = payload.To, At = now, By = actor, Notified = true });
                 // Same commit as the change: a transition and its notification either both exist or neither does.
-                db.NotificationOutbox.Add(new NotificationOutboxEntity
-                {
-                    ApplicationId = id,
-                    Template = $"application.status.{payload.To}",
-                    Language = application.Language,
-                    RecipientProtected = application.EmailProtected,
-                    PayloadJson = JsonSerializer.Serialize(new { reference = application.Reference, status = payload.To, interviewAt = application.InterviewAt }),
-                    CreatedAt = now
-                });
+                db.NotificationOutbox.Add(Notification(application, protector, $"application.status.{payload.To}", new { reference = application.Reference, status = payload.To, interviewAt = application.InterviewAt }, now));
                 results.Add(new TransitionResult(id, true, true, null));
             }
 
@@ -214,6 +214,92 @@ public static class ReviewEndpoints
         .RequirePermission(Permissions.MembershipManage);
     }
 
+    /// <summary>
+    /// Approval is the one transition with a side effect outside this service: the login. Order matters. Identity creates the
+    /// account first, idempotently and in its own transaction; only then does one local commit write the member, code, history
+    /// and welcome message together. If anything fails the application stays un-approved, and a retry reuses the account.
+    /// </summary>
+    private static async Task<TransitionResult> Approve(HttpContext context, ApplicationEntity application, MembershipDbContext db, IFieldProtector protector, IAuthProvisioningClient identity, string actor, DateTimeOffset now)
+    {
+        var token = context.Request.Headers.Authorization.ToString() is { Length: > 7 } header && header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header[7..] : null;
+        var account = await identity.ProvisionAsync(
+            new ProvisionAccount(
+                application.Id, protector.Unprotect(application.EmailProtected), application.FirstName, application.LastName, application.Gender,
+                application.DateOfBirthProtected is null ? null : protector.Unprotect(application.DateOfBirthProtected),
+                protector.Unprotect(application.BloodGroupProtected), protector.Unprotect(application.CurrentAddressProtected),
+                application.CityOfResidence, application.CountryOfResidence, application.ReasonForJoining, application.PresentOrganization, application.VolunteeringExperience),
+            token,
+            context.RequestAborted);
+        if (account.Outcome is not (ProvisioningOutcome.Created or ProvisioningOutcome.Existing))
+        {
+            return new TransitionResult(application.Id, false, false, account.Outcome switch
+            {
+                ProvisioningOutcome.EmailTaken => "email_taken",
+                ProvisioningOutcome.Forbidden => "forbidden",
+                _ => "provisioning_failed"
+            });
+        }
+
+        var member = new MemberEntity
+        {
+            Id = $"mem_{Guid.NewGuid():N}",
+            UserId = account.UserId!,
+            ApplicationId = application.Id,
+            FirstName = application.FirstName,
+            LastName = application.LastName,
+            JoinedAt = now
+        };
+        var welcome = Notification(application, protector, "member.welcome", new { reference = application.Reference, memberCode = string.Empty, userId = account.UserId, setupToken = account.SetupToken }, now);
+        var previousStatus = application.Status;
+        for (var attempt = 0; ; attempt++)
+        {
+            member.MemberCode = await MemberCodes.NextAsync(db, now.Year, 0, context.RequestAborted);
+            welcome.PayloadJson = protector.Protect(JsonSerializer.Serialize(new { reference = application.Reference, memberCode = member.MemberCode, userId = account.UserId, setupToken = account.SetupToken }));
+            application.Status = ApplicationStatuses.Approved;
+            var evt = new ApplicationStatusEventEntity { ApplicationId = application.Id, Status = ApplicationStatuses.Approved, At = now, By = actor, Notified = true };
+            db.Members.Add(member);
+            db.StatusEvents.Add(evt);
+            db.NotificationOutbox.Add(welcome);
+            try
+            {
+                await db.SaveChangesAsync(context.RequestAborted);
+                return new TransitionResult(application.Id, true, true, null, member.MemberCode);
+            }
+            catch (DbUpdateException) when (attempt < 4)
+            {
+                // A concurrent approval took the number: draw again. Nothing was written, so the whole set is retried.
+                db.Entry(member).State = EntityState.Detached;
+                db.Entry(evt).State = EntityState.Detached;
+                db.Entry(welcome).State = EntityState.Detached;
+                application.Status = previousStatus;
+            }
+            catch (DbUpdateException)
+            {
+                DetachPending(db);
+                application.Status = previousStatus;
+                return new TransitionResult(application.Id, false, false, "provisioning_failed");
+            }
+        }
+    }
+
+    private static void DetachPending(MembershipDbContext db)
+    {
+        foreach (var entry in db.ChangeTracker.Entries().Where(e => e.State is EntityState.Added).ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
+
+    private static NotificationOutboxEntity Notification(ApplicationEntity application, IFieldProtector protector, string template, object payload, DateTimeOffset now) => new()
+    {
+        ApplicationId = application.Id,
+        Template = template,
+        Language = application.Language,
+        RecipientProtected = application.EmailProtected,
+        PayloadJson = protector.Protect(JsonSerializer.Serialize(payload)),
+        CreatedAt = now
+    };
+
     private static JsonElement? Property(JsonElement obj, string name) =>
         obj.EnumerateObject().Where(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)).Select(p => (JsonElement?)p.Value).FirstOrDefault();
 
@@ -225,7 +311,10 @@ public static class ReviewEndpoints
         return (track ? query : query.AsNoTracking()).FirstOrDefaultAsync(a => a.Id == id);
     }
 
-    private static ReviewApplication ToRecord(ApplicationEntity a, IFieldProtector protector) => new(
+    private static Task<string?> MemberCodeFor(MembershipDbContext db, string applicationId) =>
+        db.Members.AsNoTracking().Where(m => m.ApplicationId == applicationId).Select(m => m.MemberCode).FirstOrDefaultAsync();
+
+    private static ReviewApplication ToRecord(ApplicationEntity a, IFieldProtector protector, string? memberCode) => new(
         a.Id,
         a.Reference,
         $"{a.FirstName} {a.LastName}",
@@ -239,5 +328,6 @@ public static class ReviewEndpoints
         a.InterviewAt,
         [.. a.Notes.OrderBy(n => n.At).ThenBy(n => n.Id).Select(n => new ReviewNoteRecord(n.Id, n.At, n.By, n.Text))],
         [.. a.StatusEvents.OrderBy(e => e.At).ThenBy(e => e.Id).Select(e => new StatusChangeRecord(e.Status, e.At, e.By, e.Notified))],
-        StatusTransitions.NextFrom(a.Status));
+        StatusTransitions.NextFrom(a.Status),
+        memberCode);
 }

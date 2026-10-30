@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] membership/auth — failed local commit after Identity success leaves a passwordless orphan account (retry reuses it); add reconcile or compensating delete; s2s auth replaces token forwarding (BE-093) (found: 047-issue-52)
+- [2026-10-31] membership/frontend — TransitionResult errors email_taken|forbidden|provisioning_failed and memberCode are new; admin UI must show them; welcome email text (legacy email.html, #14) is the #32 sender's job (found: 047-issue-52)
 - [2026-10-31] membership — notification_outbox rows (SentAt null) need a sender once #32/#33 land; no reviewers list (Identity data), rubric or .ics invites yet (found: 046-issue-51)
 - [2026-10-31] membership/frontend — admin client expects campaigns POST /open|/publish and draft state; #50 has create/update/close only (found: 046-issue-51)
 - [2026-10-31] membership — status lookup throttled per IP only; add per-reference attempt limit if enumeration shows up (found: 045-issue-50)

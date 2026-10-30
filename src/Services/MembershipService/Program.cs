@@ -62,6 +62,7 @@ builder.Services.AddKjAuditing("membership", audit => audit
         nameof(ApplicationEntity.PhoneProtected), nameof(ApplicationEntity.BloodGroupProtected), nameof(ApplicationEntity.CurrentAddressProtected),
         nameof(ApplicationEntity.DateOfBirthProtected), nameof(ApplicationEntity.EmailHash), nameof(ApplicationEntity.PhoneHash))
     .Audit<ApplicationStatusEventEntity>()
+    .Audit<MemberEntity>()
     .Audit<ApplicationNoteEntity>(nameof(ApplicationNoteEntity.Text)));
 builder.Services.AddSingleton(TimeProvider.System);
 
@@ -76,6 +77,12 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
 builder.Services.AddSingleton<IFieldProtector, DataProtectionFieldProtector>();
 builder.Services.AddSingleton<ContactHasher>();
 builder.Services.AddSingleton<IAttachmentStore, LocalDiskAttachmentStore>();
+builder.Services.AddHttpClient(AuthProvisioningClient.ClientName, (services, client) =>
+{
+    client.BaseAddress = new Uri(services.GetRequiredService<IConfiguration>()["Services:Auth:Url"] ?? "http://localhost:7003/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<IAuthProvisioningClient, AuthProvisioningClient>();
 builder.Services.AddKjJwtAuthentication();
 builder.Services.AddKjIdempotency(builder.Configuration);
 

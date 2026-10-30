@@ -212,3 +212,6 @@
 - 2026-10-30T20:27Z [claude] 046-issue-51-review-pipeline CREATED @8498f33: stacked on #50 branch; plan awaiting approval
 - 2026-10-30T20:31Z [claude] 046-issue-51-review-pipeline PHASE PLAN→CONSTRUCT @8498f33: plan approved (awaiting rename, queued outbox)
 - 2026-10-30T20:31Z [claude] 046-issue-51-review-pipeline DONE @8498f33: pipeline, bulk transition, outbox, immutable history; 285 tests green incl PG; not pushed
+- 2026-10-30T20:33Z [claude] 047-issue-52-approval-provisioning CREATED @e22f9cb: stacked on #51 branch; atomicity approach chosen by user; plan awaiting approval
+- 2026-10-30T20:37Z [claude] 047-issue-52-approval-provisioning PHASE PLAN→CONSTRUCT @e22f9cb: plan approved (idempotent sync call, passwordless confirmed account)
+- 2026-10-30T20:37Z [claude] 047-issue-52-approval-provisioning DONE @e22f9cb: approve provisions login+member+code+welcome; 293 tests green incl PG; not pushed

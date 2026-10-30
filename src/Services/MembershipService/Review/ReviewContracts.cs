@@ -19,7 +19,8 @@ public sealed record ReviewApplication(
     DateTimeOffset? InterviewAt,
     IReadOnlyList<ReviewNoteRecord> Notes,
     IReadOnlyList<StatusChangeRecord> History,
-    IReadOnlyList<string> NextStatuses);
+    IReadOnlyList<string> NextStatuses,
+    string? MemberCode);
 
 public sealed record ApplicationPage(IReadOnlyList<ReviewApplication> Items, int Total);
 
@@ -27,6 +28,6 @@ public sealed record NoteRequest(string? Text);
 
 public sealed record TransitionRequest(List<string>? Ids, string? To, DateTimeOffset? InterviewAt);
 
-public sealed record TransitionResult(string Id, bool Ok, bool Notified, string? Error);
+public sealed record TransitionResult(string Id, bool Ok, bool Notified, string? Error, string? MemberCode = null);
 
 public sealed record TransitionResponse(IReadOnlyList<TransitionResult> Results);

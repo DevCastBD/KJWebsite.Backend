@@ -2960,6 +2960,22 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/auth/members:
+    post:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Create the login for an approved membership application"
+      description: "Creates a password-less, email-confirmed Member account with the applicant\u0027s profile and returns a one-time setup token. Idempotent per \u0060applicationId\u0060: a repeat returns the same account with a fresh token. 409 EMAIL_TAKEN when another account already uses the email."
+      operationId: "ProvisionMember"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProvisionMemberRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/auth/audit:
     get:
       tags:
@@ -3795,6 +3811,75 @@ components:
           type: "string"
         password:
           type: "string"
+    ProvisionMemberRequest:
+      required:
+        - "applicationId"
+        - "email"
+        - "firstName"
+        - "lastName"
+        - "gender"
+        - "dateOfBirth"
+        - "bloodGroup"
+        - "address"
+        - "cityOfResidence"
+        - "countryOfResidence"
+        - "reasonForJoining"
+        - "presentOrganization"
+        - "volunteeringExperience"
+      type: "object"
+      properties:
+        applicationId:
+          type:
+            - "null"
+            - "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        firstName:
+          type:
+            - "null"
+            - "string"
+        lastName:
+          type:
+            - "null"
+            - "string"
+        gender:
+          type:
+            - "null"
+            - "string"
+        dateOfBirth:
+          type:
+            - "null"
+            - "string"
+        bloodGroup:
+          type:
+            - "null"
+            - "string"
+        address:
+          type:
+            - "null"
+            - "string"
+        cityOfResidence:
+          type:
+            - "null"
+            - "string"
+        countryOfResidence:
+          type:
+            - "null"
+            - "string"
+        reasonForJoining:
+          type:
+            - "null"
+            - "string"
+        presentOrganization:
+          type:
+            - "null"
+            - "string"
+        volunteeringExperience:
+          type:
+            - "null"
+            - "string"
     RefreshTokenRequest:
       required:
         - "refreshToken"

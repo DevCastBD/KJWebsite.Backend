@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 4 run: #49, #50, #51 done; next #52; #109, #110 skipped by user)
+- Active work item: none  (milestone 4 run: #49, #50, #51, #52 done; next #53; #109, #110 skipped by user)
 - Phase: —
-- Branch: Feature/issue-51-review-pipeline
+- Branch: Feature/issue-52-approval-provisioning
 - Base SHA: —
-- Next step: start #52 (BE-045 approval provisions User+Member+Profile+Code) on a new branch stacked on Feature/issue-51-review-pipeline. Then #53, #54, #55, #56 (needs #109), #57, #58. Push/PRs only on request
+- Next step: start #53 (BE-046 member self-service) on a new branch stacked on Feature/issue-52-approval-provisioning. Then #54, #55, #56 (needs #109), #57, #58. Push/PRs only on request
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)
