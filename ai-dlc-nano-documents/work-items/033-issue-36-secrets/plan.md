@@ -1,12 +1,12 @@
-<!-- phase: PLAN | branch: feature/issue-36-secrets | tasks: 0/4
-     base: — | updated: 2026-10-30
-     next: await plan approval, then branch feature/issue-36-secrets (feature/issue-34-cta-read-apis) -->
+<!-- phase: DONE | branch: feature/issue-36-secrets | tasks: 4/4
+     base: f90f1f2 | updated: 2026-10-30
+     next: none; committed locally -->
 # Plan: Secrets management and key rotation
 ## Tasks
-- [ ] Audit appsettings; fail-fast on missing prod secrets
-- [ ] Multiple verification keys (active + previous) in token config; rotation test (old tokens still valid)
-- [ ] docs/SECRETS.md rotation procedure; local scan script (gitleaks if installed)
-- [ ] Update SECRET_SCAN.md; full suite + format
+- [x] Audit appsettings; fail-fast on missing prod secrets
+- [x] Multiple verification keys (active + previous) in token config; rotation test (old tokens still valid)
+- [x] docs/SECRETS.md rotation procedure; local scan script (gitleaks if installed)
+- [x] Update SECRET_SCAN.md; full suite + format
 ## Tests
 - High blast radius (auth): rotation tested
 ## Files

@@ -41,6 +41,8 @@ builder.Services.AddKjJwtAuthentication();
 
 health.AddDbContextCheck<ContentDbContext>("database", tags: [KjObservability.ReadyTag, KjObservability.StartupTag]);
 
+KjJwtKeys.EnsureVerificationKeyConfigured(builder.Configuration, builder.Environment);
+
 var app = builder.Build();
 app.UseKjObservability();
 

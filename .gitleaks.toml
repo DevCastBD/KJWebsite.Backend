@@ -1,0 +1,18 @@
+# Used by tools/scan-secrets.sh when gitleaks is installed. Every allowlist entry is a reviewed placeholder (docs/SECRET_SCAN.md).
+title = "KJWebsite.Backend"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed development placeholders"
+regexes = [
+  '''dev-admin-token''',
+  '''admin123''',
+  '''Password=postgres''',
+  '''password123''',
+  '''correct-horse-battery''',
+]
+paths = [
+  '''legacy/.*\.sql''',
+]

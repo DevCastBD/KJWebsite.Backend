@@ -98,7 +98,7 @@ The gateway at `http://localhost:7000` expects the downstream services on their 
 | `Jobs__Storage`, `Outbox__MaxAttempts`, … | No | `PostgreSql`, 8 attempts | Background jobs and outbox tuning; see [docs/OUTBOX.md](docs/OUTBOX.md). |
 | `Email__Postmark__ServerToken`, `Email__FromAddress`, `Email__OrgInbox` | Yes, for CTA outside Development | Development writes mail to a local folder | Transactional email; see [docs/EMAIL.md](docs/EMAIL.md). |
 
-Secrets (signing key, connection strings) are read only from environment variables or a vault; none is committed. See [docs/SECRET_SCAN.md](docs/SECRET_SCAN.md).
+Secrets (signing key, connection strings, provider tokens) are read only from user-secrets, environment variables or a vault; none is committed. See [docs/SECRETS.md](docs/SECRETS.md) for the inventory and the key-rotation procedure, and [docs/SECRET_SCAN.md](docs/SECRET_SCAN.md) for the history scan (`tools/scan-secrets.sh`).
 
 ## Database and migrations
 
