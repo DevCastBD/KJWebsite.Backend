@@ -1,13 +1,9 @@
 using ApiGateway;
+using KJWebsite.BuildingBlocks;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Scalar.AspNetCore;
-using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
-var contentServiceUrl = builder.Configuration["Services:Content:Url"] ?? "http://localhost:7001/";
-var ctaServiceUrl = builder.Configuration["Services:Cta:Url"] ?? "http://localhost:7002/";
-var authServiceUrl = builder.Configuration["Services:Auth:Url"] ?? "http://localhost:7003/";
-
 builder.Services.Configure<ApiGateway.CorsOptions>(builder.Configuration.GetSection(ApiGateway.CorsOptions.SectionName));
 builder.Services.AddCors();
 builder.Services.AddGatewayRateLimiting(builder.Configuration);
@@ -22,46 +18,19 @@ builder.Services.AddOpenApi(options =>
         return Task.CompletedTask;
     });
 });
-builder.Services.AddReverseProxy().LoadFromMemory(
-[
-    new RouteConfig { RouteId = "content", ClusterId = "content", Match = new RouteMatch { Path = "/api/v1/content/{**catch-all}" } },
-    new RouteConfig { RouteId = "cta", ClusterId = "cta", Match = new RouteMatch { Path = "/api/v1/cta/{**catch-all}" } },
-    new RouteConfig { RouteId = "auth", ClusterId = "auth", Match = new RouteMatch { Path = "/api/v1/auth/{**catch-all}" } },
-    new RouteConfig { RouteId = "admin-content", ClusterId = "content", Match = new RouteMatch { Path = "/api/v1/admin/content/{**catch-all}" } }
-],
-[
-    new ClusterConfig
-    {
-        ClusterId = "content",
-        Destinations = new Dictionary<string, DestinationConfig>
-        {
-            ["content"] = new() { Address = contentServiceUrl }
-        }
-    },
-    new ClusterConfig
-    {
-        ClusterId = "cta",
-        Destinations = new Dictionary<string, DestinationConfig>
-        {
-            ["cta"] = new() { Address = ctaServiceUrl }
-        }
-    },
-    new ClusterConfig
-    {
-        ClusterId = "auth",
-        Destinations = new Dictionary<string, DestinationConfig>
-        {
-            ["auth"] = new() { Address = authServiceUrl }
-        }
-    }
-]);
+builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+builder.Services.AddGatewayCompression();
 
 var app = builder.Build();
+
+GatewayConfigurationGuard.EnsureDestinations(app.Environment, app.Configuration);
 
 // Resolve eagerly so an invalid origin in configuration fails startup, not the first request.
 _ = app.Services.GetRequiredService<ICorsPolicyProvider>();
 
 app.UseForwardedHeaders();
+app.UseCorrelationId();
+app.UseGatewayCompression();
 app.UseSecurityHeaders();
 app.UseCors();
 app.UseRateLimiter();

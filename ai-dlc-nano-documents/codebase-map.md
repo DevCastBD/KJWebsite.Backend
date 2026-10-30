@@ -39,7 +39,7 @@
 - Auth, CTA, and Content errors use the shared RFC 9457 factory, preserving the legacy nested `error` object. Bodies and list queries validate with FluentValidation (`docs/VALIDATION.md`); new endpoints add a validator + `.WithValidation<T>()`.
 - Content resolves `?lang=`, then `Accept-Language`, then `en`; public list responses echo the result as `lang`.
 - Auth, Content and CTA require PostgreSQL `ConnectionStrings:AuthDb` / `CtaDb` / `ContentDb`; each calls `Database.Migrate()` at startup and own named schemas.
-- Gateway destinations are hard-coded localhost addresses.
+- Gateway routes/clusters/destinations come from `ReverseProxy` config per environment (`docs/GATEWAY.md`); correlation ID middleware is in BuildingBlocks (services wire it in #31).
 - Root `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props` govern the active solution; legacy snapshots are excluded.
 
 ## Long documents
