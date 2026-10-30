@@ -4,6 +4,12 @@ public static class ContentTypes
 {
     public const string Project = "project";
     public const string News = "news";
+    public const string Page = "page";
+    public const string Faq = "faq";
+    public const string TeamMember = "team-member";
+    public const string Testimonial = "testimonial";
+    public const string Partner = "partner";
+    public const string Press = "press";
 }
 
 /// <summary>
@@ -20,6 +26,10 @@ public sealed class ContentItemEntity
 
     public string Status { get; set; } = string.Empty;
     public int SortOrder { get; set; }
+
+    /// <summary>Language-independent image for the generic types (projects and news keep theirs in their extension tables).</summary>
+    public string ImageUrl { get; set; } = string.Empty;
+
     public DateTimeOffset? PublishedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
@@ -28,6 +38,10 @@ public sealed class ContentItemEntity
     public List<ContentTranslationEntity> Translations { get; set; } = [];
     public ProjectEntity? Project { get; set; }
     public NewsArticleEntity? News { get; set; }
+    public List<ContentItemTagEntity> TagLinks { get; set; } = [];
+
+    /// <summary>Items this one points at, in editor order.</summary>
+    public List<ContentRelationEntity> RelatedLinks { get; set; } = [];
 }
 
 /// <summary>One language of one item. `AttributesJson` holds the per-language, type-specific extras (project category and year, news date label and tags).</summary>

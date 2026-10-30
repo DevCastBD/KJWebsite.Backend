@@ -348,6 +348,1226 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/content/pages:
+    get:
+      tags:
+        - "Content \u2014 Page"
+      summary: "List pages (published)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060tag\u0060 filters by tag slug or by a tag name in any language. Items without a translation in \u0060lang\u0060 are left out."
+      operationId: "ListPageItems"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tag"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/pages/{slug}":
+    get:
+      tags:
+        - "Content \u2014 Page"
+      summary: "Get one of pages by slug"
+      description: "Includes the tags (named in the requested language) and the related items of any type."
+      operationId: "GetPageItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/pages:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List pages with all translations"
+      operationId: "ListAdminPageItems"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create or replace one of pages"
+      description: "Replaces (or restores) any existing item with the same slug."
+      operationId: "CreatePageItem"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/pages/{slug}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get one of pages with all translations"
+      description: "The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
+      operationId: "GetAdminPageItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Update one of pages"
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      operationId: "UpdatePageItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete one of pages"
+      description: "Soft-deletes the item (the slug stays reserved)."
+      operationId: "DeletePageItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/faqs:
+    get:
+      tags:
+        - "Content \u2014 Faq"
+      summary: "List faqs (published)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060tag\u0060 filters by tag slug or by a tag name in any language. Items without a translation in \u0060lang\u0060 are left out."
+      operationId: "ListFaqItems"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tag"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/faqs/{slug}":
+    get:
+      tags:
+        - "Content \u2014 Faq"
+      summary: "Get one of faqs by slug"
+      description: "Includes the tags (named in the requested language) and the related items of any type."
+      operationId: "GetFaqItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/faqs:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List faqs with all translations"
+      operationId: "ListAdminFaqItems"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create or replace one of faqs"
+      description: "Replaces (or restores) any existing item with the same slug."
+      operationId: "CreateFaqItem"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/faqs/{slug}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get one of faqs with all translations"
+      description: "The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
+      operationId: "GetAdminFaqItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Update one of faqs"
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      operationId: "UpdateFaqItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete one of faqs"
+      description: "Soft-deletes the item (the slug stays reserved)."
+      operationId: "DeleteFaqItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/team-members:
+    get:
+      tags:
+        - "Content \u2014 TeamMember"
+      summary: "List team-members (published)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060tag\u0060 filters by tag slug or by a tag name in any language. Items without a translation in \u0060lang\u0060 are left out."
+      operationId: "ListTeamMemberItems"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tag"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/team-members/{slug}":
+    get:
+      tags:
+        - "Content \u2014 TeamMember"
+      summary: "Get one of team-members by slug"
+      description: "Includes the tags (named in the requested language) and the related items of any type."
+      operationId: "GetTeamMemberItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/team-members:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List team-members with all translations"
+      operationId: "ListAdminTeamMemberItems"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create or replace one of team-members"
+      description: "Replaces (or restores) any existing item with the same slug."
+      operationId: "CreateTeamMemberItem"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/team-members/{slug}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get one of team-members with all translations"
+      description: "The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
+      operationId: "GetAdminTeamMemberItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Update one of team-members"
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      operationId: "UpdateTeamMemberItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete one of team-members"
+      description: "Soft-deletes the item (the slug stays reserved)."
+      operationId: "DeleteTeamMemberItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/testimonials:
+    get:
+      tags:
+        - "Content \u2014 Testimonial"
+      summary: "List testimonials (published)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060tag\u0060 filters by tag slug or by a tag name in any language. Items without a translation in \u0060lang\u0060 are left out."
+      operationId: "ListTestimonialItems"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tag"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/testimonials/{slug}":
+    get:
+      tags:
+        - "Content \u2014 Testimonial"
+      summary: "Get one of testimonials by slug"
+      description: "Includes the tags (named in the requested language) and the related items of any type."
+      operationId: "GetTestimonialItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/testimonials:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List testimonials with all translations"
+      operationId: "ListAdminTestimonialItems"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create or replace one of testimonials"
+      description: "Replaces (or restores) any existing item with the same slug."
+      operationId: "CreateTestimonialItem"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/testimonials/{slug}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get one of testimonials with all translations"
+      description: "The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
+      operationId: "GetAdminTestimonialItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Update one of testimonials"
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      operationId: "UpdateTestimonialItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete one of testimonials"
+      description: "Soft-deletes the item (the slug stays reserved)."
+      operationId: "DeleteTestimonialItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/partners:
+    get:
+      tags:
+        - "Content \u2014 Partner"
+      summary: "List partners (published)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060tag\u0060 filters by tag slug or by a tag name in any language. Items without a translation in \u0060lang\u0060 are left out."
+      operationId: "ListPartnerItems"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tag"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/partners/{slug}":
+    get:
+      tags:
+        - "Content \u2014 Partner"
+      summary: "Get one of partners by slug"
+      description: "Includes the tags (named in the requested language) and the related items of any type."
+      operationId: "GetPartnerItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/partners:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List partners with all translations"
+      operationId: "ListAdminPartnerItems"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create or replace one of partners"
+      description: "Replaces (or restores) any existing item with the same slug."
+      operationId: "CreatePartnerItem"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/partners/{slug}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get one of partners with all translations"
+      description: "The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
+      operationId: "GetAdminPartnerItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Update one of partners"
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      operationId: "UpdatePartnerItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete one of partners"
+      description: "Soft-deletes the item (the slug stays reserved)."
+      operationId: "DeletePartnerItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/press:
+    get:
+      tags:
+        - "Content \u2014 Press"
+      summary: "List press (published)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060tag\u0060 filters by tag slug or by a tag name in any language. Items without a translation in \u0060lang\u0060 are left out."
+      operationId: "ListPressItems"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tag"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/press/{slug}":
+    get:
+      tags:
+        - "Content \u2014 Press"
+      summary: "Get one of press by slug"
+      description: "Includes the tags (named in the requested language) and the related items of any type."
+      operationId: "GetPressItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/press:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List press with all translations"
+      operationId: "ListAdminPressItems"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create or replace one of press"
+      description: "Replaces (or restores) any existing item with the same slug."
+      operationId: "CreatePressItem"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/press/{slug}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get one of press with all translations"
+      description: "The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
+      operationId: "GetAdminPressItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Update one of press"
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      operationId: "UpdatePressItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete one of press"
+      description: "Soft-deletes the item (the slug stays reserved)."
+      operationId: "DeletePressItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/items/{type}/{slug}":
+    get:
+      tags:
+        - "Content"
+      summary: "Get any content item in the generic shape"
+      description: "Works for all eight types (project, news, page, faq, team-member, testimonial, partner, press), with tags and related items."
+      operationId: "GetContentItem"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/tags":
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Replace the tags of any content item"
+      description: "Tags are given by slug or by a name in any language; unknown tags are rejected."
+      operationId: "SetItemTags"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetTagsRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/related":
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Replace the related items of any content item"
+      description: "Related items may be of any type; order is kept."
+      operationId: "SetItemRelated"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetRelatedRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/rename":
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Change the slug of any content item"
+      description: "Creates a 301 redirect from the old public path (\u0060/{segment}/{old}\u0060) to the new one in the same transaction."
+      operationId: "RenameItem"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenameRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/tags:
+    get:
+      tags:
+        - "Content"
+      summary: "List tags, named in the requested language"
+      operationId: "ListTags"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/tags:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List tags with all names"
+      operationId: "ListAdminTags"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create a tag"
+      description: "One tag carries a name per language. A name that matches an existing tag after Bengali-aware normalisation is a 409."
+      operationId: "CreateTag"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/tags/{slug}":
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Replace the names of a tag"
+      operationId: "UpdateTag"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TagUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete a tag and detach it from every item"
+      operationId: "DeleteTag"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/redirects/resolve:
+    get:
+      tags:
+        - "Content"
+      summary: "Resolve an old path (legacy \u0060.html\u0060/\u0060.php\u0060, renamed slug) to its replacement"
+      description: "Returns \u0060{ from, to, statusCode }\u0060 or 404. Paths are matched case-insensitively, without query string or trailing slash."
+      operationId: "ResolveRedirect"
+      parameters:
+        -
+          name: "path"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/redirects:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List redirects"
+      operationId: "ListRedirects"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Add or replace a redirect (legacy URLs, language-prefix moves)"
+      description: "Existing redirects that point at \u0060from\u0060 are retargeted, and chains are flattened; a loop is rejected."
+      operationId: "CreateRedirect"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RedirectCreateRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/redirects/{id}":
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete a redirect"
+      operationId: "DeleteRedirect"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/cta/submissions:
     post:
       tags:
@@ -564,11 +1784,96 @@ tags:
   -
     name: "Admin \u2014 Content"
   -
+    name: "Content \u2014 Page"
+  -
+    name: "Content \u2014 Faq"
+  -
+    name: "Content \u2014 TeamMember"
+  -
+    name: "Content \u2014 Testimonial"
+  -
+    name: "Content \u2014 Partner"
+  -
+    name: "Content \u2014 Press"
+  -
     name: "CTA"
   -
     name: "Auth"
 components:
   schemas:
+    ContentTranslationInput:
+      required:
+        - "lang"
+        - "title"
+        - "summary"
+        - "body"
+        - "attributes"
+      type: "object"
+      properties:
+        lang:
+          type: "string"
+        title:
+          type: "string"
+        summary:
+          type:
+            - "null"
+            - "string"
+        body:
+          type:
+            - "null"
+            - "string"
+        attributes:
+          type:
+            - "null"
+            - "object"
+    ContentUpsertRequest:
+      required:
+        - "slug"
+        - "status"
+        - "imageUrl"
+        - "publishedAt"
+        - "sortOrder"
+        - "translations"
+        - "tags"
+        - "related"
+      type: "object"
+      properties:
+        slug:
+          type: "string"
+        status:
+          type: "string"
+        imageUrl:
+          type:
+            - "null"
+            - "string"
+        publishedAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        sortOrder:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        translations:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ContentTranslationInput"
+        tags:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        related:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/RelatedRef"
     NewsTranslationInput:
       required:
         - "lang"
@@ -695,6 +2000,71 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/ProjectTranslationInput"
+    RedirectCreateRequest:
+      required:
+        - "from"
+        - "to"
+        - "statusCode"
+      type: "object"
+      properties:
+        from:
+          type: "string"
+        to:
+          type: "string"
+        statusCode:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+    RelatedRef:
+      required:
+        - "type"
+        - "slug"
+      type: "object"
+      properties:
+        type:
+          type: "string"
+        slug:
+          type: "string"
+    RenameRequest:
+      required:
+        - "newSlug"
+      type: "object"
+      properties:
+        newSlug:
+          type: "string"
+    SetRelatedRequest:
+      required:
+        - "related"
+      type: "object"
+      properties:
+        related:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/RelatedRef"
+    SetTagsRequest:
+      required:
+        - "tags"
+      type: "object"
+      properties:
+        tags:
+          type: "array"
+          items:
+            type: "string"
+    TagUpsertRequest:
+      required:
+        - "slug"
+        - "names"
+      type: "object"
+      properties:
+        slug:
+          type: "string"
+        names:
+          type: "object"
+          additionalProperties:
+            type: "string"
     CtaSubmissionRequest:
       required:
         - "formName"

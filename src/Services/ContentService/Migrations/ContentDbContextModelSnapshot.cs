@@ -36,6 +36,13 @@ namespace ContentService.Migrations
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasDefaultValue("");
+
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -69,6 +76,43 @@ namespace ContentService.Migrations
                     b.HasIndex("Type", "SortOrder");
 
                     b.ToTable("content_items", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.ContentItemTagEntity", b =>
+                {
+                    b.Property<string>("ContentItemId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("TagId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("ContentItemId", "TagId");
+
+                    b.HasIndex("TagId");
+
+                    b.ToTable("content_item_tags", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.ContentRelationEntity", b =>
+                {
+                    b.Property<string>("FromItemId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ToItemId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.HasKey("FromItemId", "ToItemId");
+
+                    b.HasIndex("ToItemId");
+
+                    b.ToTable("content_relations", "content");
                 });
 
             modelBuilder.Entity("ContentService.Data.Entities.ContentTranslationEntity", b =>
@@ -137,6 +181,127 @@ namespace ContentService.Migrations
                     b.ToTable("projects", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.RedirectEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FromPath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ToPath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromPath")
+                        .IsUnique();
+
+                    b.HasIndex("ToPath");
+
+                    b.ToTable("redirects", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.TagEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("tags", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.TagNameEntity", b =>
+                {
+                    b.Property<string>("TagId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Lang")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("TagId", "Lang");
+
+                    b.HasIndex("Lang", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("tag_names", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.ContentItemTagEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithMany("TagLinks")
+                        .HasForeignKey("ContentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ContentService.Data.Entities.TagEntity", "Tag")
+                        .WithMany()
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.ContentRelationEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithMany("RelatedLinks")
+                        .HasForeignKey("FromItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", "To")
+                        .WithMany()
+                        .HasForeignKey("ToItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("To");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.ContentTranslationEntity", b =>
                 {
                     b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
@@ -164,13 +329,31 @@ namespace ContentService.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.TagNameEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.TagEntity", null)
+                        .WithMany("Names")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.ContentItemEntity", b =>
                 {
                     b.Navigation("News");
 
                     b.Navigation("Project");
 
+                    b.Navigation("RelatedLinks");
+
+                    b.Navigation("TagLinks");
+
                     b.Navigation("Translations");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.TagEntity", b =>
+                {
+                    b.Navigation("Names");
                 });
 #pragma warning restore 612, 618
         }
