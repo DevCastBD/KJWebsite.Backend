@@ -182,3 +182,5 @@
 - 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence CREATED @b917190: from #25 (closes #18)
 - 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence PHASE PLAN→CONSTRUCT @b917190: plan approved with #22 run (user confirmed)
 - 2026-10-30T16:58Z [claude] 025-issue-25-content-persistence DONE @b917190: content persisted + seeded; 94 tests green incl. PG
+- 2026-10-30T18:00Z [claude] 026-issue-28-rate-limiting CREATED @6608350: batch run #28-34,36,37 (33 before 32); #107/#35/#116 skipped by user
+- 2026-10-30T18:30Z [claude] 026-issue-28-rate-limiting DONE @6608350: gateway per-IP limits, 429 problem+json, forwarded headers; 102 tests green

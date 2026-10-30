@@ -49,7 +49,7 @@
 ## Gotchas
 - Endpoints are deny-by-default: declare `.AllowAnonymous()` or `.RequirePermission(Permissions.X)` (BuildingBlocks `Security/`); a test audits every endpoint. Permissions/roles live in `KjRoles.Seed`.
 - Embedded seed files named `*.en.json`/`*.bn.json` need `WithCulture="false"` or MSBuild treats `.en`/`.bn` as a culture and builds satellite assemblies.
-- Not production-safe yet: no rate limiting, no email delivery (#32), refresh token in JSON body (cookie pending).
+- Gateway rate limits per IP (`docs/RATE_LIMITING.md`); set `ForwardedHeaders:*` before going public. Not production-safe yet: no email delivery (#32), refresh token in JSON body (cookie pending).
 - No CI, Dependabot or Docker at this stage (plan v2); run build/format/test/OpenAPI --verify locally. Local .NET 10 SDK may be at ~/.dotnet10 (system SDK can be older).
 - Npgsql `timestamp with time zone` requires UTC; normalize incoming offset timestamps before storing.
 - Never compare DateTimeOffset inside an EF LINQ predicate: SQLite cannot translate it (see RefreshTokenTests).

@@ -10,6 +10,7 @@ var authServiceUrl = builder.Configuration["Services:Auth:Url"] ?? "http://local
 
 builder.Services.Configure<ApiGateway.CorsOptions>(builder.Configuration.GetSection(ApiGateway.CorsOptions.SectionName));
 builder.Services.AddCors();
+builder.Services.AddGatewayRateLimiting(builder.Configuration);
 builder.Services.AddSingleton<ICorsPolicyProvider, OriginCorsPolicyProvider>();
 builder.Services.AddOpenApi(options =>
 {
@@ -60,8 +61,10 @@ var app = builder.Build();
 // Resolve eagerly so an invalid origin in configuration fails startup, not the first request.
 _ = app.Services.GetRequiredService<ICorsPolicyProvider>();
 
+app.UseForwardedHeaders();
 app.UseSecurityHeaders();
 app.UseCors();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
