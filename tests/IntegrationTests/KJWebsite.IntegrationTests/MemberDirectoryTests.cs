@@ -144,17 +144,6 @@ public sealed class MemberDirectoryTests : IDisposable
     }
 
     [Fact]
-    public async Task ChaptersAreAcceptedButNotYetModelled()
-    {
-        await Seed(Member("c", name: true, expertise: false, photo: false));
-
-        var page = await Json(await _client.GetAsync($"{Directory}?chapter=Dhaka"));
-
-        page.GetProperty("chapters").GetArrayLength().Should().Be(0);
-        page.GetProperty("items").GetArrayLength().Should().Be(1);
-    }
-
-    [Fact]
     public async Task StaffSearchHasNoContactDetailsUntilOneMemberIsOpened()
     {
         await Seed(Member("s1", name: false, expertise: false, photo: false), Member("s2", name: false, expertise: false, photo: false));

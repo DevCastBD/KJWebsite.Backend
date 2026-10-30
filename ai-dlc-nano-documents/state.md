@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 4 run: #49-#54 done; next #55; #109, #110 skipped by user)
+- Active work item: none  (milestone 4 run: #49-#55 done; next #56 is blocked by decision #109; then #57, #58; #109, #110 skipped by user)
 - Phase: —
-- Branch: Feature/issue-54-member-directory
+- Branch: Feature/issue-55-committees-org-chart
 - Base SHA: —
-- Next step: start #55 (BE-048 committees, chapters, positions, terms, org chart) on a new branch stacked on Feature/issue-54-member-directory. Then #56 (needs #109), #57, #58. Push/PRs only on request
+- Next step: #56 (BE-049 dues) needs decision #109 (dues? member types?) - ask user whether to skip it; then #57 (BE-050 lifecycle), #58 (BE-052 retention) stacked on Feature/issue-55-committees-org-chart. Push/PRs only on request
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

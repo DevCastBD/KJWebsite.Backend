@@ -37,7 +37,7 @@ public static class DirectoryEndpoints
     /// <summary>Photos are published only once a scan has marked them clean (the media pipeline, #41, sets it).</summary>
     public const string CleanScan = "clean";
 
-    public static IQueryable<PublicRow> PublicQuery(MembershipDbContext db, string? q)
+    public static IQueryable<PublicRow> PublicQuery(MembershipDbContext db, string? q, string? chapter = null, DateOnly? today = null)
     {
         var members = db.Members.AsNoTracking()
             .Where(m => m.Status == "active" && (m.ConsentName || m.ConsentPhotograph || m.ConsentExpertise))
@@ -49,6 +49,14 @@ public static class DirectoryEndpoints
             members = members.Where(m =>
                 (m.ConsentName && ((m.FirstName + " " + m.LastName).ToLower().Contains(q) || (m.NameBn != null && m.NameBn.Contains(q))))
                 || (m.ConsentExpertise && m.Expertise != null && m.Expertise.ToLower().Contains(q)));
+        }
+
+        if (!string.IsNullOrEmpty(chapter))
+        {
+            // Chapter membership is as public as the org chart: it counts only for members who agreed to be named.
+            var on = today ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            members = members.Where(m => m.ConsentName && db.CommitteeMembers.Any(t => t.MemberId == m.Id && t.StartsOn <= on && (t.EndsOn == null || t.EndsOn >= on)
+                && db.Committees.Any(c => c.Id == t.CommitteeId && c.Kind == "chapter" && c.ArchivedAt == null && c.NameEn == chapter)));
         }
 
         // Ordered by the opaque id: ordering by a name or date would reveal how members rank on fields they did not publish.
@@ -70,7 +78,7 @@ public static class DirectoryEndpoints
 
     public static void MapDirectory(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/v1/members/directory", async (HttpContext context, MembershipDbContext db, IOptions<MembershipOptions> options, string? q, string? chapter, int? page) =>
+        app.MapGet("/api/v1/members/directory", async (HttpContext context, MembershipDbContext db, IOptions<MembershipOptions> options, TimeProvider clock, string? q, string? chapter, int? page) =>
         {
             var number = page ?? 1;
             if (number is < 1 or > MaxPage)
@@ -80,7 +88,7 @@ public static class DirectoryEndpoints
 
             // Read live on every request and never cached: withdrawing consent must show on the very next call.
             context.Response.Headers.CacheControl = "no-store";
-            var query = PublicQuery(db, CleanQuery(q));
+            var query = PublicQuery(db, CleanQuery(q), string.IsNullOrWhiteSpace(chapter) ? null : chapter.Trim(), DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime));
             var total = await query.CountAsync();
             var rows = await query.Skip((number - 1) * PageSize).Take(PageSize).ToListAsync();
             var baseUrl = options.Value.PublicApiBaseUrl.TrimEnd('/');
@@ -90,12 +98,12 @@ public static class DirectoryEndpoints
                 string.IsNullOrWhiteSpace(r.NameBn) ? null : r.NameBn,
                 r.Photo ? $"{baseUrl}/api/v1/members/directory/{r.Id}/photo" : null,
                 SplitExpertise(r.Expertise))).ToList();
-            // `chapter` is accepted for the site's sake; chapters arrive with committees (#55), so there is none to filter by or list yet.
-            return Results.Ok(new PublicPage(items, total, PageSize, []));
+            var chapters = await db.Committees.AsNoTracking().Where(c => c.Kind == "chapter" && c.ArchivedAt == null).Select(c => c.NameEn).OrderBy(n => n).ToListAsync();
+            return Results.Ok(new PublicPage(items, total, PageSize, chapters));
         })
         .WithName("SearchMemberDirectory")
         .WithSummary("Public member directory")
-        .WithDescription("Only members who opted in appear, each with only the fields they approved (name, photo, expertise). Contact details are never offered. 24 per page, page 1-50, `q` matches only published fields. Never cached; rate limited at the gateway.")
+        .WithDescription("Only members who opted in appear. `chapter` filters to current members of a chapter committee (by its English name) who agreed to be named; `chapters` lists the chapters, each with only the fields they approved (name, photo, expertise). Contact details are never offered. 24 per page, page 1-50, `q` matches only published fields. Never cached; rate limited at the gateway.")
         .WithTags("Directory")
         .AllowAnonymous();
 

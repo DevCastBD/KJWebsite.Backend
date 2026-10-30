@@ -14,6 +14,8 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<MemberConsentEventEntity> ConsentEvents => Set<MemberConsentEventEntity>();
     public DbSet<ProfileChangeEntity> ProfileChanges => Set<ProfileChangeEntity>();
     public DbSet<DeletionRequestEntity> DeletionRequests => Set<DeletionRequestEntity>();
+    public DbSet<CommitteeEntity> Committees => Set<CommitteeEntity>();
+    public DbSet<CommitteeMemberEntity> CommitteeMembers => Set<CommitteeMemberEntity>();
     public DbSet<MemberEntity> Members => Set<MemberEntity>();
     public DbSet<NotificationOutboxEntity> NotificationOutbox => Set<NotificationOutboxEntity>();
 
@@ -191,6 +193,34 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.Id).HasMaxLength(64);
             entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
             entity.Property(x => x.Reference).HasMaxLength(32).IsRequired();
+            entity.HasIndex(x => x.MemberId);
+        });
+
+        modelBuilder.Entity<CommitteeEntity>(entity =>
+        {
+            entity.ToTable("committees");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Slug).HasMaxLength(96).IsRequired();
+            entity.Property(x => x.Kind).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.NameEn).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.NameBn).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.ParentId).HasMaxLength(64);
+            entity.HasIndex(x => x.Slug).IsUnique();
+            entity.HasIndex(x => x.ParentId);
+        });
+
+        modelBuilder.Entity<CommitteeMemberEntity>(entity =>
+        {
+            entity.ToTable("committee_members");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.CommitteeId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.PositionKey).HasMaxLength(48).IsRequired();
+            entity.Property(x => x.PositionEn).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.PositionBn).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => x.CommitteeId);
             entity.HasIndex(x => x.MemberId);
         });
 

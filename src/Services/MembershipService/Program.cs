@@ -4,6 +4,7 @@ using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Idempotency;
 using KJWebsite.BuildingBlocks.Security;
+using MembershipService.Committees;
 using MembershipService.Contracts;
 using MembershipService.Data;
 using MembershipService.Data.Entities;
@@ -69,6 +70,8 @@ builder.Services.AddKjAuditing("membership", audit => audit
         nameof(MemberEntity.BloodGroupProtected), nameof(MemberEntity.PhotoKey))
     .Audit<ProfileChangeEntity>(nameof(ProfileChangeEntity.ValueProtected))
     .Audit<DeletionRequestEntity>()
+    .Audit<CommitteeEntity>()
+    .Audit<CommitteeMemberEntity>()
     .Audit<ApplicationNoteEntity>(nameof(ApplicationNoteEntity.Text)));
 builder.Services.AddSingleton(TimeProvider.System);
 
@@ -258,6 +261,8 @@ app.MapReviewEndpoints();
 app.MapProfileModeration();
 app.MapSelfEndpoints();
 app.MapDirectory();
+app.MapCommitteeAdmin();
+app.MapPublicCommittees();
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 
 app.MapPut("/api/v1/membership/applications/{id}/attachments/{kind}", async (HttpContext context, string id, string kind, MembershipDbContext db, IAttachmentStore store) =>

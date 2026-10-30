@@ -221,3 +221,6 @@
 - 2026-10-30T20:49Z [claude] 049-issue-54-member-directory CREATED @9ca355c: stacked on #53 branch; plan awaiting approval
 - 2026-10-30T20:52Z [claude] 049-issue-54-member-directory PHASE PLAN→CONSTRUCT @9ca355c: plan approved (chapters deferred, photos need clean scan, staff-only internal)
 - 2026-10-30T20:52Z [claude] 049-issue-54-member-directory DONE @9ca355c: public+staff directory, query-level consent; 319 tests green incl PG; not pushed
+- 2026-10-30T20:53Z [claude] 050-issue-55-committees-org-chart CREATED @d104994: stacked on #54 branch; plan awaiting approval
+- 2026-10-30T20:58Z [claude] 050-issue-55-committees-org-chart PHASE PLAN→CONSTRUCT @d104994: plan approved (chair derived, consent-gated chart, directory chapters)
+- 2026-10-30T20:58Z [claude] 050-issue-55-committees-org-chart DONE @d104994: committees, terms, org chart, chapters; 331 tests green incl PG; not pushed
