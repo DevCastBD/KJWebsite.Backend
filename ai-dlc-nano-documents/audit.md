@@ -189,3 +189,5 @@
 - 2026-10-30T19:03Z [claude] 035-issue-48-idempotency-caching-etag DONE @ac60cb4: committed locally; 106+9 tests green, openapi verified; not pushed
 - 2026-10-30T19:03Z [claude] 036-issue-38-content-model CREATED @ac60cb4: #38 stacked on #48 branch (user confirmed)
 - 2026-10-30T19:11Z [claude] 036-issue-38-content-model DONE @ac60cb4: 8 types, tags, related, redirects; 138 tests green; not pushed
+- 2026-10-30T19:12Z [claude] 037-issue-42-rbac CREATED @fcf55b7: #42 stacked on #38 branch; plan awaiting approval
+- 2026-10-30T19:16Z [claude] 037-issue-42-rbac DONE @fcf55b7: role mgmt API + guards; 156 tests green; audit persistence deferred to #43; not pushed
