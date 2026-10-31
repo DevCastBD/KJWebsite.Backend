@@ -242,3 +242,4 @@
 - 2026-10-31T05:43Z [claude] 054-issue-60-payment-gateways DECISION @253ee9d: adapters vs fakes; optional gateway field; offline fallback 201 pending (user)
 - 2026-10-31T05:43Z [claude] 054-issue-60-payment-gateways BRANCH @253ee9d: Feature/issue-60-payment-gateways stacked on Feature/issue-59-donation-intake (user confirmed)
 - 2026-10-31T05:43Z [claude] 054-issue-60-payment-gateways PHASE PLAN→CONSTRUCT @253ee9d: plan approved (user)
+- 2026-10-31T05:51Z [claude] 054-issue-60-payment-gateways DONE @668acd0: gateway abstraction + 3 adapters vs fakes; 437+46 tests green incl PG; committed locally, not pushed
