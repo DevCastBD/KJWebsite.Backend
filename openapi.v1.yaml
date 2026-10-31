@@ -3478,7 +3478,7 @@ paths:
       tags:
         - "Finance"
       summary: "Post a reversing entry for a confirmed donation"
-      description: "The original is never changed: a new entry with negated amount and fee is appended and the original reads as \u0060refunded\u0060. A donation can be reversed once. Requires \u0060finance.donation.reverse\u0060."
+      description: "The original is never changed: a new entry with negated amount and fee is appended, the donation\u0027s ledger posting is reversed in the same commit, and the original reads as \u0060refunded\u0060. A donation can be reversed once, and not when the month the reversal would land in is closed (\u0060PERIOD_CLOSED\u0060). Requires \u0060finance.donation.reverse\u0060."
       operationId: "ReverseFinanceDonation"
       parameters:
         -
@@ -3521,6 +3521,197 @@ paths:
               - "integer"
               - "string"
             format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/ledger:
+    get:
+      tags:
+        - "Ledger"
+      summary: "Ledger lines, newest first"
+      description: "One row per posting line. Filters: from/to (posting dates, inclusive), account (code). \u0060reversalOf\u0060 / \u0060reversedBy\u0060 link a posting to its correction. Read-only: there is no way to change a line."
+      operationId: "ListLedgerEntries"
+      parameters:
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "account"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/ledger/postings/{id}":
+    get:
+      tags:
+        - "Ledger"
+      summary: "One posting with all its lines"
+      operationId: "GetLedgerPosting"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/ledger/postings:
+    post:
+      tags:
+        - "Ledger"
+      summary: "Post a manual adjustment"
+      description: "A balanced posting by hand: at least two lines, each with an account code, exactly one of \u0060debit\u0060 or \u0060credit\u0060 (decimal strings) and a currency; debits must equal credits in every currency. A \u0060reason\u0060 is required. The date defaults to today and may not be in the future or in a closed period. Requires \u0060finance.ledger.adjust\u0060."
+      operationId: "PostLedgerAdjustment"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdjustmentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/ledger/postings/{id}/reversal":
+    post:
+      tags:
+        - "Ledger"
+      summary: "Reverse a posting"
+      description: "Appends a posting that mirrors the original with debits and credits swapped, dated today and linked to it. The original is untouched. A posting can be reversed once; a reversal cannot be reversed. Requires \u0060finance.ledger.adjust\u0060."
+      operationId: "ReverseLedgerPosting"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostingReversalRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/ledger/trial-balance:
+    get:
+      tags:
+        - "Ledger"
+      summary: "Trial balance per currency"
+      description: "Debits and credits per account up to \u0060asOf\u0060 (default today), one section per currency, never converted. \u0060balanced\u0060 is true when total debits equal total credits, which every posting guarantees."
+      operationId: "GetTrialBalance"
+      parameters:
+        -
+          name: "asOf"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "currency"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/ledger/accounts:
+    get:
+      tags:
+        - "Ledger"
+      summary: "The chart of accounts"
+      operationId: "ListLedgerAccounts"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Ledger"
+      summary: "Add an account to the chart"
+      description: "Codes are 1-16 letters, digits, dots or dashes and unique; the type (asset, liability, equity, income, expense) cannot be changed later. Requires \u0060finance.ledger.adjust\u0060."
+      operationId: "CreateLedgerAccount"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccountRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/ledger/accounts/{id}/archive":
+    post:
+      tags:
+        - "Ledger"
+      summary: "Archive an account: no new postings, history kept"
+      description: "Seeded (system) accounts cannot be archived. Requires \u0060finance.ledger.adjust\u0060."
+      operationId: "ArchiveLedgerAccount"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/ledger/periods:
+    get:
+      tags:
+        - "Ledger"
+      summary: "Months that have postings or are closed"
+      operationId: "ListLedgerPeriods"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/ledger/periods/{period}/close":
+    post:
+      tags:
+        - "Ledger"
+      summary: "Close a month"
+      description: "A closed month rejects new postings and reversals dated in it, and there is no reopen in this version. Only a past or current month can be closed. Requires \u0060finance.period.close\u0060."
+      operationId: "CloseLedgerPeriod"
+      parameters:
+        -
+          name: "period"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
       responses:
         "200":
           description: "OK"
@@ -4161,6 +4352,8 @@ tags:
     name: "Donations"
   -
     name: "Finance"
+  -
+    name: "Ledger"
   -
     name: "Auth"
   -
@@ -4897,6 +5090,75 @@ components:
             - "null"
             - "string"
           format: "date-time"
+    AccountRequest:
+      required:
+        - "code"
+        - "name"
+        - "type"
+      type: "object"
+      properties:
+        code:
+          type:
+            - "null"
+            - "string"
+        name:
+          type:
+            - "null"
+            - "string"
+        type:
+          type:
+            - "null"
+            - "string"
+    AdjustmentLineRequest:
+      required:
+        - "account"
+        - "debit"
+        - "credit"
+        - "currency"
+      type: "object"
+      properties:
+        account:
+          type:
+            - "null"
+            - "string"
+        debit:
+          type:
+            - "null"
+            - "string"
+        credit:
+          type:
+            - "null"
+            - "string"
+        currency:
+          type:
+            - "null"
+            - "string"
+    AdjustmentRequest:
+      required:
+        - "postedOn"
+        - "memo"
+        - "reason"
+        - "lines"
+      type: "object"
+      properties:
+        postedOn:
+          type:
+            - "null"
+            - "string"
+        memo:
+          type:
+            - "null"
+            - "string"
+        reason:
+          type:
+            - "null"
+            - "string"
+        lines:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/AdjustmentLineRequest"
     DesignationRequest:
       required:
         - "type"
@@ -4980,6 +5242,15 @@ components:
             - "null"
             - "string"
         phone:
+          type:
+            - "null"
+            - "string"
+    PostingReversalRequest:
+      required:
+        - "reason"
+      type: "object"
+      properties:
+        reason:
           type:
             - "null"
             - "string"

@@ -1,6 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
-- [2026-10-31] tests — sporadic ~1ms failures in full runs (AuthorizationTests former-secret, Finance totals), pass alone (found: 054-issue-60-payment-gateways)
+- [2026-10-31] tests/Membership* — NotContain("82"/"017") assertions match timestamp digits, rare flakes (found: 055-issue-69-ledger)
+- [2026-10-31] finance/ledger — align seeded chart + fiscal year with auditor after #112; reopen + four-eyes in #72 (found: 055-issue-69-ledger)
 - [2026-10-31] finance/gateways — run SSLCommerz/bKash/Nagad adapters against live sandboxes once credentials exist (found: 054-issue-60-payment-gateways)
 - [2026-10-31] tests/PrivacyTests — ApplicationsPastTheirWindowArePurged failed once in a full run, passes alone (found: 053-issue-59-donation-intake)
 - [2026-10-31] finance/donations — FE adaptDonation drops rows lacking method/donorId; filled by #60/#63/#65 (found: 053-issue-59-donation-intake)

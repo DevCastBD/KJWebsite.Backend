@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(2);
+                db.Database.GetAppliedMigrations().Should().HaveCount(3);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/donations", new
@@ -73,6 +73,8 @@ public sealed class FinancePostgresTests
                 (reader.GetString(0), reader.GetString(1)).Should().Be(("1250.50", "50.75"));
             }
 
+            await LedgerRulesHoldAsync(factory, connectionString);
+
             // The sign rule: gifts are positive, reversals negative.
             await CheckViolation(connectionString, InsertDonation("don_bad1", "KJD-BAD0000001", "one_time", "-5.00", "0.00"));
             await CheckViolation(connectionString, InsertDonation("don_bad2", "KJD-BAD0000002", "one_time", "0.00", "0.00"));
@@ -82,8 +84,105 @@ public sealed class FinancePostgresTests
         finally
         {
             NpgsqlConnection.ClearAllPools();
-            await TestPostgres.DropDatabaseAsync(databaseName);
+            try
+            {
+                await TestPostgres.DropDatabaseAsync(databaseName);
+            }
+            catch (PostgresException)
+            {
+                // Cleanup must not hide a real failure from the test body; a leftover throwaway database is harmless.
+            }
         }
+    }
+
+    private static async Task LedgerRulesHoldAsync(PostgresFinanceApiFactory factory, string connectionString)
+    {
+        // The chart was seeded at startup. Post one real balanced posting through the service.
+        long postingId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var ledger = scope.ServiceProvider.GetRequiredService<FinanceService.Ledger.LedgerService>();
+            var posted = await ledger.PostAsync(new FinanceService.Ledger.PostingDraft(ledger.Today, "pg check", "adjustment", null,
+                [FinanceService.Ledger.LedgerLine.Debit("1010", KJWebsite.BuildingBlocks.Finance.Money.Of(10m, "BDT")), FinanceService.Ledger.LedgerLine.Credit("4900", KJWebsite.BuildingBlocks.Finance.Money.Of(10m, "BDT"))], "pg"), "tester");
+            posted.IsSuccess.Should().BeTrue();
+            postingId = posted.Value!.Posting.Id;
+        }
+
+        await Refused(connectionString, "UPDATE finance.postings SET \"Memo\" = 'x'");
+        await Refused(connectionString, "DELETE FROM finance.postings");
+        await Refused(connectionString, "UPDATE finance.ledger_entries SET \"Debit\" = 1 WHERE \"Debit\" > 0");
+        await Refused(connectionString, "DELETE FROM finance.ledger_entries");
+        await Refused(connectionString, "DELETE FROM finance.accounts WHERE \"Code\" = '1010'");
+        await Refused(connectionString, "UPDATE finance.accounts SET \"Code\" = '9999' WHERE \"Code\" = '1010'");
+        await Refused(connectionString, "UPDATE finance.accounts SET \"Type\" = 'expense' WHERE \"Code\" = '1010'");
+        await Exec(connectionString, "UPDATE finance.accounts SET \"Name\" = 'Cash in hand' WHERE \"Code\" = '1010'");
+
+        // One side per line, never both and never neither.
+        await CheckViolation(connectionString, $"INSERT INTO finance.ledger_entries (\"PostingId\", \"AccountId\", \"Debit\", \"Credit\", \"Currency\") SELECT {postingId}, \"Id\", 5, 5, 'BDT' FROM finance.accounts LIMIT 1");
+        await CheckViolation(connectionString, $"INSERT INTO finance.ledger_entries (\"PostingId\", \"AccountId\", \"Debit\", \"Credit\", \"Currency\") SELECT {postingId}, \"Id\", 0, 0, 'BDT' FROM finance.accounts LIMIT 1");
+
+        // A posting must have two or more lines that balance per currency, checked when the transaction commits.
+        const string header = "INSERT INTO finance.postings (\"PostedOn\", \"PeriodKey\", \"FiscalYear\", \"Memo\", \"SourceType\", \"CreatedAt\") VALUES (current_date, '{0}', '2026-27', 'raw', 'adjustment', now()) RETURNING \"Id\"";
+        const string line = "INSERT INTO finance.ledger_entries (\"PostingId\", \"AccountId\", \"Debit\", \"Credit\", \"Currency\") VALUES ({0}, (SELECT \"Id\" FROM finance.accounts WHERE \"Code\" = '{1}'), {2}, {3}, '{4}')";
+        var period = DateTime.UtcNow.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
+        await CheckViolationInTransaction(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, header, period), []);
+        await CheckViolationInTransaction(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, header, period), [string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "1010", 10, 0, "BDT")]);
+        await CheckViolationInTransaction(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, header, period),
+            [string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "1010", 10, 0, "BDT"), string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "4900", 0, 9, "BDT")]);
+        await CheckViolationInTransaction(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, header, period),
+            [string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "1010", 10, 0, "BDT"), string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "4900", 0, 10, "USD")]);
+        await CommitInTransaction(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, header, period),
+            [string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "1010", 10, 0, "BDT"), string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "4900", 0, 10, "BDT")]);
+
+        // A closed period takes no postings (and the close itself cannot be undone).
+        await Exec(connectionString, $"INSERT INTO finance.period_closes (\"PeriodKey\", \"ClosedAt\") VALUES ('{period}', now())");
+        await CheckViolationInTransaction(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, header, period),
+            [string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "1010", 10, 0, "BDT"), string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "4900", 0, 10, "BDT")]);
+        await Refused(connectionString, "DELETE FROM finance.period_closes");
+        await Refused(connectionString, "UPDATE finance.period_closes SET \"ClosedBy\" = 'x'");
+    }
+
+    private static async Task<(NpgsqlConnection Connection, NpgsqlTransaction Transaction, long Id)> BeginAsync(string connectionString, string header)
+    {
+        var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        var transaction = await connection.BeginTransactionAsync();
+        await using var command = new NpgsqlCommand(header, connection, transaction);
+        var id = (long)(await command.ExecuteScalarAsync())!;
+        return (connection, transaction, id);
+    }
+
+    private static async Task CommitInTransaction(string connectionString, string header, string[] lines)
+    {
+        var (connection, transaction, id) = await BeginAsync(connectionString, header);
+        await using (connection)
+        await using (transaction)
+        {
+            foreach (var sql in lines)
+            {
+                await using var command = new NpgsqlCommand(sql.Replace("{id}", id.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal), connection, transaction);
+                await command.ExecuteNonQueryAsync();
+            }
+
+            await transaction.CommitAsync();
+        }
+    }
+
+    // The failure may come from a statement or, for the deferred balance rules, from the commit itself.
+    private static async Task CheckViolationInTransaction(string connectionString, string header, string[] lines)
+    {
+        PostgresException? failure = null;
+        try
+        {
+            await CommitInTransaction(connectionString, header, lines);
+        }
+        catch (PostgresException exception)
+        {
+            failure = exception;
+        }
+
+        failure.Should().NotBeNull("the database must refuse this posting");
+        failure!.SqlState.Should().Be("23514");
     }
 
     private static string InsertDonation(string id, string reference, string kind, string amount, string fee) =>

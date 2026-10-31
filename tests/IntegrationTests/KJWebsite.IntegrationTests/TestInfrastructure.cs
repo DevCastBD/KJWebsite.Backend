@@ -52,7 +52,12 @@ public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebAp
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        SqliteConnection.ClearAllPools();
+        // Only this factory's own pool: ClearAllPools() would close the connections of every other test running in parallel.
+        using (var own = new SqliteConnection($"Data Source={_dbPath}"))
+        {
+            SqliteConnection.ClearPool(own);
+        }
+
         TryDeleteFile(_dbPath);
     }
 

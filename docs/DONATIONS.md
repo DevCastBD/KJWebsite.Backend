@@ -10,7 +10,7 @@
 - **Multi-currency:** nothing is converted. Totals are one entry per currency. A USD gift to a BDT campaign stays USD; a recorded BDT-equivalent (rate and date) will be added with payment confirmation (#60/#62), not guessed here.
 
 ## Append-only
-Donations, their events and recurring plans are never updated or deleted. A state change is a new `donation_events` row (latest id wins); a correction is a new `donations` row of kind `reversal` with negated amount and fee, pointing at the reversed donation. A donation can be reversed once and only when `confirmed`; the original then reads `refunded`.
+Donations, their events and recurring plans are never updated or deleted. A state change is a new `donation_events` row (latest id wins); a correction is a new `donations` row of kind `reversal` with negated amount and fee, pointing at the reversed donation. A donation can be reversed once and only when `confirmed`; the original then reads `refunded`. Confirmation and reversal also post to the ledger (see LEDGER.md).
 Enforced three ways: `FinanceDbContext.SaveChanges` refuses edits, PostgreSQL triggers refuse `UPDATE`/`DELETE` (also on `audit_events`), and a check constraint keeps gifts positive and reversals negative.
 
 ## Anonymity

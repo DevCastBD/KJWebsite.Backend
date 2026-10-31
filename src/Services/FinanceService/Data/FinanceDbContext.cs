@@ -1,4 +1,5 @@
 using FinanceService.Data.Entities;
+using FinanceService.Ledger;
 using KJWebsite.BuildingBlocks.Auditing;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,10 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<DonationEventEntity> DonationEvents => Set<DonationEventEntity>();
     public DbSet<RecurringPlanEntity> RecurringPlans => Set<RecurringPlanEntity>();
     public DbSet<PaymentAttemptEntity> PaymentAttempts => Set<PaymentAttemptEntity>();
+    public DbSet<AccountEntity> Accounts => Set<AccountEntity>();
+    public DbSet<PostingEntity> Postings => Set<PostingEntity>();
+    public DbSet<LedgerEntryEntity> LedgerEntries => Set<LedgerEntryEntity>();
+    public DbSet<PeriodCloseEntity> PeriodCloses => Set<PeriodCloseEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -23,16 +28,46 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
-    // Financial records are append-only: a correction is a new reversing entry. PostgreSQL enforces the same with triggers (see the migration),
-    // so a bulk ExecuteUpdate or a hand-written statement is refused too.
+    // Financial records are append-only: a correction is a new reversing entry. PostgreSQL enforces the same with triggers (see the migrations),
+    // so a bulk ExecuteUpdate or a hand-written statement is refused too. Nothing may be saved that would break the ledger's rules.
     private void RefuseLedgerEdits()
     {
         ChangeTracker.DetectChanges();
         var offender = ChangeTracker.Entries().FirstOrDefault(e =>
-            e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity && e.State is EntityState.Modified or EntityState.Deleted);
+            e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity or PostingEntity or LedgerEntryEntity or PeriodCloseEntity
+            && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
             throw new InvalidOperationException($"{offender.Metadata.ClrType.Name} records are append-only: post a reversing entry instead of changing or deleting one.");
+        }
+
+        // An account is never deleted, and its code and type (which postings rely on) never change; renaming and archiving are fine.
+        foreach (var entry in ChangeTracker.Entries<AccountEntity>())
+        {
+            if (entry.State == EntityState.Deleted
+                || (entry.State == EntityState.Modified && (entry.Property(a => a.Code).IsModified || entry.Property(a => a.Type).IsModified)))
+            {
+                throw new InvalidOperationException("An account cannot be deleted, and its code and type cannot change.");
+            }
+        }
+
+        // A posting is written whole and balanced: lines may only be added together with their new posting, and must net to zero per currency.
+        var added = ChangeTracker.Entries<LedgerEntryEntity>().Where(e => e.State == EntityState.Added).Select(e => e.Entity).ToList();
+        if (added.Any(l => l.Posting is null || ChangeTracker.Entries<PostingEntity>().All(p => p.Entity != l.Posting || p.State != EntityState.Added)))
+        {
+            throw new InvalidOperationException("Ledger lines can only be added together with their own new posting.");
+        }
+
+        foreach (var posting in ChangeTracker.Entries<PostingEntity>().Where(e => e.State == EntityState.Added).Select(e => e.Entity))
+        {
+            var lines = added.Where(l => l.Posting == posting).ToList();
+            var valid = lines.Count >= 2
+                && lines.All(l => (l.Debit > 0m) != (l.Credit > 0m) && l.Debit >= 0m && l.Credit >= 0m)
+                && PostingRules.Balanced(lines.Select(l => (l.Currency, l.Debit, l.Credit)));
+            if (!valid)
+            {
+                throw new InvalidOperationException("A posting needs two or more one-sided lines whose debits equal their credits in every currency.");
+            }
         }
     }
 
@@ -100,6 +135,65 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.HasIndex(x => new { x.DonationId, x.Id });
             // Confirmation looks a payment up by the gateway's id.
             entity.HasIndex(x => new { x.Gateway, x.ProviderPaymentId });
+        });
+
+        modelBuilder.Entity<AccountEntity>(entity =>
+        {
+            entity.ToTable("accounts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.Code).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Type).HasMaxLength(16).IsRequired();
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<PostingEntity>(entity =>
+        {
+            entity.ToTable("postings");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.PeriodKey).HasMaxLength(7).IsRequired();
+            entity.Property(x => x.FiscalYear).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Memo).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.SourceType).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.SourceId).HasMaxLength(100);
+            entity.Property(x => x.Reason).HasMaxLength(500);
+            entity.Property(x => x.CreatedBy).HasMaxLength(64);
+            // One posting per cause: this is what makes a replayed webhook post exactly once.
+            entity.HasIndex(x => new { x.SourceType, x.SourceId }).IsUnique().HasFilter("\"SourceId\" IS NOT NULL");
+            // One reversal per posting.
+            entity.HasIndex(x => x.ReversesPostingId).IsUnique().HasFilter("\"ReversesPostingId\" IS NOT NULL");
+            entity.HasIndex(x => x.PostedOn);
+            entity.HasIndex(x => x.PeriodKey);
+            entity.HasMany(x => x.Entries).WithOne(x => x.Posting).HasForeignKey(x => x.PostingId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<LedgerEntryEntity>(entity =>
+        {
+            entity.ToTable("ledger_entries");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.AccountId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Debit).HasPrecision(18, 2);
+            entity.Property(x => x.Credit).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.AccountId, x.PostingId });
+            entity.HasIndex(x => x.PostingId);
+            if (Database.IsNpgsql())
+            {
+                entity.ToTable(t => t.HasCheckConstraint("ck_ledger_entries_one_side",
+                    "\"Debit\" >= 0 AND \"Credit\" >= 0 AND ((\"Debit\" > 0 AND \"Credit\" = 0) OR (\"Debit\" = 0 AND \"Credit\" > 0))"));
+            }
+        });
+
+        modelBuilder.Entity<PeriodCloseEntity>(entity =>
+        {
+            entity.ToTable("period_closes");
+            entity.HasKey(x => x.PeriodKey);
+            entity.Property(x => x.PeriodKey).HasMaxLength(7);
+            entity.Property(x => x.ClosedBy).HasMaxLength(64);
         });
 
         modelBuilder.Entity<RecurringPlanEntity>(entity =>
