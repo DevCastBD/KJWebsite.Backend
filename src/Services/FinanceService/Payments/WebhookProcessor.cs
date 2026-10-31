@@ -28,6 +28,9 @@ public sealed class WebhookProcessor(FinanceDbContext db, PaymentGatewayRegistry
     private static readonly Action<ILogger, string, string, Exception?> VerifyFailed = LoggerMessage.Define<string, string>(
         LogLevel.Warning, new EventId(11, nameof(VerifyFailed)), "Could not verify a payment with {Gateway}: {Code}; asking for redelivery");
 
+    private static readonly Action<ILogger, string, string, string, Exception?> NoticeRecorded = LoggerMessage.Define<string, string, string>(
+        LogLevel.Warning, new EventId(14, nameof(NoticeRecorded)), "Gateway {Gateway} reported a {Kind} for donation {Reference}: finance should review it");
+
     public async Task<WebhookResult> ProcessAsync(string gatewayId, IncomingWebhook webhook, CancellationToken cancellationToken)
     {
         var gateway = registry.Find(gatewayId);
@@ -43,11 +46,32 @@ public sealed class WebhookProcessor(FinanceDbContext db, PaymentGatewayRegistry
             return new WebhookResult(WebhookDisposition.Rejected, null);
         }
 
-        var parsed = gateway.ParseWebhook(webhook);
+        WebhookParse parsed;
+        try
+        {
+            parsed = await gateway.ParseWebhookAsync(webhook, cancellationToken);
+        }
+        catch (GatewayException exception)
+        {
+            // Checking a signature can itself need the gateway (PayPal); if it cannot be done now, nothing is decided and the delivery is retried.
+            VerifyFailed(logger, gateway.Id, exception.Code, null);
+            return new WebhookResult(WebhookDisposition.Retry, null);
+        }
+
         if (parsed.Authenticity == WebhookAuthenticity.Invalid)
         {
             await settlement.RejectAsync(gateway.Id, RejectionReasons.BadSignature, webhook.SourceIp, parsed.Reference, cancellationToken);
             return new WebhookResult(WebhookDisposition.Rejected, null);
+        }
+
+        if (parsed.Irrelevant)
+        {
+            return new WebhookResult(WebhookDisposition.Accepted, null);
+        }
+
+        if (parsed.Notice is not null)
+        {
+            return await ProcessNoticeAsync(gateway.Id, parsed, webhook, cancellationToken);
         }
 
         var (donation, providerPaymentId) = await FindAsync(gateway.Id, parsed, cancellationToken);
@@ -92,6 +116,57 @@ public sealed class WebhookProcessor(FinanceDbContext db, PaymentGatewayRegistry
                 // A concurrent delivery of the same event recorded it first; the donation was handled once either way.
                 db.ChangeTracker.Clear();
             }
+        }
+
+        return new WebhookResult(WebhookDisposition.Accepted, donation.Reference);
+    }
+
+    // A refund or dispute message: only a signed one counts, it is stored for finance to act on, and nothing about the donation changes by itself.
+    private async Task<WebhookResult> ProcessNoticeAsync(string gateway, WebhookParse parsed, IncomingWebhook webhook, CancellationToken cancellationToken)
+    {
+        if (parsed.Authenticity != WebhookAuthenticity.Verified)
+        {
+            await settlement.RejectAsync(gateway, RejectionReasons.BadSignature, webhook.SourceIp, parsed.Reference, cancellationToken);
+            return new WebhookResult(WebhookDisposition.Rejected, null);
+        }
+
+        var (donation, _) = await FindAsync(gateway, parsed, cancellationToken);
+        if (donation is null && parsed.TransactionId is not null)
+        {
+            var donationId = await db.PaymentSettlements.AsNoTracking().Where(p => p.Gateway == gateway && p.TransactionId == parsed.TransactionId).Select(p => p.DonationId).FirstOrDefaultAsync(cancellationToken);
+            donation = donationId is null ? null : await db.Donations.AsNoTracking().FirstOrDefaultAsync(d => d.Id == donationId, cancellationToken);
+        }
+
+        if (donation is null)
+        {
+            await settlement.RejectAsync(gateway, RejectionReasons.UnknownPayment, webhook.SourceIp, parsed.Reference ?? parsed.TransactionId, cancellationToken);
+            return new WebhookResult(WebhookDisposition.Rejected, null);
+        }
+
+        if (parsed.EventKey is not null && await db.ProviderNotices.AnyAsync(n => n.Gateway == gateway && n.EventKey == parsed.EventKey, cancellationToken))
+        {
+            return new WebhookResult(WebhookDisposition.Accepted, donation.Reference);
+        }
+
+        db.ProviderNotices.Add(new ProviderNoticeEntity
+        {
+            Gateway = gateway,
+            EventKey = parsed.EventKey ?? Guid.NewGuid().ToString("N"),
+            Kind = parsed.Notice == NoticeKind.Refund ? NoticeKinds.Refund : NoticeKinds.Dispute,
+            DonationId = donation.Id,
+            TransactionId = parsed.TransactionId,
+            Amount = parsed.NoticeAmount?.Amount,
+            Currency = parsed.NoticeAmount?.Currency,
+            At = clock.GetUtcNow()
+        });
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            NoticeRecorded(logger, gateway, parsed.Notice == NoticeKind.Refund ? NoticeKinds.Refund : NoticeKinds.Dispute, donation.Reference, null);
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
         }
 
         return new WebhookResult(WebhookDisposition.Accepted, donation.Reference);

@@ -78,7 +78,9 @@ public sealed class NagadGateway(IHttpClientFactory httpClients, IOptions<Paymen
     }
 
     /// <summary>Nagad does not sign its browser callback: `payment_ref_id` and `status` are claims, and the payment-verification query decides.</summary>
-    public WebhookParse ParseWebhook(IncomingWebhook webhook)
+    public Task<WebhookParse> ParseWebhookAsync(IncomingWebhook webhook, CancellationToken cancellationToken) => Task.FromResult(ParseWebhook(webhook));
+
+    private static WebhookParse ParseWebhook(IncomingWebhook webhook)
     {
         if (!webhook.Query.TryGetValue("payment_ref_id", out var paymentRef) || paymentRef.Length is 0 or > 100)
         {
