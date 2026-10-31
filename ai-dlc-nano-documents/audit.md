@@ -248,3 +248,4 @@
 - 2026-10-31T05:55Z [claude] 055-issue-69-ledger DECISION @c25e550: fiscal Jul-Jun configurable; seeded chart; manual adjustment + monthly close admin-only (user)
 - 2026-10-31T05:55Z [claude] 055-issue-69-ledger BRANCH @c25e550: Feature/issue-69-ledger stacked on Feature/issue-60-payment-gateways (user confirmed)
 - 2026-10-31T05:55Z [claude] 055-issue-69-ledger PHASE PLAN→CONSTRUCT @c25e550: plan approved (user)
+- 2026-10-31T06:10Z [claude] 055-issue-69-ledger DONE @6dcaf52: ledger, chart, periods, donation posting; 524 integration + 46 unit green incl PG; ledger coverage 96%; committed locally, not pushed
