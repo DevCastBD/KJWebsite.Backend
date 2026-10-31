@@ -3309,7 +3309,7 @@ paths:
       tags:
         - "Donations"
       summary: "Start a donation"
-      description: "Records the intent as \u0060pending\u0060; payment is attached later by the gateway adapters. Amounts are decimal strings with at most two decimals and must sit inside the currency\u0027s limits (see presets). With \u0060coverFees\u0060 the response carries \u0060fee\u0060 and \u0060total\u0060, and \u0060amount\u0060 stays the designated gift. A \u0060monthly\u0060 or \u0060yearly\u0060 frequency also creates a recurring plan. Anonymous gifts are never attributed in any public response."
+      description: "Records the intent as \u0060pending\u0060 and starts a hosted checkout: the response carries \u0060gateway\u0060 and \u0060checkoutUrl\u0060 to send the donor to. Pass \u0060gateway\u0060 (bkash, nagad, sslcommerz) to choose one; otherwise the first enabled gateway that supports the currency is used. When no checkout can be started (no gateway switched on, or it is down) the donation is still recorded and the response has \u0060fallback: offline\u0060 instead. A return from the gateway never confirms payment. Amounts are decimal strings with at most two decimals and must sit inside the currency\u0027s limits (see presets). With \u0060coverFees\u0060 the response carries \u0060fee\u0060 and \u0060total\u0060, and \u0060amount\u0060 stays the designated gift. A \u0060monthly\u0060 or \u0060yearly\u0060 frequency also creates a recurring plan. Anonymous gifts are never attributed in any public response."
       operationId: "CreateDonation"
       parameters:
         -
@@ -3332,7 +3332,7 @@ paths:
       tags:
         - "Donations"
       summary: "The outcome of one donation, by its public reference"
-      description: "Never cached. Returns the reference, status, designated amount, currency and the anonymous flag, and nothing about the donor."
+      description: "Never cached. Returns the reference, status, designated amount, currency, the gateway used (when one was) and the anonymous flag, and nothing about the donor."
       operationId: "GetDonationStatus"
       parameters:
         -
@@ -3344,12 +3344,55 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/donations/{reference}/return":
+    get:
+      tags:
+        - "Donations"
+      summary: "Where a payment gateway sends the donor back to"
+      description: "Accepts \u0060?result=success|fail|cancel\u0060 and answers \u0060303\u0060 to the site\u0027s \u0060/{lang}/donate/status?ref=\u0026gateway=\u0026result=return|cancel\u0060. It never changes a donation: only the signed webhook confirms payment."
+      operationId: "DonationGatewayReturnGet"
+      parameters:
+        -
+          name: "reference"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "result"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Donations"
+      summary: "Where a payment gateway sends the donor back to"
+      description: "Accepts \u0060?result=success|fail|cancel\u0060 and answers \u0060303\u0060 to the site\u0027s \u0060/{lang}/donate/status?ref=\u0026gateway=\u0026result=return|cancel\u0060. It never changes a donation: only the signed webhook confirms payment."
+      operationId: "DonationGatewayReturnPost"
+      parameters:
+        -
+          name: "reference"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "result"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/donations:
     get:
       tags:
         - "Finance"
       summary: "Donations and their reversing entries, newest first"
-      description: "Filters: from/to (UTC dates, inclusive), status (pending, confirmed, failed, cancelled, refunded), designation (\u0060general\u0060, \u0060campaign:slug\u0060, \u0060project:slug\u0060). Amounts are decimal strings; reversals are negative. Donor names are shown to finance staff even for anonymous gifts, flagged by \u0060anonymous\u0060."
+      description: "Filters: from/to (UTC dates, inclusive), method (the gateway), status (pending, confirmed, failed, cancelled, refunded), designation (\u0060general\u0060, \u0060campaign:slug\u0060, \u0060project:slug\u0060). Amounts are decimal strings; reversals are negative. Donor names are shown to finance staff even for anonymous gifts, flagged by \u0060anonymous\u0060."
       operationId: "ListFinanceDonations"
       parameters:
         -
@@ -4914,6 +4957,10 @@ components:
         coverFees:
           type: "boolean"
         language:
+          type:
+            - "null"
+            - "string"
+        gateway:
           type:
             - "null"
             - "string"

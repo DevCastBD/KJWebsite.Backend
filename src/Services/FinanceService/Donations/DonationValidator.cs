@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using FinanceService.Data.Entities;
+using FinanceService.Payments;
 using KJWebsite.BuildingBlocks.Finance;
 
 namespace FinanceService.Donations;
@@ -16,7 +17,8 @@ public sealed record ValidDonation(
     string? DonorPhone,
     bool Anonymous,
     string? Dedication,
-    string Language);
+    string Language,
+    string? Gateway);
 
 public static partial class DonationValidator
 {
@@ -31,7 +33,7 @@ public static partial class DonationValidator
     [GeneratedRegex(@"^\+?[0-9 ()-]{6,30}\z", RegexOptions.CultureInvariant)]
     private static partial Regex Phone();
 
-    public static (ValidDonation? Donation, List<string> Invalid) Validate(DonationRequest request, DonationOptions options)
+    public static (ValidDonation? Donation, List<string> Invalid) Validate(DonationRequest request, DonationOptions options, IReadOnlyCollection<string> knownGateways)
     {
         var invalid = new List<string>();
 
@@ -115,12 +117,19 @@ public static partial class DonationValidator
             invalid.Add("language");
         }
 
+        var gateway = string.IsNullOrWhiteSpace(request.Gateway) ? null : request.Gateway.Trim();
+        // A gateway the donor names must be one we have an adapter for (switched on or not) or one the site already knows is planned.
+        if (gateway is not null && !knownGateways.Contains(gateway) && !GatewayIds.All.Contains(gateway))
+        {
+            invalid.Add("gateway");
+        }
+
         if (invalid.Count > 0 || amount is null || rule is null)
         {
             return (null, invalid);
         }
 
         var fee = request.CoverFees ? amount.Value.GrossUp(rule.FeeRate) - amount.Value : Money.Zero(amount.Value.Currency);
-        return (new ValidDonation(amount.Value, fee, interval, designationType, designationId, name!, email!, phone, request.Anonymous, dedication, language), invalid);
+        return (new ValidDonation(amount.Value, fee, interval, designationType, designationId, name!, email!, phone, request.Anonymous, dedication, language, gateway), invalid);
     }
 }

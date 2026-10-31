@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
+using FinanceService.Payments;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Finance;
 using KJWebsite.BuildingBlocks.Security;
@@ -24,6 +25,7 @@ public static class AdminDonationEndpoints
         public DonationEntity Donation { get; init; } = null!;
         public string Latest { get; init; } = string.Empty;
         public bool Reversed { get; init; }
+        public string? Gateway { get; init; }
     }
 
     public static void MapAdminDonations(this IEndpointRouteBuilder app)
@@ -48,8 +50,7 @@ public static class AdminDonationEndpoints
 
             if (!string.IsNullOrWhiteSpace(method))
             {
-                // No donation carries a payment method yet (gateways, BE-055, and offline recording, BE-058, add it), so a method filter matches nothing.
-                query = query.Where(_ => false);
+                query = query.Where(v => v.Gateway == method);
             }
 
             if (!string.IsNullOrWhiteSpace(designation))
@@ -68,7 +69,7 @@ public static class AdminDonationEndpoints
         })
         .WithName("ListFinanceDonations")
         .WithSummary("Donations and their reversing entries, newest first")
-        .WithDescription("Filters: from/to (UTC dates, inclusive), status (pending, confirmed, failed, cancelled, refunded), designation (`general`, `campaign:slug`, `project:slug`). Amounts are decimal strings; reversals are negative. Donor names are shown to finance staff even for anonymous gifts, flagged by `anonymous`.")
+        .WithDescription("Filters: from/to (UTC dates, inclusive), method (the gateway), status (pending, confirmed, failed, cancelled, refunded), designation (`general`, `campaign:slug`, `project:slug`). Amounts are decimal strings; reversals are negative. Donor names are shown to finance staff even for anonymous gifts, flagged by `anonymous`.")
         .WithTags("Finance")
         .RequirePermission(Permissions.FinanceView);
 
@@ -206,7 +207,8 @@ public static class AdminDonationEndpoints
         {
             Donation = d,
             Latest = db.DonationEvents.Where(e => e.DonationId == d.Id).OrderByDescending(e => e.Id).Select(e => e.Status).FirstOrDefault() ?? DonationStatuses.Pending,
-            Reversed = db.Donations.Any(r => r.ReversesDonationId == d.Id)
+            Reversed = db.Donations.Any(r => r.ReversesDonationId == d.Id),
+            Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault()
         });
 
     private static FinanceDonationRow Row(DonationView view, IDonorProtector protector)
@@ -214,7 +216,7 @@ public static class AdminDonationEndpoints
         var d = view.Donation;
         return new FinanceDonationRow(
             d.Id, d.Reference, PublicDonationEndpoints.FormatDate(d.ReceivedOn), protector.Unprotect(d.DonorNameProtected), d.IsAnonymous,
-            PublicDonationEndpoints.Format(d.Amount), PublicDonationEndpoints.Format(d.FeeAmount), d.Currency, null, false,
+            PublicDonationEndpoints.Format(d.Amount), PublicDonationEndpoints.Format(d.FeeAmount), d.Currency, view.Gateway, false,
             DesignationText(d.DesignationType, d.DesignationId), d.Kind, view.Reversed ? "refunded" : view.Latest);
     }
 

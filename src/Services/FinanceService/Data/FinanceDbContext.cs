@@ -9,6 +9,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<DonationEntity> Donations => Set<DonationEntity>();
     public DbSet<DonationEventEntity> DonationEvents => Set<DonationEventEntity>();
     public DbSet<RecurringPlanEntity> RecurringPlans => Set<RecurringPlanEntity>();
+    public DbSet<PaymentAttemptEntity> PaymentAttempts => Set<PaymentAttemptEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -28,7 +29,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     {
         ChangeTracker.DetectChanges();
         var offender = ChangeTracker.Entries().FirstOrDefault(e =>
-            e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity && e.State is EntityState.Modified or EntityState.Deleted);
+            e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
             throw new InvalidOperationException($"{offender.Metadata.ClrType.Name} records are append-only: post a reversing entry instead of changing or deleting one.");
@@ -84,6 +85,21 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(500);
             entity.HasIndex(x => new { x.DonationId, x.Id });
+        });
+
+        modelBuilder.Entity<PaymentAttemptEntity>(entity =>
+        {
+            entity.ToTable("payment_attempts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.DonationId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Gateway).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ProviderPaymentId).HasMaxLength(200);
+            entity.Property(x => x.ErrorCode).HasMaxLength(64);
+            entity.HasIndex(x => new { x.DonationId, x.Id });
+            // Confirmation looks a payment up by the gateway's id.
+            entity.HasIndex(x => new { x.Gateway, x.ProviderPaymentId });
         });
 
         modelBuilder.Entity<RecurringPlanEntity>(entity =>

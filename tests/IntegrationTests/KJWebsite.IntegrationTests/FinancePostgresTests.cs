@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(1);
+                db.Database.GetAppliedMigrations().Should().HaveCount(2);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/donations", new
@@ -59,6 +59,9 @@ public sealed class FinancePostgresTests
             await Refused(connectionString, "DELETE FROM finance.donation_events");
             await Refused(connectionString, "UPDATE finance.recurring_plans SET \"Amount\" = 1");
             await Refused(connectionString, "DELETE FROM finance.recurring_plans");
+            await Exec(connectionString, "INSERT INTO finance.payment_attempts (\"DonationId\", \"Gateway\", \"Status\", \"At\") SELECT \"Id\", 'sslcommerz', 'created', now() FROM finance.donations LIMIT 1");
+            await Refused(connectionString, "UPDATE finance.payment_attempts SET \"Status\" = 'created'");
+            await Refused(connectionString, "DELETE FROM finance.payment_attempts");
 
             // Money is exact: the column holds cents and nothing finer.
             await using (var connection = new NpgsqlConnection(connectionString))

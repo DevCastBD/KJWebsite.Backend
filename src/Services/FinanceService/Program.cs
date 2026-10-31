@@ -1,6 +1,7 @@
 using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Donations;
+using FinanceService.Payments;
 using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Idempotency;
 using KJWebsite.BuildingBlocks.Security;
@@ -61,6 +62,12 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
 }
 
 builder.Services.AddSingleton<IDonorProtector, DataProtectionDonorProtector>();
+builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(PaymentOptions.SectionName));
+// A new provider is one class plus one line here; nothing else in the service changes. HTTP logging is off for gateway clients so a URL or header can never put a credential in a log.
+builder.Services.AddPaymentGateway<SslCommerzGateway>(SslCommerzGateway.ClientName);
+builder.Services.AddPaymentGateway<BkashGateway>(BkashGateway.ClientName);
+builder.Services.AddPaymentGateway<NagadGateway>(NagadGateway.ClientName);
+builder.Services.AddSingleton<PaymentGatewayRegistry>();
 builder.Services.AddKjJwtAuthentication();
 builder.Services.AddKjIdempotency(builder.Configuration);
 

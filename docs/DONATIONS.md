@@ -1,6 +1,6 @@
 # Donation intake (BE-054, #59; closes G17)
 
-`FinanceService` (port 7005, schema `finance`, `ConnectionStrings:FinanceDb`, gateway routes `/api/v1/donations*` and `/api/v1/admin/finance/*`) records donations. Payment itself arrives with the gateway adapters (#60, #62, #61) and offline recording (#63); until then every donation is `pending`. Shapes follow the frontend client (`src/api/endpoints/donations.ts`).
+`FinanceService` (port 7005, schema `finance`, `ConnectionStrings:FinanceDb`, gateway routes `/api/v1/donations*` and `/api/v1/admin/finance/*`) records donations. Checkout is started at a payment gateway (see PAYMENT_GATEWAYS.md); confirmation arrives with webhooks (#62), Stripe/PayPal (#61) and offline recording (#63), so every donation is `pending` until then. Shapes follow the frontend client (`src/api/endpoints/donations.ts`).
 
 ## Money rules
 - An amount is `decimal(18,2)` plus an ISO-4217 currency (`BDT`, `USD`, `GBP`, `EUR`), modelled by `Money` in BuildingBlocks. No float or double anywhere; a third decimal is refused, never rounded; adding two currencies throws.
@@ -20,10 +20,11 @@ Enforced three ways: `FinanceDbContext.SaveChanges` refuses edits, PostgreSQL tr
 | Endpoint | Notes |
 |---|---|
 | `GET /api/v1/donations/presets` | currencies, presets, min/max, frequencies |
-| `POST /api/v1/donations` | `Idempotency-Key`; 201 `{id, reference, status, amount, currency, fee?, total?}`; gateway rate limit 20/h/IP |
-| `GET /api/v1/donations/{reference}/status` | `{reference, status, amount, currency, anonymous}`; 404 for unknown; never cached |
+| `POST /api/v1/donations` | `Idempotency-Key`; 201 `{id, reference, status, amount, currency, fee?, total?, gateway?, checkoutUrl?, fallback?}`; rate limit 20/h/IP |
+| `GET /api/v1/donations/{reference}/status` | `{reference, status, amount, currency, anonymous, gateway?}`; 404 for unknown; never cached |
+| `GET\|POST /api/v1/donations/{reference}/return` | gateway return: `303` to the site's status page, changes nothing |
 
-Request: `{amount, currency, frequency: once|monthly|yearly, designation: {type: general|campaign|project, id?}, donor: {name, email, phone?}, anonymous, dedication?, coverFees, language: en|bn}`. Designation ids are opaque slugs for now; campaign validation arrives with #66. `monthly`/`yearly` also creates a recurring plan; later instalments are charged by the gateway work.
+Request: `{amount, currency, frequency: once|monthly|yearly, designation: {type: general|campaign|project, id?}, donor: {name, email, phone?}, anonymous, dedication?, coverFees, language: en|bn, gateway?: bkash|nagad|sslcommerz}`. Designation ids are opaque slugs for now; campaign validation arrives with #66. `monthly`/`yearly` also creates a recurring plan; later instalments are charged by the gateway work.
 `reference` is `KJD-` plus 10 random Crockford base32 characters, so a status page cannot be guessed.
 
 ## Back office (`/api/v1/admin/finance`)
@@ -33,4 +34,4 @@ Request: `{amount, currency, frequency: once|monthly|yearly, designation: {type:
 | `GET donations/{id}`, `GET donations/totals?designation`, `GET recurring-plans`, `GET audit` | `finance.view` / `audit.view` |
 | `POST donations/{id}/reversal {reason}` | `finance.donation.reverse` (Admin and SuperAdmin only until the four-eyes controls, #72) |
 
-Status is `pending`, `confirmed`, `failed`, `cancelled` or `refunded`. `method` is `null` until gateways and offline recording exist.
+Status is `pending`, `confirmed`, `failed`, `cancelled` or `refunded`. `method` is the gateway of the latest started checkout, `null` until one exists (offline recording, #63, adds the rest); `?method=` filters on it.
