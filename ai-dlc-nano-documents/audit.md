@@ -254,3 +254,4 @@
 - 2026-10-31T06:19Z [claude] 056-issue-62-webhooks DECISION @d243a57: signature + server re-query; rejection table; payout JSON import with ledger posting (user)
 - 2026-10-31T06:19Z [claude] 056-issue-62-webhooks BRANCH @d243a57: Feature/issue-62-webhooks stacked on Feature/issue-69-ledger (user confirmed)
 - 2026-10-31T06:19Z [claude] 056-issue-62-webhooks PHASE PLAN→CONSTRUCT @d243a57: plan approved (user)
+- 2026-10-31T06:28Z [claude] 056-issue-62-webhooks DONE @e7fd492: webhooks, replay guard, resolver, payouts; 568+46 tests green incl PG; committed locally, not pushed
