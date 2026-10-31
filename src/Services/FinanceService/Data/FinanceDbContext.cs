@@ -34,6 +34,11 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<DonorSuppressionEntity> DonorSuppressions => Set<DonorSuppressionEntity>();
     public DbSet<DonorExportEntity> DonorExports => Set<DonorExportEntity>();
     public DbSet<CampaignEntity> Campaigns => Set<CampaignEntity>();
+    public DbSet<ExpenseEntity> Expenses => Set<ExpenseEntity>();
+    public DbSet<ExpenseReceiptEntity> ExpenseReceipts => Set<ExpenseReceiptEntity>();
+    public DbSet<ExpenseApprovalEntity> ExpenseApprovals => Set<ExpenseApprovalEntity>();
+    public DbSet<ExpenseDecisionEntity> ExpenseDecisions => Set<ExpenseDecisionEntity>();
+    public DbSet<ExpensePaymentEntity> ExpensePayments => Set<ExpensePaymentEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -58,6 +63,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             or OfflineRecordEntity or OfflineDecisionEntity or OfflineProofEntity
             or ReceiptEntity or ReceiptVoidEntity or ReceiptReissueEntity or StatementSendEntity
             or DonorConsentEntity or DonorSuppressionEntity or DonorExportEntity
+            or ExpenseEntity or ExpenseReceiptEntity or ExpenseApprovalEntity or ExpenseDecisionEntity or ExpensePaymentEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -447,6 +453,78 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
             entity.Property(x => x.CreatedBy).HasMaxLength(64);
             entity.HasIndex(x => x.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<ExpenseEntity>(entity =>
+        {
+            entity.ToTable("expenses");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.Payee).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.CategoryKey).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.AccountCode).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.ProjectSlug).HasMaxLength(100);
+            entity.Property(x => x.SubmittedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SubmittedByName).HasMaxLength(200).IsRequired();
+            entity.HasIndex(x => x.ProjectSlug);
+            entity.HasIndex(x => x.IncurredOn);
+            if (Database.IsNpgsql())
+            {
+                entity.ToTable(t => t.HasCheckConstraint("ck_expenses_positive", "\"Amount\" > 0 AND \"RequiredApprovals\" >= 1"));
+            }
+        });
+
+        modelBuilder.Entity<ExpenseReceiptEntity>(entity =>
+        {
+            entity.ToTable("expense_receipts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.ExpenseId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.FileName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.ContentType).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.StorageKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.UploadedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.ExpenseId);
+        });
+
+        modelBuilder.Entity<ExpenseApprovalEntity>(entity =>
+        {
+            entity.ToTable("expense_approvals");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.ExpenseId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ApprovedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500);
+            // Nobody approves the same expense twice.
+            entity.HasIndex(x => new { x.ExpenseId, x.ApprovedBy }).IsUnique();
+        });
+
+        modelBuilder.Entity<ExpenseDecisionEntity>(entity =>
+        {
+            entity.ToTable("expense_decisions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.ExpenseId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Decision).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.DecidedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.HasIndex(x => x.ExpenseId).IsUnique();
+        });
+
+        modelBuilder.Entity<ExpensePaymentEntity>(entity =>
+        {
+            entity.ToTable("expense_payments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.ExpenseId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Method).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Reference).HasMaxLength(100);
+            entity.Property(x => x.PaidBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.ExpenseId).IsUnique();
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

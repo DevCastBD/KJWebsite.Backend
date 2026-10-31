@@ -23,6 +23,9 @@ Dr the method's account (gateway clearing for `sslcommerz`, `bkash`, `nagad`, `s
 ## Offline gifts
 An offline donation is confirmed (and posted) only when a different user approves it (see OFFLINE_DONATIONS.md): Dr cash, bank or the in-kind account by method, Cr donation income, dated the day the gift arrived unless that month is closed.
 
+## Expenses
+An expense posts when its last required approver approves (see EXPENSES.md): Dr the category account / Cr payables, and its payment is a second posting Dr payable / Cr cash, bank or wallet.
+
 ## Receipts
 Confirmation also issues the donation's numbered receipt in the same commit (see RECEIPTS.md).
 

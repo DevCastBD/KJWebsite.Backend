@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(9);
+                db.Database.GetAppliedMigrations().Should().HaveCount(10);
             }
 
             await TestCampaigns.SeedAsync(factory.Services, "flood-relief", currency: "USD");
@@ -149,6 +149,63 @@ public sealed class FinancePostgresTests
             catch (PostgresException)
             {
                 // Cleanup must not hide a real failure from the test body.
+            }
+        }
+    }
+
+    [RequiresPostgresFact]
+    public async Task ConcurrentFinalApprovalsDecideAndPostExactlyOnce()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("finance_expense_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        var proofs = Path.Combine(Path.GetTempPath(), $"kj-test-proofs-{Guid.NewGuid():N}");
+        try
+        {
+            using var factory = new PostgresFinanceApiFactory(connectionString);
+            using var client = factory.CreateClient();
+            string Token(string subject, params string[] permissions) => TestTokens.Issue([KJWebsite.BuildingBlocks.Security.Permissions.FinanceView, .. permissions], subject: subject);
+            for (var round = 0; round < 5; round++)
+            {
+                using var submit = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/finance/expenses") { Content = JsonContent.Create(new { payee = "p", description = "d", category = "programme", amount = "150000.00", currency = "BDT" }) };
+                submit.Headers.Authorization = new("Bearer", Token("usr_sub", KJWebsite.BuildingBlocks.Security.Permissions.FinanceExpenseSubmit));
+                var id = (await (await client.SendAsync(submit)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!;
+                using (var scope = factory.Services.CreateScope())
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+                    db.ExpenseReceipts.Add(new FinanceService.Data.Entities.ExpenseReceiptEntity { Id = "rcx_" + id, ExpenseId = id, FileName = "a.pdf", ContentType = "application/pdf", SizeBytes = 1, Sha256 = "ab", StorageKey = "k", UploadedBy = "usr_sub", UploadedAt = DateTimeOffset.UtcNow, RetainUntil = DateOnly.FromDateTime(DateTime.UtcNow) });
+                    await db.SaveChangesAsync();
+                }
+
+                var results = await Task.WhenAll(new[] { "usr_a", "usr_b", "usr_c" }.Select(async approver =>
+                {
+                    using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/admin/finance/expenses/{id}/approve") { Content = JsonContent.Create(new { }) };
+                    request.Headers.Authorization = new("Bearer", Token(approver, KJWebsite.BuildingBlocks.Security.Permissions.FinanceExpenseApprove));
+                    return (await client.SendAsync(request)).StatusCode;
+                }));
+
+                results.Should().OnlyContain(r => r == HttpStatusCode.OK || r == HttpStatusCode.Conflict);
+                using var check = factory.Services.CreateScope();
+                var context = check.ServiceProvider.GetRequiredService<FinanceDbContext>();
+                (await context.ExpenseDecisions.CountAsync(d => d.ExpenseId == id)).Should().Be(1, "round " + round);
+                (await context.Postings.CountAsync(p => p.SourceId == id)).Should().Be(1, "round " + round);
+                (await context.ExpenseApprovals.CountAsync(a => a.ExpenseId == id)).Should().BeGreaterThanOrEqualTo(3);
+            }
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            try
+            {
+                await TestPostgres.DropDatabaseAsync(databaseName);
+            }
+            catch (PostgresException)
+            {
+                // Cleanup must not hide a real failure from the test body.
+            }
+
+            if (Directory.Exists(proofs))
+            {
+                Directory.Delete(proofs, recursive: true);
             }
         }
     }
@@ -300,6 +357,33 @@ public sealed class FinancePostgresTests
         {
             await sameSlug.OpenAsync();
             await using var again = new NpgsqlCommand("INSERT INTO finance.campaigns (\"Id\", \"Slug\", \"Title\", \"GoalAmount\", \"Currency\", \"Status\", \"CreatedAt\") VALUES ('cmp_2', 'unique-slug', 't', 100, 'BDT', 'draft', now())", sameSlug);
+            (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
+        }
+
+        await Exec(connectionString, "INSERT INTO finance.expenses (\"Id\", \"Payee\", \"Description\", \"CategoryKey\", \"AccountCode\", \"Amount\", \"Currency\", \"IsReimbursement\", \"IncurredOn\", \"RequiredApprovals\", \"SubmittedBy\", \"SubmittedByName\", \"SubmittedAt\") VALUES ('exp_1', 'p', 'd', 'programme', '5010', 100, 'BDT', false, current_date, 2, 'usr_s', 'usr_s', now())");
+        await Exec(connectionString, "INSERT INTO finance.expense_approvals (\"ExpenseId\", \"ApprovedBy\", \"At\") VALUES ('exp_1', 'usr_a', now())");
+        await Exec(connectionString, "INSERT INTO finance.expense_decisions (\"ExpenseId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('exp_1', 'approved', 'usr_a', now())");
+        await Exec(connectionString, "INSERT INTO finance.expense_payments (\"ExpenseId\", \"Method\", \"PaidOn\", \"PaidBy\", \"At\") VALUES ('exp_1', 'cash', current_date, 'usr_p', now())");
+        await Exec(connectionString, "INSERT INTO finance.expense_receipts (\"Id\", \"ExpenseId\", \"FileName\", \"ContentType\", \"SizeBytes\", \"Sha256\", \"StorageKey\", \"UploadedBy\", \"UploadedAt\", \"RetainUntil\") VALUES ('rcx_1', 'exp_1', 'a.pdf', 'application/pdf', 1, 'ab', 'k', 'u', now(), current_date)");
+        foreach (var table in new[] { "expenses", "expense_approvals", "expense_decisions", "expense_payments", "expense_receipts" })
+        {
+            await Refused(connectionString, $"DELETE FROM finance.{table}");
+        }
+
+        await Refused(connectionString, "UPDATE finance.expenses SET \"Amount\" = 1");
+        await Refused(connectionString, "UPDATE finance.expense_approvals SET \"ApprovedBy\" = 'x'");
+        await Refused(connectionString, "UPDATE finance.expense_decisions SET \"Decision\" = 'rejected'");
+        await CheckViolation(connectionString, "INSERT INTO finance.expenses (\"Id\", \"Payee\", \"Description\", \"CategoryKey\", \"AccountCode\", \"Amount\", \"Currency\", \"IsReimbursement\", \"IncurredOn\", \"RequiredApprovals\", \"SubmittedBy\", \"SubmittedByName\", \"SubmittedAt\") VALUES ('exp_neg', 'p', 'd', 'programme', '5010', -5, 'BDT', false, current_date, 1, 'u', 'u', now())");
+        foreach (var uniqueViolation2 in new[]
+        {
+            "INSERT INTO finance.expense_approvals (\"ExpenseId\", \"ApprovedBy\", \"At\") VALUES ('exp_1', 'usr_a', now())",
+            "INSERT INTO finance.expense_decisions (\"ExpenseId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('exp_1', 'rejected', 'usr_b', now())",
+            "INSERT INTO finance.expense_payments (\"ExpenseId\", \"Method\", \"PaidOn\", \"PaidBy\", \"At\") VALUES ('exp_1', 'bank', current_date, 'usr_p', now())"
+        })
+        {
+            await using var twice = new NpgsqlConnection(connectionString);
+            await twice.OpenAsync();
+            await using var again = new NpgsqlCommand(uniqueViolation2, twice);
             (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
         }
 

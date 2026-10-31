@@ -28,6 +28,8 @@ public static class Permissions
     public const string FinanceView = "finance.view";
     public const string FinanceExpenseSubmit = "finance.expense.submit";
     public const string FinanceExpenseApprove = "finance.expense.approve";
+    /// <summary>Record the payment of an approved expense. Never the person who submitted it.</summary>
+    public const string FinanceExpensePay = "finance.expense.pay";
     /// <summary>Post a reversing entry against a confirmed donation: money moving back out, so held by administrators until the four-eyes controls (BE-068) split it further.</summary>
     public const string FinanceDonationReverse = "finance.donation.reverse";
     /// <summary>Post manual adjustments, reverse postings and manage accounts: changes the books by hand, so held by administrators until four-eyes approval (BE-068).</summary>
@@ -96,6 +98,7 @@ public static class PermissionCatalog
         new("finance", Permissions.FinanceView, "View finance records"),
         new("finance", Permissions.FinanceExpenseSubmit, "Submit expenses"),
         new("finance", Permissions.FinanceExpenseApprove, "Approve expenses (separate from submitting)"),
+        new("finance", Permissions.FinanceExpensePay, "Record the payment of an approved expense"),
         new("finance", Permissions.FinanceDonationReverse, "Reverse a confirmed donation with a correcting entry"),
         new("finance", Permissions.FinanceLedgerAdjust, "Post manual ledger adjustments, reverse postings and manage accounts"),
         new("finance", Permissions.FinancePeriodClose, "Close an accounting period"),
@@ -131,7 +134,7 @@ public static class KjRoles
         [SuperAdmin] = Permissions.All,
         [Admin] = [.. Permissions.All.Where(p => p != Permissions.RolesManage)],
         [Moderator] = [Permissions.ContentView, Permissions.ContentUpdate, Permissions.CtaView, Permissions.CtaManage, Permissions.DashboardView],
-        [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceReceiptManage, Permissions.FinanceDonorManage, Permissions.FinanceCampaignManage],
+        [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceExpensePay, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceReceiptManage, Permissions.FinanceDonorManage, Permissions.FinanceCampaignManage],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate, Permissions.MediaView, Permissions.MediaUpload, Permissions.DashboardView],
         [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],
         [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MembershipLifecycle, Permissions.MemberProfileView, Permissions.UsersView],
