@@ -284,3 +284,4 @@
 - 2026-10-31T14:25Z [claude] 061-issue-66-campaigns DECISION @69fe98a: headline counts goal currency only; others separate (user)
 - 2026-10-31T14:25Z [claude] 061-issue-66-campaigns BRANCH @69fe98a: Feature/issue-66-campaigns stacked on Feature/issue-65-donor-crm (user confirmed)
 - 2026-10-31T14:25Z [claude] 061-issue-66-campaigns PHASE PLAN→CONSTRUCT @69fe98a: plan approved (user)
+- 2026-10-31T14:36Z [claude] 061-issue-66-campaigns DONE @8ee5af0: campaigns, cached progress, designation rules, reconcile; 707+46 tests green incl PG; committed locally, not pushed
