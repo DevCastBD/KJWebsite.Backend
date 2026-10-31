@@ -1,5 +1,5 @@
 # Codebase Map
-<!-- verified: 2026-10-13 @ 86f21c9 · tier: standard · coverage: overview-only -->
+<!-- verified: 2026-10-31 @ efa2bc6 · tier: standard · coverage: overview-only -->
 
 ## Do not read in full
 | File / path | Size | Why | Instead |
@@ -17,6 +17,8 @@
   purpose: public CTA submission endpoint with PostgreSQL/EF Core; entry: `Program.cs`; migrations: `Migrations/`
 - membership (`src/Services/MembershipService/**`)
   purpose: public application intake (port 7004, schema `membership`); encrypted PII fields, HMAC duplicate check, attachments behind `IAttachmentStore`; entry: `Program.cs`, `Intake/`; docs: `docs/MEMBERSHIP_INTAKE.md`
+- finance (`src/Services/FinanceService/**`)
+  purpose: donations (port 7005, schema `finance`): public intake/status/presets, finance back office, append-only ledger (entities + PG triggers), `Money` lives in BuildingBlocks `Finance/`; entry: `Program.cs`, `Donations/`; docs: `docs/DONATIONS.md`
 - auth (`src/Services/AuthIdentityService/**`)
   purpose: ASP.NET Core Identity accounts, RS256 JWT + hashed rotating refresh tokens (`Tokens/`), sessions, password reset; entry: `Program.cs`; migrations: `Migrations/`; docs: `docs/AUTH_TOKENS.md`
 - shared (`src/BuildingBlocks/**`)

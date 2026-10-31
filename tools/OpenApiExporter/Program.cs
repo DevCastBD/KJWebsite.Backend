@@ -101,6 +101,7 @@ static class RuntimeOpenApiExporter
         new("ContentService", "src/Services/ContentService/ContentService.csproj", IncludeHealth: false),
         new("CtaSubmissionService", "src/Services/CtaSubmissionService/CtaSubmissionService.csproj", IncludeHealth: false),
         new("MembershipService", "src/Services/MembershipService/MembershipService.csproj", IncludeHealth: false),
+        new("FinanceService", "src/Services/FinanceService/FinanceService.csproj", IncludeHealth: false),
         new("AuthIdentityService", "src/Services/AuthIdentityService/AuthIdentityService.csproj", IncludeHealth: false)
     ];
 
@@ -218,7 +219,7 @@ static class RuntimeOpenApiExporter
         startInfo.ArgumentList.Add($"http://127.0.0.1:{port}");
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
-        if (definition.Name is "AuthIdentityService" or "CtaSubmissionService" or "ContentService" or "MembershipService")
+        if (definition.Name is "AuthIdentityService" or "CtaSubmissionService" or "ContentService" or "MembershipService" or "FinanceService")
         {
             startInfo.Environment["OpenApi__Export"] = "true";
         }

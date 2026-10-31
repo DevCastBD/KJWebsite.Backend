@@ -8,6 +8,7 @@ var contentServiceUrl = builder.Configuration["Services:Content:Url"] ?? "http:/
 var ctaServiceUrl = builder.Configuration["Services:Cta:Url"] ?? "http://localhost:7002/";
 var authServiceUrl = builder.Configuration["Services:Auth:Url"] ?? "http://localhost:7003/";
 var membershipServiceUrl = builder.Configuration["Services:Membership:Url"] ?? "http://localhost:7004/";
+var financeServiceUrl = builder.Configuration["Services:Finance:Url"] ?? "http://localhost:7005/";
 
 builder.Services.Configure<ApiGateway.CorsOptions>(builder.Configuration.GetSection(ApiGateway.CorsOptions.SectionName));
 builder.Services.AddCors();
@@ -18,7 +19,7 @@ builder.Services.AddOpenApi(options =>
     options.AddDocumentTransformer((document, context, ct) =>
     {
         document.Info.Title = "KJWebsite API Gateway";
-        document.Info.Description = "Entry point — routes /api/v1/content/*, /api/v1/cta/*, /api/v1/membership/*, /api/v1/auth/* to their respective downstream services.";
+        document.Info.Description = "Entry point — routes /api/v1/content/*, /api/v1/cta/*, /api/v1/membership/*, /api/v1/donations/*, /api/v1/auth/* to their respective downstream services.";
         document.Info.Version = "v1";
         return Task.CompletedTask;
     });
@@ -34,6 +35,9 @@ builder.Services.AddReverseProxy().LoadFromMemory(
     new RouteConfig { RouteId = "member-self", ClusterId = "membership", Match = new RouteMatch { Path = "/api/v1/members/me/{**catch-all}" } },
     new RouteConfig { RouteId = "admin-membership", ClusterId = "membership", Match = new RouteMatch { Path = "/api/v1/admin/membership/{**catch-all}" } },
     new RouteConfig { RouteId = "membership", ClusterId = "membership", Match = new RouteMatch { Path = "/api/v1/membership/{**catch-all}" } },
+    new RouteConfig { RouteId = "donations", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donations/{**catch-all}" } },
+    new RouteConfig { RouteId = "donations-root", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donations" } },
+    new RouteConfig { RouteId = "admin-finance", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/admin/finance/{**catch-all}" } },
     new RouteConfig { RouteId = "admin-content", ClusterId = "content", Match = new RouteMatch { Path = "/api/v1/admin/content/{**catch-all}" } },
     new RouteConfig { RouteId = "sitemap", ClusterId = "content", Match = new RouteMatch { Path = "/sitemap.xml" } },
     new RouteConfig { RouteId = "feed-rss", ClusterId = "content", Match = new RouteMatch { Path = "/feed.rss" } },
@@ -71,6 +75,14 @@ builder.Services.AddReverseProxy().LoadFromMemory(
         Destinations = new Dictionary<string, DestinationConfig>
         {
             ["membership"] = new() { Address = membershipServiceUrl }
+        }
+    },
+    new ClusterConfig
+    {
+        ClusterId = "finance",
+        Destinations = new Dictionary<string, DestinationConfig>
+        {
+            ["finance"] = new() { Address = financeServiceUrl }
         }
     }
 ]);

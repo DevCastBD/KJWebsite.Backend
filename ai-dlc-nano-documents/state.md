@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 4 run finished: #49-#55, #57, #58 done; #56 skipped (needs #109); #109, #110 skipped by user)
+- Active work item: none  (#59 done)
 - Phase: —
-- Branch: Feature/issue-58-retention-consent-erasure
-- Base SHA: —
-- Next step: nothing queued. Branch stack (all local, unpushed): 49>50>51>52>53>54>55>57>58 off origin/develop; PRs only on request, each targeting the previous branch. Open decisions: #109 (dues/member types) blocks #56; #110 (retention windows)
+- Branch: Feature/issue-59-donation-intake
+- Base SHA: efa2bc6
+- Next step: start #60 (BE-055) stacked on Feature/issue-59-donation-intake; queue: #60,#62,#61,#63,#64,#65,#66,#67,#68,#69,#70,#71,#72
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

@@ -1,6 +1,7 @@
 using AuthIdentityService.Data;
 using ContentService.Data;
 using CtaSubmissionService.Data;
+using FinanceService.Data;
 using MembershipService.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -266,4 +267,25 @@ public sealed class PostgresContentApiFactory(string connectionString)
 public sealed class GatewayApiFactory : WebApplicationFactory<ApiGateway.ApiGatewayTestEntryPoint>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Development");
+}
+
+public sealed class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.FinanceServiceTestEntryPoint, FinanceDbContext>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+    }
+}
+
+public sealed class PostgresFinanceApiFactory(string connectionString)
+    : PostgresWebApplicationFactory<FinanceService.FinanceServiceTestEntryPoint>(connectionString, "FinanceDb")
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+    }
 }

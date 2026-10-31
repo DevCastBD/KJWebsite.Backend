@@ -39,6 +39,9 @@ public sealed class RateLimitingOptions
     /// <summary>Public directory searches (GET): enough to browse, too slow to harvest into a contact list.</summary>
     public RateLimitRule MembershipDirectory { get; set; } = new() { PermitLimit = 60, WindowSeconds = 600 };
 
+    /// <summary>Starting a donation (POST): each call writes a pending record, so cap what one address can create.</summary>
+    public RateLimitRule DonationIntake { get; set; } = new() { PermitLimit = 20, WindowSeconds = 3600 };
+
     public int SlidingSegments { get; set; } = 6;
 }
 
@@ -171,6 +174,11 @@ public static class RateLimitingConfiguration
         if (path.Equals("/api/v1/cta/submissions", StringComparison.OrdinalIgnoreCase))
         {
             return ("cta", rules.CtaSubmission);
+        }
+
+        if (path.Equals("/api/v1/donations", StringComparison.OrdinalIgnoreCase))
+        {
+            return ("donations", rules.DonationIntake);
         }
 
         if (path.Equals("/api/v1/membership/applications/status", StringComparison.OrdinalIgnoreCase)
