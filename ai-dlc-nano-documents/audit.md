@@ -272,3 +272,4 @@
 - 2026-10-31T13:11Z [claude] 059-issue-64-receipts DECISION @357517e: per-fiscal-year gapless series with hash chain; statements per donor/year with outbox (user)
 - 2026-10-31T13:11Z [claude] 059-issue-64-receipts BRANCH @357517e: Feature/issue-64-receipts stacked on Feature/issue-63-offline-donations (user confirmed)
 - 2026-10-31T13:11Z [claude] 059-issue-64-receipts PHASE PLAN→CONSTRUCT @357517e: plan approved (user)
+- 2026-10-31T13:20Z [claude] 059-issue-64-receipts DONE @b2cf221: receipts, chain, PDF, void/reissue, statements; 653+46 tests green incl PG concurrency; committed locally, not pushed
