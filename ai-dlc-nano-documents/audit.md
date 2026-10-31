@@ -266,3 +266,4 @@
 - 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations DECISION @dadecc5: finance proof store; in-kind asset 1250 (user)
 - 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations BRANCH @dadecc5: Feature/issue-63-offline-donations stacked on Feature/issue-61-stripe-paypal (user confirmed)
 - 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations PHASE PLAN→CONSTRUCT @dadecc5: plan approved (user)
+- 2026-10-31T12:10Z [claude] 058-issue-63-offline-donations DONE @548ffbf: offline recording, maker-checker, proofs, in-kind; 635+46 tests green incl PG; committed locally, not pushed
