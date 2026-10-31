@@ -182,6 +182,14 @@ public static class AdminDonationEndpoints
             };
             reversal.Events.Add(new DonationEventEntity { Status = DonationStatuses.Confirmed, Note = $"Reverses {original.Reference}", At = now });
             db.Donations.Add(reversal);
+
+            // The donor's receipt is withdrawn with the gift: a void row, so the receipt keeps its number and the series stays gapless.
+            var receiptId = await db.Receipts.AsNoTracking().Where(r => r.DonationId == original.Id).Select(r => r.Id).FirstOrDefaultAsync();
+            if (receiptId is not null && !await db.ReceiptVoids.AnyAsync(v => v.ReceiptId == receiptId))
+            {
+                db.ReceiptVoids.Add(new ReceiptVoidEntity { ReceiptId = receiptId, Reason = reason, VoidedBy = context.User.FindFirstValue(KjClaims.Subject), At = now });
+            }
+
             try
             {
                 await db.SaveChangesAsync();

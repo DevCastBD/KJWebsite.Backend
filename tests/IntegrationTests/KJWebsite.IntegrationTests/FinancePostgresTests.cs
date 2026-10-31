@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(6);
+                db.Database.GetAppliedMigrations().Should().HaveCount(7);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/donations", new
@@ -92,6 +92,62 @@ public sealed class FinancePostgresTests
             catch (PostgresException)
             {
                 // Cleanup must not hide a real failure from the test body; a leftover throwaway database is harmless.
+            }
+        }
+    }
+
+    [RequiresPostgresFact]
+    public async Task ReceiptNumbersStayGaplessAndChainedWhenManyDonationsAreConfirmedAtOnce()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("finance_receipts_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            using var factory = new PostgresFinanceApiFactory(connectionString);
+            using var client = factory.CreateClient();
+            var ids = new List<string>();
+            for (var i = 0; i < 20; i++)
+            {
+                using var created = await client.PostAsJsonAsync("/api/v1/donations", new
+                {
+                    amount = "100.00",
+                    currency = "BDT",
+                    frequency = "once",
+                    designation = new { type = "general" },
+                    donor = new { name = $"Donor {i}", email = $"d{i}@example.org" },
+                    anonymous = false,
+                    coverFees = false,
+                    language = "en"
+                });
+                ids.Add((await created.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetString()!);
+            }
+
+            var results = await Task.WhenAll(ids.Select(async id =>
+            {
+                using var scope = factory.Services.CreateScope();
+                return await scope.ServiceProvider.GetRequiredService<FinanceService.Ledger.DonationConfirmation>().ConfirmAsync(id, "bkash", null);
+            }));
+
+            results.Should().OnlyContain(r => r.IsSuccess && r.Value, "every donation is confirmed exactly once, whatever the race");
+            using var db = factory.Services.CreateScope();
+            var context = db.ServiceProvider.GetRequiredService<FinanceDbContext>();
+            var receipts = (await context.Receipts.AsNoTracking().ToListAsync()).OrderBy(r => r.Seq).ToList();
+            receipts.Select(r => r.Seq).Should().Equal(Enumerable.Range(1, 20).Select(n => (long)n));
+            receipts.Select(r => r.DonationId).Should().BeEquivalentTo(ids);
+            (await context.Postings.CountAsync()).Should().Be(20);
+            var check = await db.ServiceProvider.GetRequiredService<FinanceService.Receipts.ReceiptService>().VerifyAsync(receipts[0].Series, default);
+            check.Valid.Should().BeTrue(string.Join("; ", check.Problems));
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            try
+            {
+                await TestPostgres.DropDatabaseAsync(databaseName);
+            }
+            catch (PostgresException)
+            {
+                // Cleanup must not hide a real failure from the test body.
             }
         }
     }
@@ -190,6 +246,30 @@ public sealed class FinancePostgresTests
         {
             await decideTwice.OpenAsync();
             await using var again = new NpgsqlCommand("INSERT INTO finance.offline_decisions (\"OfflineRecordId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('off_1', 'rejected', 'usr_other', now())", decideTwice);
+            (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
+        }
+
+        await Exec(connectionString, "INSERT INTO finance.receipts (\"Id\", \"DonationId\", \"Series\", \"Seq\", \"Number\", \"PrevHash\", \"Hash\", \"IssuedAt\", \"ReceivedOn\", \"DonorNameProtected\", \"DonorEmailProtected\", \"DonorKey\", \"Amount\", \"FeeAmount\", \"Currency\", \"DesignationType\", \"IsAnonymous\", \"Language\", \"IsInKind\", \"OrganisationJson\") VALUES ('rcp_x', 'don_r', '2099-00', 1, 'KJR-2099-00-000001', 'p', 'h', now(), current_date, 'n', 'e', 'k', 10, 0, 'BDT', 'general', false, 'en', false, '{}')");
+        await Exec(connectionString, "INSERT INTO finance.receipt_voids (\"ReceiptId\", \"Reason\", \"At\") VALUES ('rcp_x', 'test', now())");
+        await Exec(connectionString, "INSERT INTO finance.receipt_reissues (\"ReceiptId\", \"Reason\", \"ReissuedBy\", \"At\") VALUES ('rcp_x', 'test', 'u', now())");
+        await Exec(connectionString, "INSERT INTO finance.statement_sends (\"DonorKey\", \"FiscalYear\", \"QueuedBy\", \"At\") VALUES ('k', '2099-00', 'u', now())");
+        foreach (var table in new[] { "receipts", "receipt_voids", "receipt_reissues", "statement_sends" })
+        {
+            await Refused(connectionString, $"DELETE FROM finance.{table}");
+        }
+
+        await Refused(connectionString, "UPDATE finance.receipts SET \"Amount\" = 1");
+        await Refused(connectionString, "UPDATE finance.receipt_voids SET \"Reason\" = 'x'");
+        await Refused(connectionString, "UPDATE finance.statement_sends SET \"QueuedBy\" = 'x'");
+        foreach (var uniqueViolation in new[]
+        {
+            "INSERT INTO finance.receipts (\"Id\", \"DonationId\", \"Series\", \"Seq\", \"Number\", \"PrevHash\", \"Hash\", \"IssuedAt\", \"ReceivedOn\", \"DonorNameProtected\", \"DonorEmailProtected\", \"DonorKey\", \"Amount\", \"FeeAmount\", \"Currency\", \"DesignationType\", \"IsAnonymous\", \"Language\", \"IsInKind\", \"OrganisationJson\") VALUES ('rcp_y', 'don_other', '2099-00', 1, 'KJR-OTHER', 'p', 'h', now(), current_date, 'n', 'e', 'k', 10, 0, 'BDT', 'general', false, 'en', false, '{}')",
+            "INSERT INTO finance.statement_sends (\"DonorKey\", \"FiscalYear\", \"QueuedBy\", \"At\") VALUES ('k', '2099-00', 'u', now())"
+        })
+        {
+            await using var twice = new NpgsqlConnection(connectionString);
+            await twice.OpenAsync();
+            await using var again = new NpgsqlCommand(uniqueViolation, twice);
             (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
         }
 

@@ -24,6 +24,11 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<OfflineRecordEntity> OfflineRecords => Set<OfflineRecordEntity>();
     public DbSet<OfflineDecisionEntity> OfflineDecisions => Set<OfflineDecisionEntity>();
     public DbSet<OfflineProofEntity> OfflineProofs => Set<OfflineProofEntity>();
+    public DbSet<ReceiptEntity> Receipts => Set<ReceiptEntity>();
+    public DbSet<ReceiptVoidEntity> ReceiptVoids => Set<ReceiptVoidEntity>();
+    public DbSet<ReceiptReissueEntity> ReceiptReissues => Set<ReceiptReissueEntity>();
+    public DbSet<FinanceNotificationEntity> Notifications => Set<FinanceNotificationEntity>();
+    public DbSet<StatementSendEntity> StatementSends => Set<StatementSendEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -46,6 +51,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity or PostingEntity or LedgerEntryEntity or PeriodCloseEntity
             or PaymentEventEntity or WebhookRejectionEntity or PayoutEntity or PayoutLineEntity or PaymentSettlementEntity or ProviderNoticeEntity
             or OfflineRecordEntity or OfflineDecisionEntity or OfflineProofEntity
+            or ReceiptEntity or ReceiptVoidEntity or ReceiptReissueEntity or StatementSendEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -298,6 +304,81 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.StorageKey).HasMaxLength(64).IsRequired();
             entity.Property(x => x.UploadedBy).HasMaxLength(64).IsRequired();
             entity.HasIndex(x => x.OfflineRecordId);
+        });
+
+        modelBuilder.Entity<ReceiptEntity>(entity =>
+        {
+            entity.ToTable("receipts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.DonationId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Series).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Number).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.PrevHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Hash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.DonorNameProtected).IsRequired();
+            entity.Property(x => x.DonorEmailProtected).IsRequired();
+            entity.Property(x => x.DonorKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.FeeAmount).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.Method).HasMaxLength(16);
+            entity.Property(x => x.DesignationType).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.DesignationId).HasMaxLength(100);
+            entity.Property(x => x.Language).HasMaxLength(2).IsRequired();
+            entity.Property(x => x.ItemDescription).HasMaxLength(500);
+            entity.Property(x => x.ValuationBasis).HasMaxLength(16);
+            entity.Property(x => x.OrganisationJson).IsRequired();
+            // One receipt per donation, and one receipt per number: two concurrent issues cannot take the same one.
+            entity.HasIndex(x => x.DonationId).IsUnique();
+            entity.HasIndex(x => new { x.Series, x.Seq }).IsUnique();
+            entity.HasIndex(x => x.Number).IsUnique();
+            entity.HasIndex(x => new { x.Series, x.DonorKey });
+        });
+
+        modelBuilder.Entity<ReceiptVoidEntity>(entity =>
+        {
+            entity.ToTable("receipt_voids");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.ReceiptId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.VoidedBy).HasMaxLength(64);
+            entity.HasIndex(x => x.ReceiptId).IsUnique();
+        });
+
+        modelBuilder.Entity<ReceiptReissueEntity>(entity =>
+        {
+            entity.ToTable("receipt_reissues");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.ReceiptId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.ReissuedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.ReceiptId);
+        });
+
+        modelBuilder.Entity<FinanceNotificationEntity>(entity =>
+        {
+            entity.ToTable("notification_outbox");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Template).HasMaxLength(48).IsRequired();
+            entity.Property(x => x.Language).HasMaxLength(2).IsRequired();
+            entity.Property(x => x.RecipientProtected).IsRequired();
+            entity.Property(x => x.PayloadProtected).IsRequired();
+            entity.HasIndex(x => x.SentAt);
+        });
+
+        modelBuilder.Entity<StatementSendEntity>(entity =>
+        {
+            entity.ToTable("statement_sends");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.DonorKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.FiscalYear).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.QueuedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.DonorKey, x.FiscalYear }).IsUnique();
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

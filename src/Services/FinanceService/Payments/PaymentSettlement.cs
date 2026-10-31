@@ -48,7 +48,8 @@ public sealed class PaymentSettlement(FinanceDbContext db, DonationConfirmation 
                 var confirmed = await confirmation.ConfirmAsync(donation.Id, gateway, $"Confirmed by {gateway}", cancellationToken: cancellationToken);
                 if (!confirmed.IsSuccess)
                 {
-                    return SettlementOutcome.Ignored;
+                    // A save conflict is not an answer about the payment: leave it pending so the redelivery or the resolver settles it.
+                    return confirmed.Error!.Code == "CONFLICT" ? SettlementOutcome.Pending : SettlementOutcome.Ignored;
                 }
 
                 await RecordSettlementAsync(donation.Id, gateway, verification.Settlement, cancellationToken);

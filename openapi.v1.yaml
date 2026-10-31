@@ -3344,6 +3344,23 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/donations/{reference}/receipt.pdf":
+    get:
+      tags:
+        - "Donations"
+      summary: "The donor\u0027s receipt as a bilingual PDF"
+      description: "Available once the donation is confirmed, and gone (404) if it is reversed. The unguessable reference is the access key, as for the status page. Never cached."
+      operationId: "GetDonationReceiptPdf"
+      parameters:
+        -
+          name: "reference"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/donations/{reference}/return":
     get:
       tags:
@@ -3638,6 +3655,170 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/RejectRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/receipts:
+    get:
+      tags:
+        - "Receipts"
+      summary: "Receipts, newest number first"
+      description: "Filters: series (fiscal year such as 2026-27), status (valid, void)."
+      operationId: "ListReceipts"
+      parameters:
+        -
+          name: "series"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/receipts/verify:
+    get:
+      tags:
+        - "Receipts"
+      summary: "Check a series for gaps, broken links and altered receipts"
+      description: "Walks the fiscal year\u0027s receipts in order: the sequence must run 1..n without gaps, each receipt must carry the previous one\u0027s hash, and each hash must match the receipt\u0027s own content. \u0060valid\u0060 is false and \u0060problems\u0060 says where when not."
+      operationId: "VerifyReceiptSeries"
+      parameters:
+        -
+          name: "series"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/receipts/{id}":
+    get:
+      tags:
+        - "Receipts"
+      summary: "One receipt with its hash links, void and re-issue history"
+      operationId: "GetReceipt"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/receipts/{id}/pdf":
+    get:
+      tags:
+        - "Receipts"
+      summary: "The receipt as a bilingual PDF"
+      description: "Marked VOID when its donation was reversed, and as a DUPLICATE COPY once re-issued. Requires \u0060finance.view\u0060."
+      operationId: "GetReceiptPdf"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/receipts/{id}/reissue":
+    post:
+      tags:
+        - "Receipts"
+      summary: "Issue a copy of a receipt again"
+      description: "The original is untouched and keeps its number; the re-issue is recorded with who asked and why, and later PDFs are marked DUPLICATE COPY n. \u0060resend: true\u0060 also queues the email again. A void receipt cannot be re-issued. Requires \u0060finance.receipt.manage\u0060."
+      operationId: "ReissueReceipt"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReissueRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/statements:
+    get:
+      tags:
+        - "Statements"
+      summary: "Per-donor annual totals for a fiscal year"
+      description: "Donors are grouped by a keyed hash of their email. Voided receipts are left out; each currency is totalled separately, with in-kind value apart from money. A donor with no email stands alone per gift."
+      operationId: "ListDonorStatements"
+      parameters:
+        -
+          name: "fiscalYear"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/statements/{donorKey}/pdf":
+    get:
+      tags:
+        - "Statements"
+      summary: "A donor\u0027s annual statement as a bilingual PDF"
+      operationId: "GetDonorStatementPdf"
+      parameters:
+        -
+          name: "donorKey"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "fiscalYear"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/statements/send:
+    post:
+      tags:
+        - "Statements"
+      summary: "Queue each donor\u0027s annual statement for email, once per donor and year"
+      description: "Writes one outbox message per donor with an email address who has not been queued for that fiscal year; a repeat queues nothing new. Requires \u0060finance.receipt.manage\u0060."
+      operationId: "QueueDonorStatements"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatementSendRequest"
         required: true
       responses:
         "200":
@@ -4688,6 +4869,10 @@ tags:
   -
     name: "Offline donations"
   -
+    name: "Receipts"
+  -
+    name: "Statements"
+  -
     name: "Ledger"
   -
     name: "Reconciliation"
@@ -5715,6 +5900,18 @@ components:
           type:
             - "null"
             - "string"
+    ReissueRequest:
+      required:
+        - "reason"
+        - "resend"
+      type: "object"
+      properties:
+        reason:
+          type:
+            - "null"
+            - "string"
+        resend:
+          type: "boolean"
     RejectRequest:
       required:
         - "reason"
@@ -5730,6 +5927,15 @@ components:
       type: "object"
       properties:
         reason:
+          type:
+            - "null"
+            - "string"
+    StatementSendRequest:
+      required:
+        - "fiscalYear"
+      type: "object"
+      properties:
+        fiscalYear:
           type:
             - "null"
             - "string"

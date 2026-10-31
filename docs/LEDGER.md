@@ -23,6 +23,9 @@ Dr the method's account (gateway clearing for `sslcommerz`, `bkash`, `nagad`, `s
 ## Offline gifts
 An offline donation is confirmed (and posted) only when a different user approves it (see OFFLINE_DONATIONS.md): Dr cash, bank or the in-kind account by method, Cr donation income, dated the day the gift arrived unless that month is closed.
 
+## Receipts
+Confirmation also issues the donation's numbered receipt in the same commit (see RECEIPTS.md).
+
 ## Payout posting
 Importing a gateway payout (BE-056) posts each matched donation: Dr bank (net received), Dr `5040` payment processing fees, Cr the gateway's clearing account (gross), source `payout`, unique per payout and donation. Together with the confirmation posting this leaves the clearing account at zero once a donation is settled.
 
