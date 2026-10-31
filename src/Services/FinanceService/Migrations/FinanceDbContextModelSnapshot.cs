@@ -61,6 +61,93 @@ namespace FinanceService.Migrations
                     b.ToTable("accounts", "finance");
                 });
 
+            modelBuilder.Entity("FinanceService.Data.Entities.BudgetAlertEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("ActualAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("BudgetId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("PlannedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("ThresholdPercent")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BudgetId", "ThresholdPercent")
+                        .IsUnique();
+
+                    b.ToTable("budget_alerts", "finance");
+                });
+
+            modelBuilder.Entity("FinanceService.Data.Entities.BudgetEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("CategoryKey")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("FiscalYear")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<decimal>("PlannedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("ProjectSlug")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FiscalYear", "Currency", "CategoryKey")
+                        .IsUnique()
+                        .HasFilter("\"ProjectSlug\" IS NULL");
+
+                    b.HasIndex("FiscalYear", "Currency", "ProjectSlug", "CategoryKey")
+                        .IsUnique()
+                        .HasFilter("\"ProjectSlug\" IS NOT NULL");
+
+                    b.ToTable("budgets", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_budgets_positive", "\"PlannedAmount\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("FinanceService.Data.Entities.CampaignEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -684,6 +771,24 @@ namespace FinanceService.Migrations
                     b.HasIndex("SentAt");
 
                     b.ToTable("notification_outbox", "finance");
+                });
+
+            modelBuilder.Entity("FinanceService.Data.Entities.FiscalYearCloseEntity", b =>
+                {
+                    b.Property<string>("Label")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ClosedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Label");
+
+                    b.ToTable("fiscal_year_closes", "finance");
                 });
 
             modelBuilder.Entity("FinanceService.Data.Entities.LedgerEntryEntity", b =>

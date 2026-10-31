@@ -1,3 +1,4 @@
+using FinanceService.Budgets;
 using FinanceService.Campaigns;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
@@ -77,6 +78,9 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<ExpenseDecisionEntity>()
     .Audit<ExpensePaymentEntity>()
     .Audit<ExpenseReceiptEntity>()
+    .Audit<FiscalYearCloseEntity>()
+    .Audit<BudgetEntity>()
+    .Audit<BudgetAlertEntity>()
     .Audit<PayoutEntity>()
     .Audit<PayoutLineEntity>()
     .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
@@ -105,6 +109,9 @@ builder.Services.AddScoped<DonorService>();
 builder.Services.AddScoped<DonorData>();
 builder.Services.Configure<ExpenseOptions>(builder.Configuration.GetSection(ExpenseOptions.SectionName));
 builder.Services.AddScoped<ExpenseService>();
+builder.Services.Configure<BudgetOptions>(builder.Configuration.GetSection(BudgetOptions.SectionName));
+builder.Services.AddScoped<BudgetMath>();
+builder.Services.AddScoped<BudgetAlertService>();
 builder.Services.Configure<CampaignOptions>(builder.Configuration.GetSection(CampaignOptions.SectionName));
 builder.Services.AddSingleton<CampaignProgressCache>();
 builder.Services.AddScoped<LedgerService>();
@@ -124,6 +131,7 @@ builder.Services.AddScoped<PayoutService>();
 if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
 {
     builder.Services.AddHostedService<ReconciliationWorker>();
+    builder.Services.AddHostedService<BudgetAlertWorker>();
 }
 builder.Services.AddKjJwtAuthentication();
 builder.Services.AddKjIdempotency(builder.Configuration);
@@ -174,6 +182,7 @@ app.MapReceipts();
 app.MapDonors();
 app.MapCampaigns();
 app.MapExpenses();
+app.MapBudgets();
 app.MapLedger();
 app.MapWebhooks();
 app.MapReconciliation();

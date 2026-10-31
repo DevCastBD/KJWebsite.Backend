@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(10);
+                db.Database.GetAppliedMigrations().Should().HaveCount(11);
             }
 
             await TestCampaigns.SeedAsync(factory.Services, "flood-relief", currency: "USD");
@@ -384,6 +384,41 @@ public sealed class FinancePostgresTests
             await using var twice = new NpgsqlConnection(connectionString);
             await twice.OpenAsync();
             await using var again = new NpgsqlCommand(uniqueViolation2, twice);
+            (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
+        }
+
+        // A closed fiscal year takes no posting from any tool; the close itself is permanent.
+        await Exec(connectionString, "INSERT INTO finance.fiscal_year_closes (\"Label\", \"ClosedAt\") VALUES ('2001-02', now())");
+        await Refused(connectionString, "DELETE FROM finance.fiscal_year_closes");
+        await Refused(connectionString, "UPDATE finance.fiscal_year_closes SET \"ClosedBy\" = 'x'");
+        await CheckViolationInTransaction(connectionString,
+            "INSERT INTO finance.postings (\"PostedOn\", \"PeriodKey\", \"FiscalYear\", \"Memo\", \"SourceType\", \"CreatedAt\") VALUES ('2001-09-01', '2001-09', '2001-02', 'raw', 'adjustment', now()) RETURNING \"Id\"",
+            [string.Format(System.Globalization.CultureInfo.InvariantCulture, "INSERT INTO finance.ledger_entries (\"PostingId\", \"AccountId\", \"Debit\", \"Credit\", \"Currency\") VALUES ({{id}}, (SELECT \"Id\" FROM finance.accounts WHERE \"Code\" = '1010'), 10, 0, 'BDT')"),
+             string.Format(System.Globalization.CultureInfo.InvariantCulture, "INSERT INTO finance.ledger_entries (\"PostingId\", \"AccountId\", \"Debit\", \"Credit\", \"Currency\") VALUES ({{id}}, (SELECT \"Id\" FROM finance.accounts WHERE \"Code\" = '4900'), 0, 10, 'BDT')")]);
+
+        // Budget lines: one per year, currency, category and project, and the no-project case is unique too (NULLs are not equal in SQL).
+        await Exec(connectionString, "INSERT INTO finance.budgets (\"Id\", \"FiscalYear\", \"Currency\", \"CategoryKey\", \"PlannedAmount\", \"CreatedAt\") VALUES ('bud_1', '2030-31', 'BDT', 'programme', 100, now())");
+        await Exec(connectionString, "INSERT INTO finance.budgets (\"Id\", \"FiscalYear\", \"Currency\", \"ProjectSlug\", \"CategoryKey\", \"PlannedAmount\", \"CreatedAt\") VALUES ('bud_2', '2030-31', 'BDT', 'school', 'programme', 100, now())");
+        foreach (var budgetDuplicate in new[]
+        {
+            "INSERT INTO finance.budgets (\"Id\", \"FiscalYear\", \"Currency\", \"CategoryKey\", \"PlannedAmount\", \"CreatedAt\") VALUES ('bud_3', '2030-31', 'BDT', 'programme', 5, now())",
+            "INSERT INTO finance.budgets (\"Id\", \"FiscalYear\", \"Currency\", \"ProjectSlug\", \"CategoryKey\", \"PlannedAmount\", \"CreatedAt\") VALUES ('bud_4', '2030-31', 'BDT', 'school', 'programme', 5, now())"
+        })
+        {
+            await using var twice = new NpgsqlConnection(connectionString);
+            await twice.OpenAsync();
+            await using var again = new NpgsqlCommand(budgetDuplicate, twice);
+            (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
+        }
+
+        await CheckViolation(connectionString, "INSERT INTO finance.budgets (\"Id\", \"FiscalYear\", \"Currency\", \"CategoryKey\", \"PlannedAmount\", \"CreatedAt\") VALUES ('bud_neg', '2031-32', 'BDT', 'events', -1, now())");
+        await Exec(connectionString, "INSERT INTO finance.budget_alerts (\"BudgetId\", \"ThresholdPercent\", \"PlannedAmount\", \"ActualAmount\", \"At\") VALUES ('bud_1', 80, 100, 80, now())");
+        await Refused(connectionString, "UPDATE finance.budget_alerts SET \"ActualAmount\" = 1");
+        await Refused(connectionString, "DELETE FROM finance.budget_alerts");
+        await using (var alertTwice = new NpgsqlConnection(connectionString))
+        {
+            await alertTwice.OpenAsync();
+            await using var again = new NpgsqlCommand("INSERT INTO finance.budget_alerts (\"BudgetId\", \"ThresholdPercent\", \"PlannedAmount\", \"ActualAmount\", \"At\") VALUES ('bud_1', 80, 100, 90, now())", alertTwice);
             (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
         }
 

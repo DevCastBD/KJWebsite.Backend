@@ -333,7 +333,7 @@ public sealed partial class ExpenseService(
     /// <summary>The decision and the posting go in together or not at all. The posting is dated the day the expense was incurred unless that month is closed, then today.</summary>
     private async Task<Result> StageFinalApprovalAsync(ExpenseEntity expense, string actor, CancellationToken cancellationToken)
     {
-        var closed = await db.PeriodCloses.AnyAsync(c => c.PeriodKey == FiscalCalendar.PeriodKey(expense.IncurredOn), cancellationToken);
+        var closed = await ledger.IsClosedAsync(expense.IncurredOn, cancellationToken);
         var money = Money.Of(expense.Amount, expense.Currency);
         var staged = await ledger.StageAsync(new PostingDraft(closed ? Today : expense.IncurredOn, Memo("Expense", expense), PostingSources.Expense, expense.Id,
             [LedgerLine.Debit(expense.AccountCode, money), LedgerLine.Credit(PayableAccount(expense), money)]), actor, cancellationToken);

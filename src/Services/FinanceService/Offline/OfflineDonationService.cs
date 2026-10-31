@@ -18,7 +18,7 @@ namespace FinanceService.Offline;
 /// rejected and recorded again, a proof is never removed.
 /// </summary>
 public sealed partial class OfflineDonationService(
-    FinanceDbContext db, IDonorProtector protector, IProofStore proofs, DonationConfirmation confirmation, IOptions<ProofOptions> proofOptions, TimeProvider clock)
+    FinanceDbContext db, IDonorProtector protector, IProofStore proofs, DonationConfirmation confirmation, LedgerService ledger, IOptions<ProofOptions> proofOptions, TimeProvider clock)
 {
     [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+\z", RegexOptions.CultureInvariant)]
     private static partial Regex Email();
@@ -269,8 +269,7 @@ public sealed partial class OfflineDonationService(
         }
 
         // The gift is dated the day it arrived, unless that month is already closed, in which case it lands today.
-        var period = FiscalCalendar.PeriodKey(record.ReceivedOn);
-        var postedOn = await db.PeriodCloses.AnyAsync(c => c.PeriodKey == period, cancellationToken) ? Today : record.ReceivedOn;
+        var postedOn = await ledger.IsClosedAsync(record.ReceivedOn, cancellationToken) ? Today : record.ReceivedOn;
         var now = clock.GetUtcNow();
         var result = await confirmation.ConfirmAsync(donationId, record.Method, $"Approved offline donation {record.Id}", postedOn,
             context => context.OfflineDecisions.Add(new OfflineDecisionEntity { OfflineRecordId = record.Id, Decision = OfflineDecisions.Approved, DecidedBy = actor, At = now }), cancellationToken);

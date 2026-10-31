@@ -39,6 +39,9 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<ExpenseApprovalEntity> ExpenseApprovals => Set<ExpenseApprovalEntity>();
     public DbSet<ExpenseDecisionEntity> ExpenseDecisions => Set<ExpenseDecisionEntity>();
     public DbSet<ExpensePaymentEntity> ExpensePayments => Set<ExpensePaymentEntity>();
+    public DbSet<FiscalYearCloseEntity> FiscalYearCloses => Set<FiscalYearCloseEntity>();
+    public DbSet<BudgetEntity> Budgets => Set<BudgetEntity>();
+    public DbSet<BudgetAlertEntity> BudgetAlerts => Set<BudgetAlertEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -64,6 +67,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             or ReceiptEntity or ReceiptVoidEntity or ReceiptReissueEntity or StatementSendEntity
             or DonorConsentEntity or DonorSuppressionEntity or DonorExportEntity
             or ExpenseEntity or ExpenseReceiptEntity or ExpenseApprovalEntity or ExpenseDecisionEntity or ExpensePaymentEntity
+            or FiscalYearCloseEntity or BudgetAlertEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -525,6 +529,45 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.Reference).HasMaxLength(100);
             entity.Property(x => x.PaidBy).HasMaxLength(64).IsRequired();
             entity.HasIndex(x => x.ExpenseId).IsUnique();
+        });
+
+        modelBuilder.Entity<FiscalYearCloseEntity>(entity =>
+        {
+            entity.ToTable("fiscal_year_closes");
+            entity.HasKey(x => x.Label);
+            entity.Property(x => x.Label).HasMaxLength(16);
+            entity.Property(x => x.ClosedBy).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<BudgetEntity>(entity =>
+        {
+            entity.ToTable("budgets");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.FiscalYear).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.ProjectSlug).HasMaxLength(100);
+            entity.Property(x => x.CategoryKey).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.PlannedAmount).HasPrecision(18, 2);
+            entity.Property(x => x.CreatedBy).HasMaxLength(64);
+            // One line per year, currency, project (or none) and category: SQL treats two NULLs as different, so the no-project case is a separate unique index.
+            entity.HasIndex(x => new { x.FiscalYear, x.Currency, x.ProjectSlug, x.CategoryKey }).IsUnique().HasFilter("\"ProjectSlug\" IS NOT NULL");
+            entity.HasIndex(x => new { x.FiscalYear, x.Currency, x.CategoryKey }).IsUnique().HasFilter("\"ProjectSlug\" IS NULL");
+            if (Database.IsNpgsql())
+            {
+                entity.ToTable(t => t.HasCheckConstraint("ck_budgets_positive", "\"PlannedAmount\" > 0"));
+            }
+        });
+
+        modelBuilder.Entity<BudgetAlertEntity>(entity =>
+        {
+            entity.ToTable("budget_alerts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.BudgetId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.PlannedAmount).HasPrecision(18, 2);
+            entity.Property(x => x.ActualAmount).HasPrecision(18, 2);
+            entity.HasIndex(x => new { x.BudgetId, x.ThresholdPercent }).IsUnique();
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

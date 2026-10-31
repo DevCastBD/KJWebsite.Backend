@@ -4311,6 +4311,174 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/finance/fiscal-years:
+    get:
+      tags:
+        - "Budgets"
+      summary: "Fiscal years that have postings, budgets or a close, and the current one"
+      description: "A year is open until it is closed. Labels and dates follow the ledger\u0027s fiscal calendar (\u0060Finance:Ledger:FiscalYearStartMonth\u0060, July by default: \u00602026-27\u0060 runs 2026-07-01 to 2027-06-30)."
+      operationId: "ListFiscalYears"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/fiscal-years/{label}/close":
+    post:
+      tags:
+        - "Budgets"
+      summary: "Close a fiscal year"
+      description: "Only a year that has ended can be closed, once. Afterwards the ledger rejects any posting or reversal dated in it (\u0060FISCAL_YEAR_CLOSED\u0060, 409) and its budgets are frozen. There is no reopen in this version. Requires \u0060finance.period.close\u0060."
+      operationId: "CloseFiscalYear"
+      parameters:
+        -
+          name: "label"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/budgets:
+    get:
+      tags:
+        - "Budgets"
+      summary: "Budget lines for a fiscal year with actual spend from the ledger"
+      description: "\u0060year\u0060 defaults to the current fiscal year. \u0060actual\u0060 is read from the ledger: debits less credits on the category\u0027s expense account in the line\u0027s currency, dated inside the year; a project line counts only spend from expenses coded to that project. \u0060status\u0060 is ok, warning (past the first alert threshold) or over (actual above plan)."
+      operationId: "ListBudgets"
+      parameters:
+        -
+          name: "year"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "currency"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "project"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "category"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Budgets"
+      summary: "Add a budget line"
+      description: "\u0060{year?, category, project?, planned, currency}\u0060: \u0060year\u0060 defaults to the current fiscal year, \u0060category\u0060 is an expense category key, \u0060project\u0060 (a slug) narrows it to one project and omitting it budgets the whole organisation for that category, \u0060planned\u0060 is a positive decimal string. One line per year, currency, project and category. A closed year takes no new lines. Requires \u0060finance.budget.manage\u0060."
+      operationId: "CreateBudget"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/budgets/{id}":
+    put:
+      tags:
+        - "Budgets"
+      summary: "Change a budget line\u0027s planned amount"
+      description: "Only the amount can change; the year, currency, project and category identify the line. Audited. Refused once the year is closed. Requires \u0060finance.budget.manage\u0060."
+      operationId: "UpdateBudget"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetChange"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Budgets"
+      summary: "Remove a budget line from an open year"
+      description: "A budget is a plan, so it can be removed while its year is open; the removal is audited and alerts already fired stay on record. Requires \u0060finance.budget.manage\u0060."
+      operationId: "DeleteBudget"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/budgets/alerts:
+    get:
+      tags:
+        - "Budgets"
+      summary: "Over-budget alerts that have fired, newest first"
+      operationId: "ListBudgetAlerts"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/budgets/alerts/run:
+    post:
+      tags:
+        - "Budgets"
+      summary: "Check every open budget line against the alert thresholds now"
+      description: "Fires, once per line and threshold, an alert for each configured percentage (default 80 and 100) of the plan that spend has reached; the same check runs on a timer. Requires \u0060finance.budget.manage\u0060."
+      operationId: "RunBudgetAlerts"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/ledger:
     get:
       tags:
@@ -5367,6 +5535,8 @@ tags:
   -
     name: "Expenses"
   -
+    name: "Budgets"
+  -
     name: "Ledger"
   -
     name: "Reconciliation"
@@ -6175,6 +6345,44 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/AdjustmentLineRequest"
+    BudgetChange:
+      required:
+        - "planned"
+      type: "object"
+      properties:
+        planned:
+          type:
+            - "null"
+            - "string"
+    BudgetRequest:
+      required:
+        - "year"
+        - "category"
+        - "project"
+        - "planned"
+        - "currency"
+      type: "object"
+      properties:
+        year:
+          type:
+            - "null"
+            - "string"
+        category:
+          type:
+            - "null"
+            - "string"
+        project:
+          type:
+            - "null"
+            - "string"
+        planned:
+          type:
+            - "null"
+            - "string"
+        currency:
+          type:
+            - "null"
+            - "string"
     ConsentRequest:
       required:
         - "purpose"

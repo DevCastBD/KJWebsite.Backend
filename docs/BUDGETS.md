@@ -1,0 +1,15 @@
+# Fiscal years, budgets and variance (BE-064, #68)
+
+## Fiscal years
+The calendar is the ledger's (`Finance:Ledger:FiscalYearStartMonth`, default 7, July to June; **decision #112 on the calendar and accounting standard is still open**, so this default is an assumption to confirm with the auditor). A year is named `2026-27` (running 2026-07-01 to 2027-06-30), or `2026` for a calendar-year setting, and each posting stores the label it was made under. A year needs no creating: it is **open** until closed. `GET /api/v1/admin/finance/fiscal-years` lists the years that have postings, budgets or a close, plus the current one, with dates, status and counts.
+
+**Closing** (`POST .../fiscal-years/{label}/close`, `finance.period.close`): only a year that has **ended** can be closed (`FISCAL_YEAR_NOT_ENDED`), once. From then on a posting or reversal dated in it is rejected with `409`-class `FISCAL_YEAR_CLOSED` by the ledger service, and by a PostgreSQL trigger for any other tool; its budgets are frozen. Gifts, expenses and offline entries whose own date falls in a closed year are posted today instead of failing. There is no reopen in this version (it arrives with the two-approver flow of BE-068). Monthly period close (BE-065) still works inside an open year.
+
+## Budgets
+A line is **per fiscal year, currency, category and optional project**: no project means the whole organisation for that category. Categories are the expense category keys (programme, fundraising, administrative, events, other; configurable). `GET|POST /api/v1/admin/finance/budgets` (frontend shape: `category`, `planned`, `actual`, `currency`, plus year, project, remaining, percent used, status), `PUT .../budgets/{id}` (amount only) and `DELETE`, with `finance.budget.manage` (Admin, SuperAdmin, FinanceOfficer). A budget is a plan, so it can change while its year is open (every change audited, a removal too) and is refused once the year is closed.
+
+## Actual spend comes from the ledger
+`actual` = debits less credits on the category's expense account, in the line's currency, on postings **dated inside the fiscal year**. A **project** line counts only postings that came from an approved expense coded to that project (a reversal follows the posting it reverses); the **organisation-wide** line counts everything on that account, manual adjustments included. Currencies are never mixed. Nothing is tallied separately, so the figure cannot disagree with the ledger. `status` is `ok`, `warning` (past the first alert threshold) or `over` (actual above plan).
+
+## Over-budget alerts
+Configurable thresholds (`Finance:Budgets:AlertThresholdPercents`, default 80 and 100): the first time a line's spend reaches each one it fires **once** (unique per line and threshold in the database): an append-only record (`GET .../budgets/alerts`), a Warning in the log and, if `Finance:Budgets:AlertEmails` lists addresses, a `budget.alert` message in the outbox for each (delivery waits on the email sender). The check runs on a timer (`CheckIntervalMinutes`, default 15, 0 = off) and on demand with `POST .../budgets/alerts/run`. Closed years are not checked.
