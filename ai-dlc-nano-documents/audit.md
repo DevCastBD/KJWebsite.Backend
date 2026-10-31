@@ -278,3 +278,4 @@
 - 2026-10-31T13:40Z [claude] 060-issue-65-donor-crm DECISION @21b2f16: three consent purposes opt-in; thank-you via consent gate (user)
 - 2026-10-31T13:40Z [claude] 060-issue-65-donor-crm BRANCH @21b2f16: Feature/issue-65-donor-crm stacked on Feature/issue-64-receipts (user confirmed)
 - 2026-10-31T13:40Z [claude] 060-issue-65-donor-crm PHASE PLAN→CONSTRUCT @21b2f16: plan approved (user)
+- 2026-10-31T13:48Z [claude] 060-issue-65-donor-crm DONE @bf2bc42: donors, segments, consent gate, export, reconciliation; 684+46 tests green incl PG; committed locally, not pushed
