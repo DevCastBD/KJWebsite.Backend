@@ -3715,6 +3715,182 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/donations/webhooks/{gateway}":
+    get:
+      tags:
+        - "Donations"
+      summary: "Payment gateway webhook or browser callback"
+      description: "Called by the gateways, not by the site. The call is a prompt to look, never proof: the signature is checked where the gateway signs (unsigned or badly signed calls get 400 and are logged), then the gateway itself is asked what happened, and only its answer confirms or fails the donation. A repeated delivery changes nothing. POST answers 200, 400 or 503 (deliver again); GET, the donor returning, answers 303 to the site\u0027s status page."
+      operationId: "PaymentWebhookGet"
+      parameters:
+        -
+          name: "gateway"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Donations"
+      summary: "Payment gateway webhook or browser callback"
+      description: "Called by the gateways, not by the site. The call is a prompt to look, never proof: the signature is checked where the gateway signs (unsigned or badly signed calls get 400 and are logged), then the gateway itself is asked what happened, and only its answer confirms or fails the donation. A repeated delivery changes nothing. POST answers 200, 400 or 503 (deliver again); GET, the donor returning, answers 303 to the site\u0027s status page."
+      operationId: "PaymentWebhookPost"
+      parameters:
+        -
+          name: "gateway"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/webhook-rejections:
+    get:
+      tags:
+        - "Reconciliation"
+      summary: "Refused gateway calls, newest first"
+      description: "The alert list: unsigned or badly signed webhooks, calls about unknown payments, and paid amounts that did not match the donation. Reason codes: BAD_SIGNATURE, UNKNOWN_GATEWAY, GATEWAY_DISABLED, UNKNOWN_PAYMENT, REFERENCE_MISMATCH, AMOUNT_MISMATCH."
+      operationId: "ListWebhookRejections"
+      parameters:
+        -
+          name: "gateway"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "reason"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/reconciliation/pending/run:
+    post:
+      tags:
+        - "Reconciliation"
+      summary: "Ask the gateways about checkouts still pending"
+      description: "Asks each gateway about every donation still pending after \u0060ReconcileAfterMinutes\u0060 and applies the answer exactly as a webhook would. A gateway that does not answer leaves the donation pending. The same job also runs on a timer. Requires \u0060finance.reconcile\u0060."
+      operationId: "ResolvePendingPayments"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/payouts:
+    post:
+      tags:
+        - "Reconciliation"
+      summary: "Import a gateway settlement and match it to donations"
+      description: "\u0060{gateway, payoutRef, paidOn?, lines:[{reference, gross, fee, net, currency}]}\u0060, amounts as decimal strings with \u0060gross = fee \u002B net\u0060. Each line is matched (donation confirmed, not reversed, same gateway, not already settled, gross equal to the charge), unmatched, amount_mismatch or duplicate. Matched lines post the settlement to the ledger; the whole batch is written together or not at all. A payout can be imported once. Requires \u0060finance.reconcile\u0060."
+      operationId: "ImportGatewayPayout"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayoutImport"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Reconciliation"
+      summary: "Imported payouts with their line matches"
+      operationId: "ListGatewayPayouts"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/payouts/{id}":
+    get:
+      tags:
+        - "Reconciliation"
+      summary: "One payout with its lines"
+      operationId: "GetGatewayPayout"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/reconciliation/unpaid:
+    get:
+      tags:
+        - "Reconciliation"
+      summary: "Confirmed gateway donations not yet settled by an imported payout"
+      operationId: "ListUnpaidGatewayDonations"
+      parameters:
+        -
+          name: "gateway"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/audit:
     get:
       tags:
@@ -4354,6 +4530,8 @@ tags:
     name: "Finance"
   -
     name: "Ledger"
+  -
+    name: "Reconciliation"
   -
     name: "Auth"
   -
@@ -5242,6 +5420,61 @@ components:
             - "null"
             - "string"
         phone:
+          type:
+            - "null"
+            - "string"
+    PayoutImport:
+      required:
+        - "gateway"
+        - "payoutRef"
+        - "paidOn"
+        - "lines"
+      type: "object"
+      properties:
+        gateway:
+          type:
+            - "null"
+            - "string"
+        payoutRef:
+          type:
+            - "null"
+            - "string"
+        paidOn:
+          type:
+            - "null"
+            - "string"
+        lines:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/PayoutLineInput"
+    PayoutLineInput:
+      required:
+        - "reference"
+        - "gross"
+        - "fee"
+        - "net"
+        - "currency"
+      type: "object"
+      properties:
+        reference:
+          type:
+            - "null"
+            - "string"
+        gross:
+          type:
+            - "null"
+            - "string"
+        fee:
+          type:
+            - "null"
+            - "string"
+        net:
+          type:
+            - "null"
+            - "string"
+        currency:
           type:
             - "null"
             - "string"

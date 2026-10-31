@@ -73,4 +73,28 @@ public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledg
             return Result.Success(false);
         }
     }
+
+    /// <summary>Records that a payment failed or was cancelled. Only a donation still `pending` moves: a confirmed donation is never taken back by a late failure call, only by a reversal.</summary>
+    public async Task<Result<bool>> MarkAsync(string donationId, string status, string? note, CancellationToken cancellationToken = default)
+    {
+        if (status is not (DonationStatuses.Failed or DonationStatuses.Cancelled))
+        {
+            throw new ArgumentOutOfRangeException(nameof(status), "Only failed or cancelled can be recorded here; confirmation posts to the ledger and has its own method.");
+        }
+
+        var latest = await db.DonationEvents.Where(e => e.DonationId == donationId).OrderByDescending(e => e.Id).Select(e => e.Status).FirstOrDefaultAsync(cancellationToken);
+        if (latest is null)
+        {
+            return Result.Failure<bool>("NOT_FOUND", "Donation not found.");
+        }
+
+        if (latest != DonationStatuses.Pending)
+        {
+            return Result.Success(false);
+        }
+
+        db.DonationEvents.Add(new DonationEventEntity { DonationId = donationId, Status = status, Note = note, At = clock.GetUtcNow() });
+        await db.SaveChangesAsync(cancellationToken);
+        return Result.Success(true);
+    }
 }

@@ -3,6 +3,7 @@ using FinanceService.Data.Entities;
 using FinanceService.Donations;
 using FinanceService.Ledger;
 using FinanceService.Payments;
+using FinanceService.Reconciliation;
 using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Idempotency;
 using KJWebsite.BuildingBlocks.Security;
@@ -55,6 +56,8 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<PostingEntity>()
     .Audit<LedgerEntryEntity>()
     .Audit<PeriodCloseEntity>()
+    .Audit<PayoutEntity>()
+    .Audit<PayoutLineEntity>()
     .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
 builder.Services.AddSingleton(TimeProvider.System);
 
@@ -77,6 +80,14 @@ builder.Services.AddPaymentGateway<SslCommerzGateway>(SslCommerzGateway.ClientNa
 builder.Services.AddPaymentGateway<BkashGateway>(BkashGateway.ClientName);
 builder.Services.AddPaymentGateway<NagadGateway>(NagadGateway.ClientName);
 builder.Services.AddSingleton<PaymentGatewayRegistry>();
+builder.Services.AddScoped<PaymentSettlement>();
+builder.Services.AddScoped<WebhookProcessor>();
+builder.Services.AddScoped<PendingResolver>();
+builder.Services.AddScoped<PayoutService>();
+if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
+{
+    builder.Services.AddHostedService<ReconciliationWorker>();
+}
 builder.Services.AddKjJwtAuthentication();
 builder.Services.AddKjIdempotency(builder.Configuration);
 
@@ -122,6 +133,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "FinanceSe
 app.MapPublicDonations();
 app.MapAdminDonations();
 app.MapLedger();
+app.MapWebhooks();
+app.MapReconciliation();
 app.MapAuditLog<FinanceDbContext>("/api/v1/admin/finance/audit", "Finance");
 
 app.Run();

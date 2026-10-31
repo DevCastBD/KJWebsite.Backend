@@ -15,6 +15,10 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<PostingEntity> Postings => Set<PostingEntity>();
     public DbSet<LedgerEntryEntity> LedgerEntries => Set<LedgerEntryEntity>();
     public DbSet<PeriodCloseEntity> PeriodCloses => Set<PeriodCloseEntity>();
+    public DbSet<PaymentEventEntity> PaymentEvents => Set<PaymentEventEntity>();
+    public DbSet<WebhookRejectionEntity> WebhookRejections => Set<WebhookRejectionEntity>();
+    public DbSet<PayoutEntity> Payouts => Set<PayoutEntity>();
+    public DbSet<PayoutLineEntity> PayoutLines => Set<PayoutLineEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -35,6 +39,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
         ChangeTracker.DetectChanges();
         var offender = ChangeTracker.Entries().FirstOrDefault(e =>
             e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity or PostingEntity or LedgerEntryEntity or PeriodCloseEntity
+            or PaymentEventEntity or WebhookRejectionEntity or PayoutEntity or PayoutLineEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -186,6 +191,62 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
                 entity.ToTable(t => t.HasCheckConstraint("ck_ledger_entries_one_side",
                     "\"Debit\" >= 0 AND \"Credit\" >= 0 AND ((\"Debit\" > 0 AND \"Credit\" = 0) OR (\"Debit\" = 0 AND \"Credit\" > 0))"));
             }
+        });
+
+        modelBuilder.Entity<PaymentEventEntity>(entity =>
+        {
+            entity.ToTable("payment_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Gateway).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.EventKey).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.DonationId).HasMaxLength(40);
+            entity.Property(x => x.Outcome).HasMaxLength(24).IsRequired();
+            // The replay guard: one record per delivery.
+            entity.HasIndex(x => new { x.Gateway, x.EventKey }).IsUnique();
+        });
+
+        modelBuilder.Entity<WebhookRejectionEntity>(entity =>
+        {
+            entity.ToTable("webhook_rejections");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Gateway).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.ReasonCode).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.SourceIp).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Reference).HasMaxLength(64);
+            entity.HasIndex(x => x.Id);
+        });
+
+        modelBuilder.Entity<PayoutEntity>(entity =>
+        {
+            entity.ToTable("payouts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Gateway).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.PayoutRef).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ImportedBy).HasMaxLength(64);
+            entity.HasIndex(x => new { x.Gateway, x.PayoutRef }).IsUnique();
+            entity.HasMany(x => x.Lines).WithOne(x => x.Payout).HasForeignKey(x => x.PayoutId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PayoutLineEntity>(entity =>
+        {
+            entity.ToTable("payout_lines");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Reference).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.DonationId).HasMaxLength(40);
+            entity.Property(x => x.Gross).HasPrecision(18, 2);
+            entity.Property(x => x.Fee).HasPrecision(18, 2);
+            entity.Property(x => x.Net).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.MatchStatus).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(32);
+            entity.HasOne(x => x.Posting).WithMany().HasForeignKey(x => x.PostingId).OnDelete(DeleteBehavior.Restrict);
+            // A donation is settled by at most one payout.
+            entity.HasIndex(x => x.DonationId).IsUnique().HasFilter("\"MatchStatus\" = 'matched'");
+            entity.HasIndex(x => x.PayoutId);
         });
 
         modelBuilder.Entity<PeriodCloseEntity>(entity =>

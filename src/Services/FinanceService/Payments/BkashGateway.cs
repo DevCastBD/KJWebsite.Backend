@@ -54,7 +54,7 @@ public sealed class BkashGateway(IHttpClientFactory httpClients, IOptions<Paymen
         {
             mode = "0011",
             payerReference = request.DonorPhone ?? request.Reference,
-            callbackURL = request.Returns.Success.ToString(),
+            callbackURL = request.Returns.Webhook.ToString(),
             amount = request.Charge.Amount.ToString("0.00", CultureInfo.InvariantCulture),
             currency = request.Charge.Currency,
             intent = "sale",
@@ -132,6 +132,67 @@ public sealed class BkashGateway(IHttpClientFactory httpClients, IOptions<Paymen
         {
             _tokenLock.Release();
         }
+    }
+
+    /// <summary>bKash does not sign its browser callback: `paymentID` and `status` are claims, and the payment-status query decides.</summary>
+    public WebhookParse ParseWebhook(IncomingWebhook webhook) =>
+        webhook.Query.TryGetValue("paymentID", out var paymentId) && paymentId.Length is > 0 and <= 100
+            ? new WebhookParse(WebhookAuthenticity.NotSigned, null, paymentId, $"{paymentId}:{(webhook.Query.TryGetValue("status", out var status) ? status : string.Empty)}")
+            : new WebhookParse(WebhookAuthenticity.Invalid, null, null, null);
+
+    /// <summary>
+    /// Queries the payment. bKash only takes the money when the merchant executes an `Authorized` payment, so that call is made here, once, and its answer
+    /// (`Completed`) is what counts. Anything not clearly finished stays pending for the reconciliation job.
+    /// </summary>
+    public async Task<PaymentVerification> VerifyAsync(VerifyRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(request.ProviderPaymentId))
+        {
+            return new PaymentVerification(PaymentOutcome.Pending, null, null);
+        }
+
+        try
+        {
+            return await VerifyOnceAsync(request.ProviderPaymentId, cancellationToken);
+        }
+        catch (GatewayRejectedException exception) when (exception.Code is "GATEWAY_HTTP_401" or "BKASH_TOKEN_INVALID")
+        {
+            await InvalidateTokenAsync();
+            return await VerifyOnceAsync(request.ProviderPaymentId, cancellationToken);
+        }
+    }
+
+    private async Task<PaymentVerification> VerifyOnceAsync(string paymentId, CancellationToken cancellationToken)
+    {
+        var token = await TokenAsync(cancellationToken);
+        var status = await CallAsync("payment/status", paymentId, token, cancellationToken);
+        if (GatewayHttp.Text(status, "transactionStatus") == "Authorized")
+        {
+            status = await CallAsync("execute", paymentId, token, cancellationToken);
+        }
+
+        var state = GatewayHttp.Text(status, "transactionStatus");
+        return state switch
+        {
+            "Completed" => new PaymentVerification(PaymentOutcome.Paid, GatewayHttp.Amount(GatewayHttp.Text(status, "amount"), GatewayHttp.Text(status, "currency")), GatewayHttp.Text(status, "merchantInvoiceNumber")),
+            "Failed" or "Expired" => new PaymentVerification(PaymentOutcome.Failed, null, GatewayHttp.Text(status, "merchantInvoiceNumber")),
+            "Cancelled" => new PaymentVerification(PaymentOutcome.Cancelled, null, GatewayHttp.Text(status, "merchantInvoiceNumber")),
+            _ => new PaymentVerification(PaymentOutcome.Pending, null, GatewayHttp.Text(status, "merchantInvoiceNumber"))
+        };
+    }
+
+    private async Task<JsonElement> CallAsync(string path, string paymentId, string token, CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, $"{BaseUrl}/tokenized/checkout/{path}") { Content = Json(new { paymentID = paymentId }) };
+        message.Headers.TryAddWithoutValidation("Authorization", token);
+        message.Headers.TryAddWithoutValidation("X-APP-Key", Settings.AppKey);
+        var body = await GatewayHttp.SendForJsonAsync(Client(), message, cancellationToken);
+        if (GatewayHttp.Text(body, "statusCode") == "2079")
+        {
+            throw new GatewayRejectedException("BKASH_TOKEN_INVALID", "bKash refused the access token.");
+        }
+
+        return body;
     }
 
     public void Dispose() => _tokenLock.Dispose();

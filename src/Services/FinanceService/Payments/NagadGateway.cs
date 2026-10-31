@@ -64,7 +64,7 @@ public sealed class NagadGateway(IHttpClientFactory httpClients, IOptions<Paymen
             {
                 sensitiveData = Encrypt(gatewayKey, complete),
                 signature = Sign(merchantKey, complete),
-                merchantCallbackURL = request.Returns.Success.ToString(),
+                merchantCallbackURL = request.Returns.Webhook.ToString(),
                 additionalMerchantInfo = new { donationReference = request.Reference }
             },
             request.ClientIp, cancellationToken);
@@ -75,6 +75,43 @@ public sealed class NagadGateway(IHttpClientFactory httpClients, IOptions<Paymen
         }
 
         return new CheckoutSession(paymentReferenceId, GatewayHttp.RedirectUrl(GatewayHttp.Text(completeAnswer, "callBackUrl"), "GATEWAY_BAD_RESPONSE", Settings.Sandbox));
+    }
+
+    /// <summary>Nagad does not sign its browser callback: `payment_ref_id` and `status` are claims, and the payment-verification query decides.</summary>
+    public WebhookParse ParseWebhook(IncomingWebhook webhook)
+    {
+        if (!webhook.Query.TryGetValue("payment_ref_id", out var paymentRef) || paymentRef.Length is 0 or > 100)
+        {
+            return new WebhookParse(WebhookAuthenticity.Invalid, null, null, null);
+        }
+
+        return new WebhookParse(WebhookAuthenticity.NotSigned, null, paymentRef, $"{paymentRef}:{(webhook.Query.TryGetValue("status", out var status) ? status : string.Empty)}");
+    }
+
+    public async Task<PaymentVerification> VerifyAsync(VerifyRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(request.ProviderPaymentId))
+        {
+            return new PaymentVerification(PaymentOutcome.Pending, null, null);
+        }
+
+        var baseUrl = (Settings.BaseUrl ?? (Settings.Sandbox ? SandboxUrl : LiveUrl)).TrimEnd('/');
+        using var message = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl}/verify/payment/{Uri.EscapeDataString(request.ProviderPaymentId)}");
+        message.Headers.TryAddWithoutValidation("X-KM-Api-Version", "v-0.2.0");
+        message.Headers.TryAddWithoutValidation("X-KM-IP-V4", "127.0.0.1");
+        message.Headers.TryAddWithoutValidation("X-KM-Client-Type", "PC_WEB");
+        var body = await GatewayHttp.SendForJsonAsync(GatewayHttp.Client(httpClients, ClientName, options.Value.TimeoutSeconds), message, cancellationToken);
+
+        // The order id is our reference without its hyphen (KJD-XXXXXXXXXX).
+        var order = GatewayHttp.Text(body, "orderId");
+        var reference = order is { Length: 13 } && order.StartsWith("KJD", StringComparison.Ordinal) ? $"KJD-{order[3..]}" : order;
+        return GatewayHttp.Text(body, "status")?.ToUpperInvariant() switch
+        {
+            "SUCCESS" => new PaymentVerification(PaymentOutcome.Paid, GatewayHttp.Amount(GatewayHttp.Text(body, "amount"), Currencies.Bdt), reference),
+            "FAILED" or "FAIL" => new PaymentVerification(PaymentOutcome.Failed, null, reference),
+            "ABORTED" or "CANCELLED" => new PaymentVerification(PaymentOutcome.Cancelled, null, reference),
+            _ => new PaymentVerification(PaymentOutcome.Pending, null, reference)
+        };
     }
 
     private string Timestamp() => clock.GetUtcNow().ToOffset(Dhaka).ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);

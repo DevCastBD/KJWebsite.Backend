@@ -281,6 +281,142 @@ namespace FinanceService.Migrations
                     b.ToTable("payment_attempts", "finance");
                 });
 
+            modelBuilder.Entity("FinanceService.Data.Entities.PaymentEventEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DonationId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("EventKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Gateway")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Gateway", "EventKey")
+                        .IsUnique();
+
+                    b.ToTable("payment_events", "finance");
+                });
+
+            modelBuilder.Entity("FinanceService.Data.Entities.PayoutEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Gateway")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("ImportedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImportedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateOnly>("PaidOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("PayoutRef")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Gateway", "PayoutRef")
+                        .IsUnique();
+
+                    b.ToTable("payouts", "finance");
+                });
+
+            modelBuilder.Entity("FinanceService.Data.Entities.PayoutLineEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("DonationId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<decimal>("Fee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Gross")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("MatchStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<decimal>("Net")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<long>("PayoutId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("PostingId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DonationId")
+                        .IsUnique()
+                        .HasFilter("\"MatchStatus\" = 'matched'");
+
+                    b.HasIndex("PayoutId");
+
+                    b.HasIndex("PostingId");
+
+                    b.ToTable("payout_lines", "finance");
+                });
+
             modelBuilder.Entity("FinanceService.Data.Entities.PeriodCloseEntity", b =>
                 {
                     b.Property<string>("PeriodKey")
@@ -432,6 +568,43 @@ namespace FinanceService.Migrations
                     b.ToTable("recurring_plans", "finance");
                 });
 
+            modelBuilder.Entity("FinanceService.Data.Entities.WebhookRejectionEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Gateway")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceIp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Id");
+
+                    b.ToTable("webhook_rejections", "finance");
+                });
+
             modelBuilder.Entity("KJWebsite.BuildingBlocks.Auditing.AuditEvent", b =>
                 {
                     b.Property<long>("Id")
@@ -535,9 +708,32 @@ namespace FinanceService.Migrations
                     b.Navigation("Posting");
                 });
 
+            modelBuilder.Entity("FinanceService.Data.Entities.PayoutLineEntity", b =>
+                {
+                    b.HasOne("FinanceService.Data.Entities.PayoutEntity", "Payout")
+                        .WithMany("Lines")
+                        .HasForeignKey("PayoutId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinanceService.Data.Entities.PostingEntity", "Posting")
+                        .WithMany()
+                        .HasForeignKey("PostingId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Payout");
+
+                    b.Navigation("Posting");
+                });
+
             modelBuilder.Entity("FinanceService.Data.Entities.DonationEntity", b =>
                 {
                     b.Navigation("Events");
+                });
+
+            modelBuilder.Entity("FinanceService.Data.Entities.PayoutEntity", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("FinanceService.Data.Entities.PostingEntity", b =>

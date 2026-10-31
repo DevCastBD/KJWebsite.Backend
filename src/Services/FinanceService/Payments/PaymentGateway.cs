@@ -13,8 +13,8 @@ public static class GatewayIds
     public static readonly IReadOnlyList<string> All = [Bkash, Nagad, SslCommerz, Stripe, PayPal];
 }
 
-/// <summary>Where the gateway sends the donor back. Every URL lands on our own return endpoint, which only redirects to the site: a return never confirms a payment.</summary>
-public sealed record ReturnUrls(Uri Success, Uri Fail, Uri Cancel);
+/// <summary>Where the gateway sends the donor back, plus our webhook address for gateways that call back or notify. Every URL lands on our own return endpoint, which only redirects to the site: a return never confirms a payment.</summary>
+public sealed record ReturnUrls(Uri Success, Uri Fail, Uri Cancel, Uri Webhook);
 
 public sealed record CheckoutRequest(
     string DonationId,
@@ -47,7 +47,47 @@ public interface IPaymentGateway
     bool Supports(string currency);
 
     Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads an incoming webhook or browser callback. It checks the gateway's signature where the gateway signs and says which payment the call is about;
+    /// it never decides that money arrived. A call that should be signed but is not, or whose signature is wrong, is <see cref="WebhookAuthenticity.Invalid"/>.
+    /// </summary>
+    WebhookParse ParseWebhook(IncomingWebhook webhook);
+
+    /// <summary>Asks the gateway itself, with our credentials, what became of a payment. This answer, not the call that prompted it, is what confirms or fails a donation.</summary>
+    Task<PaymentVerification> VerifyAsync(VerifyRequest request, CancellationToken cancellationToken);
 }
+
+/// <summary>An incoming call from a gateway or from a donor's browser coming back from one. Values are as received: untrusted until verified.</summary>
+public sealed record IncomingWebhook(string Method, IReadOnlyDictionary<string, string> Query, IReadOnlyDictionary<string, string> Form, string SourceIp);
+
+public enum WebhookAuthenticity
+{
+    /// <summary>The gateway signs its calls and this signature checked out.</summary>
+    Verified,
+
+    /// <summary>This gateway does not sign its callbacks; the status re-query is the only check.</summary>
+    NotSigned,
+
+    /// <summary>A signature was required and is missing or wrong, or the call is malformed: reject it.</summary>
+    Invalid
+}
+
+/// <summary>What a webhook is about. `EventKey` identifies this delivery (so a replay is recognised); the identifiers locate the donation and are checked against the gateway's answer.</summary>
+public sealed record WebhookParse(WebhookAuthenticity Authenticity, string? Reference, string? ProviderPaymentId, string? EventKey);
+
+public sealed record VerifyRequest(string Reference, string? ProviderPaymentId);
+
+public enum PaymentOutcome
+{
+    Paid,
+    Failed,
+    Cancelled,
+    Pending
+}
+
+/// <summary>The gateway's own account of a payment: what happened, and for `Paid` the exact amount and reference it holds.</summary>
+public sealed record PaymentVerification(PaymentOutcome Outcome, Money? Amount, string? Reference);
 
 public abstract class GatewayException(string code, string message, Exception? inner = null) : Exception(message, inner)
 {

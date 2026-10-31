@@ -115,6 +115,7 @@ public static class LedgerAccounts
     public const string DonationsGeneral = "4010";
     public const string DonationsDesignated = "4020";
     public const string FeeContributions = "4090";
+    public const string PaymentProcessingFees = "5040";
 
     public static readonly IReadOnlyList<(string Code, string Name, string Type)> Seed =
     [

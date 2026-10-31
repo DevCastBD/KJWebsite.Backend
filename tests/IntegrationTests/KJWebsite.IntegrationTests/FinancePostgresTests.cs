@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(3);
+                db.Database.GetAppliedMigrations().Should().HaveCount(4);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/donations", new
@@ -74,6 +74,7 @@ public sealed class FinancePostgresTests
             }
 
             await LedgerRulesHoldAsync(factory, connectionString);
+            await ReconciliationRecordsAreAppendOnlyAsync(connectionString);
 
             // The sign rule: gifts are positive, reversals negative.
             await CheckViolation(connectionString, InsertDonation("don_bad1", "KJD-BAD0000001", "one_time", "-5.00", "0.00"));
@@ -140,6 +141,29 @@ public sealed class FinancePostgresTests
             [string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "1010", 10, 0, "BDT"), string.Format(System.Globalization.CultureInfo.InvariantCulture, line, "{id}", "4900", 0, 10, "BDT")]);
         await Refused(connectionString, "DELETE FROM finance.period_closes");
         await Refused(connectionString, "UPDATE finance.period_closes SET \"ClosedBy\" = 'x'");
+    }
+
+    private static async Task ReconciliationRecordsAreAppendOnlyAsync(string connectionString)
+    {
+        await Exec(connectionString, "INSERT INTO finance.payment_events (\"Gateway\", \"EventKey\", \"Outcome\", \"At\") VALUES ('sslcommerz', 'k1', 'confirmed', now())");
+        await Exec(connectionString, "INSERT INTO finance.webhook_rejections (\"Gateway\", \"ReasonCode\", \"SourceIp\", \"At\") VALUES ('bkash', 'BAD_SIGNATURE', '1.2.3.4', now())");
+        await Exec(connectionString, "INSERT INTO finance.payouts (\"Gateway\", \"PayoutRef\", \"PaidOn\", \"ImportedAt\") VALUES ('sslcommerz', 'P1', current_date, now())");
+        await Exec(connectionString, "INSERT INTO finance.payout_lines (\"PayoutId\", \"Reference\", \"Gross\", \"Fee\", \"Net\", \"Currency\", \"MatchStatus\") SELECT \"Id\", 'KJD-AAAAAAAAAA', 10, 1, 9, 'BDT', 'unmatched' FROM finance.payouts LIMIT 1");
+        foreach (var table in new[] { "payment_events", "webhook_rejections", "payouts", "payout_lines" })
+        {
+            await Refused(connectionString, $"DELETE FROM finance.{table}");
+        }
+
+        await Refused(connectionString, "UPDATE finance.payment_events SET \"Outcome\" = 'failed'");
+        await Refused(connectionString, "UPDATE finance.webhook_rejections SET \"ReasonCode\" = 'X'");
+        await Refused(connectionString, "UPDATE finance.payouts SET \"PayoutRef\" = 'P2'");
+        await Refused(connectionString, "UPDATE finance.payout_lines SET \"Gross\" = 99");
+
+        // The replay guard and the settle-once rule are unique indexes.
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var duplicate = new NpgsqlCommand("INSERT INTO finance.payment_events (\"Gateway\", \"EventKey\", \"Outcome\", \"At\") VALUES ('sslcommerz', 'k1', 'confirmed', now())", connection);
+        (await duplicate.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
     }
 
     private static async Task<(NpgsqlConnection Connection, NpgsqlTransaction Transaction, long Id)> BeginAsync(string connectionString, string header)

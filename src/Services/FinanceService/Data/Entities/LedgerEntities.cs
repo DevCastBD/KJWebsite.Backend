@@ -19,6 +19,7 @@ public static class PostingSources
     public const string Donation = "donation";
     public const string Expense = "expense";
     public const string Dues = "dues";
+    public const string Payout = "payout";
     public const string Adjustment = "adjustment";
     public const string Reversal = "reversal";
 }
