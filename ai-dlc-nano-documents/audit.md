@@ -290,3 +290,4 @@
 - 2026-10-31T15:37Z [claude] 062-issue-67-expenses DECISION @ac17cd6: distinct-approver tiers; accrue on approval, separate pay step (user)
 - 2026-10-31T15:37Z [claude] 062-issue-67-expenses BRANCH @ac17cd6: Feature/issue-67-expenses stacked on Feature/issue-66-campaigns (user confirmed)
 - 2026-10-31T15:37Z [claude] 062-issue-67-expenses PHASE PLAN→CONSTRUCT @ac17cd6: plan approved (user)
+- 2026-10-31T15:46Z [claude] 062-issue-67-expenses DONE @6212921: expenses, tiers, receipts, pay, rollups; 759+46 tests green incl PG concurrency; committed locally, not pushed
