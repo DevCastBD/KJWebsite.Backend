@@ -296,3 +296,4 @@
 - 2026-10-31T18:09Z [claude] 063-issue-68-budgets DECISION @9d2c544: actuals via expense attribution; alerts rows+log+outbox (user)
 - 2026-10-31T18:09Z [claude] 063-issue-68-budgets BRANCH @9d2c544: Feature/issue-68-budgets stacked on Feature/issue-67-expenses (user confirmed)
 - 2026-10-31T18:09Z [claude] 063-issue-68-budgets PHASE PLAN→CONSTRUCT @9d2c544: plan approved (user)
+- 2026-10-31T18:17Z [claude] 063-issue-68-budgets DONE @543255a: fiscal-year close, budgets, variance, alerts; 801+46 tests green incl PG; committed locally, not pushed
