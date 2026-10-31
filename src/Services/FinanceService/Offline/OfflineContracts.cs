@@ -16,7 +16,8 @@ public sealed record OfflineDonationRequest(
     string? Dedication,
     string? ReferenceNo,
     string? Note,
-    ValuationRequest? Valuation);
+    ValuationRequest? Valuation,
+    bool CommunicationConsent = false);
 
 public sealed record RejectRequest(string? Reason);
 

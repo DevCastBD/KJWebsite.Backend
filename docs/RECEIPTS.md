@@ -23,3 +23,6 @@ A message is written to the Finance `notification_outbox` in the same commit (te
 
 ## Annual statements
 Donors are grouped by a keyed hash of their email (`Finance:Receipts:DonorKeySecret`, required outside Development; changing it splits donors); a donor with no email stands alone per gift. `GET .../statements?fiscalYear=2026-27` lists each donor's receipt count and per-currency totals (money and in-kind value apart; voided receipts excluded), `GET .../statements/{donorKey}/pdf?fiscalYear=` renders it, and `POST .../statements/send {fiscalYear}` (`finance.receipt.manage`) queues one email per donor with an address, once per donor and year. Anonymous gifts appear only in their own donor's statement.
+
+## Donors
+The donor key also drives the donor CRM (DONORS.md): a receipt is issued first, then the donor record and any consented thank-you are saved in the same commit.

@@ -154,6 +154,7 @@ public sealed partial class OfflineDonationService(
             DonorEmailProtected = protector.Protect(email ?? string.Empty),
             DonorPhoneProtected = phone is null ? null : protector.Protect(phone),
             Language = "en",
+            CommunicationConsent = request.CommunicationConsent,
             CreatedBy = actor,
             CreatedAt = now,
             ReceivedOn = receivedOn

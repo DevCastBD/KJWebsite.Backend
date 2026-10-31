@@ -66,6 +66,9 @@ public sealed class DonationEntity
     public string? DonorPhoneProtected { get; set; }
     public string Language { get; set; } = "en";
 
+    /// <summary>The donor ticked the optional box to hear from us (thank-yous and updates). Never covers fundraising appeals, and absence is not consent.</summary>
+    public bool CommunicationConsent { get; set; }
+
     public string? RecurringPlanId { get; set; }
     public string? ReversesDonationId { get; set; }
     public string? ReversalReason { get; set; }

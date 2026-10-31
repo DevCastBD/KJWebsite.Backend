@@ -42,6 +42,10 @@ public static class Permissions
     public const string FinanceDonationApprove = "finance.donation.approve";
     /// <summary>Issue a receipt copy again and queue donors' annual statements.</summary>
     public const string FinanceReceiptManage = "finance.receipt.manage";
+    /// <summary>Change a donor's consent and queue messages to donors (always through the consent gate).</summary>
+    public const string FinanceDonorManage = "finance.donor.manage";
+    /// <summary>Take a CSV export of donor personal data: held back from day-to-day officers, and every export is logged.</summary>
+    public const string FinanceDonorExport = "finance.donor.export";
     public const string AuditView = "audit.view";
     public const string CtaManage = "cta.manage";
     public const string MediaView = "media.view";
@@ -97,6 +101,8 @@ public static class PermissionCatalog
         new("finance", Permissions.FinanceDonationRecord, "Record an offline donation (bank, cash, cheque, wallet, in kind)"),
         new("finance", Permissions.FinanceDonationApprove, "Approve or reject an offline donation recorded by someone else"),
         new("finance", Permissions.FinanceReceiptManage, "Re-issue receipts and queue annual donor statements"),
+        new("finance", Permissions.FinanceDonorManage, "Change donor communication consent and queue donor messages"),
+        new("finance", Permissions.FinanceDonorExport, "Export donor data as CSV"),
         new("settings", Permissions.SettingsView, "View site settings"),
         new("settings", Permissions.SettingsManage, "Change site settings and maintenance mode"),
         new("dashboard", Permissions.DashboardView, "See the back-office dashboard and global search"),
@@ -122,7 +128,7 @@ public static class KjRoles
         [SuperAdmin] = Permissions.All,
         [Admin] = [.. Permissions.All.Where(p => p != Permissions.RolesManage)],
         [Moderator] = [Permissions.ContentView, Permissions.ContentUpdate, Permissions.CtaView, Permissions.CtaManage, Permissions.DashboardView],
-        [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceReceiptManage],
+        [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceReceiptManage, Permissions.FinanceDonorManage],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate, Permissions.MediaView, Permissions.MediaUpload, Permissions.DashboardView],
         [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],
         [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MembershipLifecycle, Permissions.MemberProfileView, Permissions.UsersView],

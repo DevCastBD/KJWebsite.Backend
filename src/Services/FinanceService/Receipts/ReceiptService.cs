@@ -65,11 +65,12 @@ public sealed class ReceiptService(FinanceDbContext db, IDonorProtector protecto
 {
     public static readonly string GenesisHash = new('0', 64);
 
-    public async Task StageIssueAsync(DonationEntity donation, string? method, CancellationToken cancellationToken)
+    /// <summary>Stages the donation's receipt and returns it; null when the donation already has one.</summary>
+    public async Task<ReceiptEntity?> StageIssueAsync(DonationEntity donation, string? method, CancellationToken cancellationToken)
     {
         if (await db.Receipts.AnyAsync(r => r.DonationId == donation.Id, cancellationToken))
         {
-            return;
+            return null;
         }
 
         var series = FiscalCalendar.FiscalYear(donation.ReceivedOn, ledgerOptions.Value.FiscalYearStartMonth);
@@ -120,6 +121,8 @@ public sealed class ReceiptService(FinanceDbContext db, IDonorProtector protecto
                 CreatedAt = now
             });
         }
+
+        return receipt;
     }
 
     /// <summary>The hash covers everything that identifies the receipt and the one before it, in a fixed text form.</summary>

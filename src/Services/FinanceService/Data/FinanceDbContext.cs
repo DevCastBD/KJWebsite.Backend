@@ -29,6 +29,10 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<ReceiptReissueEntity> ReceiptReissues => Set<ReceiptReissueEntity>();
     public DbSet<FinanceNotificationEntity> Notifications => Set<FinanceNotificationEntity>();
     public DbSet<StatementSendEntity> StatementSends => Set<StatementSendEntity>();
+    public DbSet<DonorEntity> Donors => Set<DonorEntity>();
+    public DbSet<DonorConsentEntity> DonorConsents => Set<DonorConsentEntity>();
+    public DbSet<DonorSuppressionEntity> DonorSuppressions => Set<DonorSuppressionEntity>();
+    public DbSet<DonorExportEntity> DonorExports => Set<DonorExportEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -52,6 +56,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             or PaymentEventEntity or WebhookRejectionEntity or PayoutEntity or PayoutLineEntity or PaymentSettlementEntity or ProviderNoticeEntity
             or OfflineRecordEntity or OfflineDecisionEntity or OfflineProofEntity
             or ReceiptEntity or ReceiptVoidEntity or ReceiptReissueEntity or StatementSendEntity
+            or DonorConsentEntity or DonorSuppressionEntity or DonorExportEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -110,6 +115,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.DonorEmailProtected).IsRequired();
             entity.Property(x => x.Language).HasMaxLength(2).IsRequired();
             entity.Property(x => x.RecurringPlanId).HasMaxLength(40);
+            entity.Property(x => x.CommunicationConsent).HasDefaultValue(false);
             entity.Property(x => x.ReversesDonationId).HasMaxLength(40);
             entity.Property(x => x.ReversalReason).HasMaxLength(500);
             entity.Property(x => x.CreatedBy).HasMaxLength(64);
@@ -379,6 +385,52 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.FiscalYear).HasMaxLength(16).IsRequired();
             entity.Property(x => x.QueuedBy).HasMaxLength(64).IsRequired();
             entity.HasIndex(x => new { x.DonorKey, x.FiscalYear }).IsUnique();
+        });
+
+        modelBuilder.Entity<DonorEntity>(entity =>
+        {
+            entity.ToTable("donors");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.DonorKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.NameProtected).IsRequired();
+            entity.Property(x => x.EmailProtected).IsRequired();
+            entity.Property(x => x.Language).HasMaxLength(2).IsRequired();
+            // One donor per person: two gifts confirmed together cannot both create the record.
+            entity.HasIndex(x => x.DonorKey).IsUnique();
+        });
+
+        modelBuilder.Entity<DonorConsentEntity>(entity =>
+        {
+            entity.ToTable("donor_consents");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.DonorId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Purpose).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Source).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.RecordedBy).HasMaxLength(64);
+            entity.HasIndex(x => new { x.DonorId, x.Purpose, x.Id });
+        });
+
+        modelBuilder.Entity<DonorSuppressionEntity>(entity =>
+        {
+            entity.ToTable("donor_suppressions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.DonorId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Template).HasMaxLength(48).IsRequired();
+            entity.Property(x => x.Purpose).HasMaxLength(16).IsRequired();
+            entity.HasIndex(x => x.DonorId);
+        });
+
+        modelBuilder.Entity<DonorExportEntity>(entity =>
+        {
+            entity.ToTable("donor_exports");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Segment).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ConsentFilter).HasMaxLength(16);
+            entity.Property(x => x.ExportedBy).HasMaxLength(64).IsRequired();
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

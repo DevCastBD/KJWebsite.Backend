@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(7);
+                db.Database.GetAppliedMigrations().Should().HaveCount(8);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/donations", new
@@ -270,6 +270,26 @@ public sealed class FinancePostgresTests
             await using var twice = new NpgsqlConnection(connectionString);
             await twice.OpenAsync();
             await using var again = new NpgsqlCommand(uniqueViolation, twice);
+            (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
+        }
+
+        await Exec(connectionString, "INSERT INTO finance.donors (\"Id\", \"DonorKey\", \"NameProtected\", \"EmailProtected\", \"Language\", \"CreatedAt\") VALUES ('dnr_1', 'key1', 'n', 'e', 'en', now())");
+        await Exec(connectionString, "INSERT INTO finance.donor_consents (\"DonorId\", \"Purpose\", \"Granted\", \"Source\", \"At\") VALUES ('dnr_1', 'thanks', true, 'admin', now())");
+        await Exec(connectionString, "INSERT INTO finance.donor_suppressions (\"DonorId\", \"Template\", \"Purpose\", \"At\") VALUES ('dnr_1', 'donor.appeal', 'appeals', now())");
+        await Exec(connectionString, "INSERT INTO finance.donor_exports (\"Segment\", \"AsOf\", \"Rows\", \"ExportedBy\", \"At\") VALUES ('all', current_date, 1, 'u', now())");
+        foreach (var table in new[] { "donor_consents", "donor_suppressions", "donor_exports" })
+        {
+            await Refused(connectionString, $"DELETE FROM finance.{table}");
+        }
+
+        await Refused(connectionString, "UPDATE finance.donor_consents SET \"Granted\" = false");
+        await Refused(connectionString, "UPDATE finance.donor_suppressions SET \"Purpose\" = 'x'");
+        await Refused(connectionString, "UPDATE finance.donor_exports SET \"Rows\" = 9");
+        await Exec(connectionString, "UPDATE finance.donors SET \"Language\" = 'bn' WHERE \"Id\" = 'dnr_1'");
+        await using (var sameDonor = new NpgsqlConnection(connectionString))
+        {
+            await sameDonor.OpenAsync();
+            await using var again = new NpgsqlCommand("INSERT INTO finance.donors (\"Id\", \"DonorKey\", \"NameProtected\", \"EmailProtected\", \"Language\", \"CreatedAt\") VALUES ('dnr_2', 'key1', 'n', 'e', 'en', now())", sameDonor);
             (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
         }
 

@@ -273,3 +273,8 @@
 - 2026-10-31T13:11Z [claude] 059-issue-64-receipts BRANCH @357517e: Feature/issue-64-receipts stacked on Feature/issue-63-offline-donations (user confirmed)
 - 2026-10-31T13:11Z [claude] 059-issue-64-receipts PHASE PLAN→CONSTRUCT @357517e: plan approved (user)
 - 2026-10-31T13:20Z [claude] 059-issue-64-receipts DONE @b2cf221: receipts, chain, PDF, void/reissue, statements; 653+46 tests green incl PG concurrency; committed locally, not pushed
+- 2026-10-31T13:40Z [claude] 060-issue-65-donor-crm CREATED @21b2f16: stacked on #64 branch
+- 2026-10-31T13:40Z [claude] 060-issue-65-donor-crm SIDE-EFFECT @21b2f16: assigned #65 to FHShubho (user asked)
+- 2026-10-31T13:40Z [claude] 060-issue-65-donor-crm DECISION @21b2f16: three consent purposes opt-in; thank-you via consent gate (user)
+- 2026-10-31T13:40Z [claude] 060-issue-65-donor-crm BRANCH @21b2f16: Feature/issue-65-donor-crm stacked on Feature/issue-64-receipts (user confirmed)
+- 2026-10-31T13:40Z [claude] 060-issue-65-donor-crm PHASE PLAN→CONSTRUCT @21b2f16: plan approved (user)
