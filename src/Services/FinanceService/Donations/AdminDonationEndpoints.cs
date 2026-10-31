@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Ledger;
+using FinanceService.Offline;
 using FinanceService.Payments;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Finance;
@@ -27,6 +28,7 @@ public static class AdminDonationEndpoints
         public string Latest { get; init; } = string.Empty;
         public bool Reversed { get; init; }
         public string? Gateway { get; init; }
+        public string? OfflineMethod { get; init; }
     }
 
     public static void MapAdminDonations(this IEndpointRouteBuilder app)
@@ -51,7 +53,7 @@ public static class AdminDonationEndpoints
 
             if (!string.IsNullOrWhiteSpace(method))
             {
-                query = query.Where(v => v.Gateway == method);
+                query = query.Where(v => v.Gateway == method || v.OfflineMethod == method);
             }
 
             if (!string.IsNullOrWhiteSpace(designation))
@@ -223,7 +225,8 @@ public static class AdminDonationEndpoints
             Donation = d,
             Latest = db.DonationEvents.Where(e => e.DonationId == d.Id).OrderByDescending(e => e.Id).Select(e => e.Status).FirstOrDefault() ?? DonationStatuses.Pending,
             Reversed = db.Donations.Any(r => r.ReversesDonationId == d.Id),
-            Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault()
+            Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault(),
+            OfflineMethod = db.OfflineRecords.Where(o => o.DonationId == d.Id).Select(o => o.Method).FirstOrDefault()
         });
 
     private static FinanceDonationRow Row(DonationView view, IDonorProtector protector)
@@ -231,7 +234,7 @@ public static class AdminDonationEndpoints
         var d = view.Donation;
         return new FinanceDonationRow(
             d.Id, d.Reference, PublicDonationEndpoints.FormatDate(d.ReceivedOn), protector.Unprotect(d.DonorNameProtected), d.IsAnonymous,
-            PublicDonationEndpoints.Format(d.Amount), PublicDonationEndpoints.Format(d.FeeAmount), d.Currency, view.Gateway, false,
+            PublicDonationEndpoints.Format(d.Amount), PublicDonationEndpoints.Format(d.FeeAmount), d.Currency, view.Gateway ?? view.OfflineMethod, view.OfflineMethod != null,
             DesignationText(d.DesignationType, d.DesignationId), d.Kind, view.Reversed ? "refunded" : view.Latest);
     }
 
@@ -244,10 +247,11 @@ public static class AdminDonationEndpoints
         var settlement = paid is null ? null : new SettlementView(
             paid.Gateway, PublicDonationEndpoints.Format(paid.SettledAmount), paid.SettledCurrency, paid.Fee is { } f ? PublicDonationEndpoints.Format(f) : null,
             paid.ExchangeRate?.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture), paid.TransactionId);
+        var offline = await OfflineDonationService.ViewAsync(db, d.Id);
         return new FinanceDonationDetail(
             Row(view, protector), protector.Unprotect(d.DonorEmailProtected), d.DonorPhoneProtected is null ? null : protector.Unprotect(d.DonorPhoneProtected),
             d.Dedication, d.RecurringPlanId, d.ReversesDonationId, reversedBy, d.ReversalReason,
-            [.. events.Select(e => new FinanceDonationEvent(e.Status, e.Note, e.At))], settlement);
+            [.. events.Select(e => new FinanceDonationEvent(e.Status, e.Note, e.At))], settlement, offline);
     }
 
     private static string DesignationText(string type, string? id) => type == Designations.General ? type : $"{type}:{id}";

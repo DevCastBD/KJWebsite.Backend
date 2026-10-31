@@ -21,6 +21,9 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<PayoutLineEntity> PayoutLines => Set<PayoutLineEntity>();
     public DbSet<PaymentSettlementEntity> PaymentSettlements => Set<PaymentSettlementEntity>();
     public DbSet<ProviderNoticeEntity> ProviderNotices => Set<ProviderNoticeEntity>();
+    public DbSet<OfflineRecordEntity> OfflineRecords => Set<OfflineRecordEntity>();
+    public DbSet<OfflineDecisionEntity> OfflineDecisions => Set<OfflineDecisionEntity>();
+    public DbSet<OfflineProofEntity> OfflineProofs => Set<OfflineProofEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -42,6 +45,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
         var offender = ChangeTracker.Entries().FirstOrDefault(e =>
             e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity or PostingEntity or LedgerEntryEntity or PeriodCloseEntity
             or PaymentEventEntity or WebhookRejectionEntity or PayoutEntity or PayoutLineEntity or PaymentSettlementEntity or ProviderNoticeEntity
+            or OfflineRecordEntity or OfflineDecisionEntity or OfflineProofEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -250,6 +254,50 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.Currency).HasMaxLength(3);
             entity.HasIndex(x => new { x.Gateway, x.EventKey }).IsUnique();
             entity.HasIndex(x => x.DonationId);
+        });
+
+        modelBuilder.Entity<OfflineRecordEntity>(entity =>
+        {
+            entity.ToTable("offline_records");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.DonationId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Method).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ReferenceNo).HasMaxLength(100);
+            entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.Property(x => x.ItemDescription).HasMaxLength(500);
+            entity.Property(x => x.ValuationBasis).HasMaxLength(16);
+            entity.Property(x => x.ValuationNote).HasMaxLength(500);
+            entity.Property(x => x.RecordedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.DonationId).IsUnique();
+            entity.HasIndex(x => x.ReceivedOn);
+        });
+
+        modelBuilder.Entity<OfflineDecisionEntity>(entity =>
+        {
+            entity.ToTable("offline_decisions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.OfflineRecordId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Decision).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.DecidedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(500);
+            // One decision per record: two approvers cannot both decide it.
+            entity.HasIndex(x => x.OfflineRecordId).IsUnique();
+        });
+
+        modelBuilder.Entity<OfflineProofEntity>(entity =>
+        {
+            entity.ToTable("offline_proofs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.OfflineRecordId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.FileName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.ContentType).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.StorageKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.UploadedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.OfflineRecordId);
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

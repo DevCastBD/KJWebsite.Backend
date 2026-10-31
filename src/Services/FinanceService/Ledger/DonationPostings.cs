@@ -35,7 +35,8 @@ public static class DonationPostings
 public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledger, TimeProvider clock)
 {
     /// <summary>Success carries true when this call confirmed the donation, false when it already was.</summary>
-    public async Task<Result<bool>> ConfirmAsync(string donationId, string method, string? note, CancellationToken cancellationToken = default)
+    public async Task<Result<bool>> ConfirmAsync(
+        string donationId, string method, string? note, DateOnly? postedOn = null, Action<FinanceDbContext>? alsoStage = null, CancellationToken cancellationToken = default)
     {
         var donation = await db.Donations.AsNoTracking().FirstOrDefaultAsync(d => d.Id == donationId, cancellationToken);
         if (donation is null)
@@ -54,13 +55,16 @@ public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledg
             return Result.Success(false);
         }
 
-        var staged = await ledger.StageAsync(DonationPostings.ForConfirmation(donation, method, ledger.Today), actor: null, cancellationToken);
+        var staged = await ledger.StageAsync(DonationPostings.ForConfirmation(donation, method, postedOn ?? ledger.Today), actor: null, cancellationToken);
         if (!staged.IsSuccess)
         {
             return Result.Failure<bool>(staged.Error!.Code, staged.Error.Message);
         }
 
         db.DonationEvents.Add(new DonationEventEntity { DonationId = donationId, Status = DonationStatuses.Confirmed, Note = note, At = clock.GetUtcNow() });
+
+        // Anything that must stand or fall with the confirmation (an approval record, say) is saved in the same commit.
+        alsoStage?.Invoke(db);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -75,7 +79,7 @@ public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledg
     }
 
     /// <summary>Records that a payment failed or was cancelled. Only a donation still `pending` moves: a confirmed donation is never taken back by a late failure call, only by a reversal.</summary>
-    public async Task<Result<bool>> MarkAsync(string donationId, string status, string? note, CancellationToken cancellationToken = default)
+    public async Task<Result<bool>> MarkAsync(string donationId, string status, string? note, Action<FinanceDbContext>? alsoStage = null, CancellationToken cancellationToken = default)
     {
         if (status is not (DonationStatuses.Failed or DonationStatuses.Cancelled))
         {
@@ -94,6 +98,7 @@ public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledg
         }
 
         db.DonationEvents.Add(new DonationEventEntity { DonationId = donationId, Status = status, Note = note, At = clock.GetUtcNow() });
+        alsoStage?.Invoke(db);
         await db.SaveChangesAsync(cancellationToken);
         return Result.Success(true);
     }

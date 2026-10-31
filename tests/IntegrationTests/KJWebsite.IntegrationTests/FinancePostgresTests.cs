@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(5);
+                db.Database.GetAppliedMigrations().Should().HaveCount(6);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/donations", new
@@ -172,6 +172,24 @@ public sealed class FinancePostgresTests
         {
             await settleTwice.OpenAsync();
             await using var again = new NpgsqlCommand("INSERT INTO finance.payment_settlements (\"DonationId\", \"Gateway\", \"SettledAmount\", \"SettledCurrency\", \"At\") VALUES ('don_a', 'stripe', 1, 'GBP', now())", settleTwice);
+            (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
+        }
+
+        await Exec(connectionString, "INSERT INTO finance.offline_records (\"Id\", \"DonationId\", \"Method\", \"ReceivedOn\", \"RecordedBy\", \"RecordedAt\") VALUES ('off_1', 'don_b', 'bank', current_date, 'usr_maker', now())");
+        await Exec(connectionString, "INSERT INTO finance.offline_decisions (\"OfflineRecordId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('off_1', 'approved', 'usr_checker', now())");
+        await Exec(connectionString, "INSERT INTO finance.offline_proofs (\"Id\", \"OfflineRecordId\", \"FileName\", \"ContentType\", \"SizeBytes\", \"Sha256\", \"StorageKey\", \"UploadedBy\", \"UploadedAt\", \"RetainUntil\") VALUES ('prf_1', 'off_1', 'a.pdf', 'application/pdf', 10, 'ab', 'k', 'usr_maker', now(), current_date)");
+        foreach (var table in new[] { "offline_records", "offline_decisions", "offline_proofs" })
+        {
+            await Refused(connectionString, $"DELETE FROM finance.{table}");
+        }
+
+        await Refused(connectionString, "UPDATE finance.offline_records SET \"Note\" = 'x'");
+        await Refused(connectionString, "UPDATE finance.offline_decisions SET \"Decision\" = 'rejected'");
+        await Refused(connectionString, "UPDATE finance.offline_proofs SET \"FileName\" = 'b.pdf'");
+        await using (var decideTwice = new NpgsqlConnection(connectionString))
+        {
+            await decideTwice.OpenAsync();
+            await using var again = new NpgsqlCommand("INSERT INTO finance.offline_decisions (\"OfflineRecordId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('off_1', 'rejected', 'usr_other', now())", decideTwice);
             (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
         }
 

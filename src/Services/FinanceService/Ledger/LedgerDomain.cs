@@ -112,6 +112,7 @@ public static class LedgerAccounts
     public const string StripeClearing = "1140";
     public const string PayPalClearing = "1150";
     public const string OtherClearing = "1190";
+    public const string InKindGifts = "1250";
     public const string DonationsGeneral = "4010";
     public const string DonationsDesignated = "4020";
     public const string FeeContributions = "4090";
@@ -129,6 +130,7 @@ public static class LedgerAccounts
         (PayPalClearing, "Gateway clearing - PayPal", AccountTypes.Asset),
         (OtherClearing, "Gateway clearing - other", AccountTypes.Asset),
         ("1200", "Receivables", AccountTypes.Asset),
+        (InKindGifts, "In-kind gifts received", AccountTypes.Asset),
         ("2010", "Refunds payable", AccountTypes.Liability),
         ("2020", "Expense reimbursements payable", AccountTypes.Liability),
         ("2100", "Accounts payable", AccountTypes.Liability),
@@ -156,6 +158,7 @@ public static class LedgerAccounts
         "stripe" => StripeClearing,
         "paypal" => PayPalClearing,
         "cash" => Cash,
+        "in_kind" => InKindGifts,
         "bank" or "cheque" => Bank,
         _ => OtherClearing
     };
