@@ -132,6 +132,11 @@ public sealed partial class OfflineDonationService(
             invalid.Add("valuation");
         }
 
+        if (!invalid.Contains("designation") && designationType == Designations.Campaign && !await FinanceService.Campaigns.CampaignRules.AcceptsRecordedGiftAsync(db, designationId!))
+        {
+            invalid.Add("designation");
+        }
+
         if (invalid.Count > 0)
         {
             return Result.Failure<OfflineDonationCreated>("VALIDATION_ERROR", $"Invalid fields: {string.Join(", ", invalid)}.");

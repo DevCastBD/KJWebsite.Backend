@@ -33,6 +33,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<DonorConsentEntity> DonorConsents => Set<DonorConsentEntity>();
     public DbSet<DonorSuppressionEntity> DonorSuppressions => Set<DonorSuppressionEntity>();
     public DbSet<DonorExportEntity> DonorExports => Set<DonorExportEntity>();
+    public DbSet<CampaignEntity> Campaigns => Set<CampaignEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -431,6 +432,21 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.Segment).HasMaxLength(16).IsRequired();
             entity.Property(x => x.ConsentFilter).HasMaxLength(16);
             entity.Property(x => x.ExportedBy).HasMaxLength(64).IsRequired();
+        });
+
+        modelBuilder.Entity<CampaignEntity>(entity =>
+        {
+            entity.ToTable("campaigns");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.Slug).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.TitleBn).HasMaxLength(200);
+            entity.Property(x => x.GoalAmount).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.CreatedBy).HasMaxLength(64);
+            entity.HasIndex(x => x.Slug).IsUnique();
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

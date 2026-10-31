@@ -24,9 +24,10 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(8);
+                db.Database.GetAppliedMigrations().Should().HaveCount(9);
             }
 
+            await TestCampaigns.SeedAsync(factory.Services, "flood-relief", currency: "USD");
             using var created = await client.PostAsJsonAsync("/api/v1/donations", new
             {
                 amount = "1250.50",
@@ -290,6 +291,15 @@ public sealed class FinancePostgresTests
         {
             await sameDonor.OpenAsync();
             await using var again = new NpgsqlCommand("INSERT INTO finance.donors (\"Id\", \"DonorKey\", \"NameProtected\", \"EmailProtected\", \"Language\", \"CreatedAt\") VALUES ('dnr_2', 'key1', 'n', 'e', 'en', now())", sameDonor);
+            (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
+        }
+
+        await Exec(connectionString, "INSERT INTO finance.campaigns (\"Id\", \"Slug\", \"Title\", \"GoalAmount\", \"Currency\", \"Status\", \"CreatedAt\") VALUES ('cmp_1', 'unique-slug', 't', 100, 'BDT', 'draft', now())");
+        await Exec(connectionString, "UPDATE finance.campaigns SET \"Status\" = 'active' WHERE \"Id\" = 'cmp_1'");
+        await using (var sameSlug = new NpgsqlConnection(connectionString))
+        {
+            await sameSlug.OpenAsync();
+            await using var again = new NpgsqlCommand("INSERT INTO finance.campaigns (\"Id\", \"Slug\", \"Title\", \"GoalAmount\", \"Currency\", \"Status\", \"CreatedAt\") VALUES ('cmp_2', 'unique-slug', 't', 100, 'BDT', 'draft', now())", sameSlug);
             (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
         }
 

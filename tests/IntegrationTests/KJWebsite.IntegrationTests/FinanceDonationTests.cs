@@ -211,6 +211,7 @@ public sealed class FinanceDonationTests : IDisposable
     [Fact]
     public async Task AMonthlyDonationCreatesARecurringPlanAndItsFirstInstalment()
     {
+        await TestCampaigns.SeedAsync(_factory.Services, "flood-relief");
         var created = await DonateAsync(Request("300.00", frequency: "monthly", designation: new { type = "campaign", id = "flood-relief" }));
 
         using var scope = _factory.Services.CreateScope();
@@ -406,6 +407,7 @@ public sealed class FinanceDonationTests : IDisposable
     [Fact]
     public async Task TheListFiltersByStatusDesignationAndPages()
     {
+        await TestCampaigns.SeedAsync(_factory.Services, "flood-relief");
         var a = await DonateAsync(Request("100.00", designation: new { type = "campaign", id = "flood-relief" }));
         await DonateAsync(Request("200.00", designation: new { type = "project", id = "school" }));
         await DonateAsync(Request("300.00"));

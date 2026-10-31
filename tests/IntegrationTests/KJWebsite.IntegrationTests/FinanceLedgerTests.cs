@@ -447,6 +447,7 @@ public sealed class FinanceLedgerTests : IDisposable
     [Fact]
     public async Task ADonationThatFailedCanStillBeConfirmedLater()
     {
+        await TestCampaigns.SeedAsync(_factory.Services, "flood");
         using var created = await _client.PostAsJsonAsync("/api/v1/donations", new
         {
             amount = "300.00",
