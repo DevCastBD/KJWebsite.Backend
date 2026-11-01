@@ -297,3 +297,8 @@
 - 2026-10-31T18:09Z [claude] 063-issue-68-budgets BRANCH @9d2c544: Feature/issue-68-budgets stacked on Feature/issue-67-expenses (user confirmed)
 - 2026-10-31T18:09Z [claude] 063-issue-68-budgets PHASE PLAN→CONSTRUCT @9d2c544: plan approved (user)
 - 2026-10-31T18:17Z [claude] 063-issue-68-budgets DONE @543255a: fiscal-year close, budgets, variance, alerts; 801+46 tests green incl PG; committed locally, not pushed
+- 2026-11-01T09:00Z [claude] 064-issue-70-banking SIDE-EFFECT @b4436c7: assigned #70 to FHShubho (user asked)
+- 2026-11-01T09:00Z [claude] 064-issue-70-banking DECISION @b4436c7: all-or-nothing import with full error report; match/post-and-match/dismiss (user)
+- 2026-11-01T09:00Z [claude] 064-issue-70-banking BRANCH @b4436c7: Feature/issue-70-banking stacked on Feature/issue-68-budgets (user confirmed)
+- 2026-11-01T09:00Z [claude] 064-issue-70-banking PHASE PLAN→CONSTRUCT @b4436c7: plan approved (user)
+- 2026-11-01T09:40Z [claude] 064-issue-70-banking DONE @b4436c7: bank registry, CSV/OFX import, auto-match, resolve queue, balance proof; 878+46 tests green twice incl PG; committed locally, not pushed

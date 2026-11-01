@@ -42,6 +42,12 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<FiscalYearCloseEntity> FiscalYearCloses => Set<FiscalYearCloseEntity>();
     public DbSet<BudgetEntity> Budgets => Set<BudgetEntity>();
     public DbSet<BudgetAlertEntity> BudgetAlerts => Set<BudgetAlertEntity>();
+    public DbSet<BankAccountEntity> BankAccounts => Set<BankAccountEntity>();
+    public DbSet<BankStatementEntity> BankStatements => Set<BankStatementEntity>();
+    public DbSet<BankLineEntity> BankLines => Set<BankLineEntity>();
+    public DbSet<BankLineLinkEntity> BankLineLinks => Set<BankLineLinkEntity>();
+    public DbSet<BankMatchEventEntity> BankMatchEvents => Set<BankMatchEventEntity>();
+    public DbSet<BankRevealEntity> BankReveals => Set<BankRevealEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -68,6 +74,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             or DonorConsentEntity or DonorSuppressionEntity or DonorExportEntity
             or ExpenseEntity or ExpenseReceiptEntity or ExpenseApprovalEntity or ExpenseDecisionEntity or ExpensePaymentEntity
             or FiscalYearCloseEntity or BudgetAlertEntity
+            or BankStatementEntity or BankLineEntity or BankMatchEventEntity or BankRevealEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -568,6 +575,86 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.PlannedAmount).HasPrecision(18, 2);
             entity.Property(x => x.ActualAmount).HasPrecision(18, 2);
             entity.HasIndex(x => new { x.BudgetId, x.ThresholdPercent }).IsUnique();
+        });
+
+        modelBuilder.Entity<BankAccountEntity>(entity =>
+        {
+            entity.ToTable("bank_accounts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.Name).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.BankName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.NumberProtected).IsRequired();
+            entity.Property(x => x.Last4).HasMaxLength(4).IsRequired();
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.LedgerAccountId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.CsvMapping).HasMaxLength(2000);
+            entity.Property(x => x.CreatedBy).HasMaxLength(64);
+            entity.HasOne(x => x.LedgerAccount).WithMany().HasForeignKey(x => x.LedgerAccountId).OnDelete(DeleteBehavior.Restrict);
+            // Matching works on the ledger account, so two live bank accounts may not share one.
+            entity.HasIndex(x => x.LedgerAccountId).IsUnique().HasFilter("\"ArchivedAt\" IS NULL");
+        });
+
+        modelBuilder.Entity<BankStatementEntity>(entity =>
+        {
+            entity.ToTable("bank_statements");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.BankAccountId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.FileHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Format).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.FileName).HasMaxLength(200);
+            entity.Property(x => x.ImportedBy).HasMaxLength(64);
+            entity.HasIndex(x => new { x.BankAccountId, x.FileHash }).IsUnique();
+        });
+
+        modelBuilder.Entity<BankLineEntity>(entity =>
+        {
+            entity.ToTable("bank_lines");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.BankAccountId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.Reference).HasMaxLength(100);
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.Balance).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.Fingerprint).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.BankAccountId, x.Fingerprint, x.Occurrence }).IsUnique();
+            entity.HasIndex(x => x.StatementId);
+            entity.HasOne(x => x.Statement).WithMany().HasForeignKey(x => x.StatementId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<BankLineLinkEntity>(entity =>
+        {
+            entity.ToTable("bank_line_links");
+            entity.HasKey(x => x.LineId);
+            entity.Property(x => x.LineId).ValueGeneratedNever();
+            entity.Property(x => x.State).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(500);
+            entity.Property(x => x.By).HasMaxLength(64);
+            // One ledger entry proves at most one bank line.
+            entity.HasIndex(x => x.LedgerEntryId).IsUnique().HasFilter("\"LedgerEntryId\" IS NOT NULL");
+        });
+
+        modelBuilder.Entity<BankMatchEventEntity>(entity =>
+        {
+            entity.ToTable("bank_match_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Action).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(500);
+            entity.Property(x => x.By).HasMaxLength(64);
+            entity.HasIndex(x => x.LineId);
+        });
+
+        modelBuilder.Entity<BankRevealEntity>(entity =>
+        {
+            entity.ToTable("bank_reveals");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.BankAccountId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.By).HasMaxLength(64);
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

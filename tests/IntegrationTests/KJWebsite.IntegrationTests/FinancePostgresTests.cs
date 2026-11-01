@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(11);
+                db.Database.GetAppliedMigrations().Should().HaveCount(12);
             }
 
             await TestCampaigns.SeedAsync(factory.Services, "flood-relief", currency: "USD");
@@ -93,6 +93,91 @@ public sealed class FinancePostgresTests
             catch (PostgresException)
             {
                 // Cleanup must not hide a real failure from the test body; a leftover throwaway database is harmless.
+            }
+        }
+    }
+
+    [RequiresPostgresFact]
+    public async Task BankingQueriesTranslateAndOneLedgerEntryMatchesOneLineEvenWhenMatchedConcurrently()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("finance_bank_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            using var factory = new PostgresFinanceApiFactory(connectionString);
+            using var client = factory.CreateClient();
+            var admin = TestTokens.Issue([KJWebsite.BuildingBlocks.Security.Permissions.FinanceView, KJWebsite.BuildingBlocks.Security.Permissions.FinanceBankManage,
+                KJWebsite.BuildingBlocks.Security.Permissions.FinanceReconcile, KJWebsite.BuildingBlocks.Security.Permissions.FinanceLedgerAdjust], subject: "usr_pg_bank");
+
+            async Task<JsonElement> Call(HttpMethod method, string path, object? body = null, string? raw = null, HttpStatusCode expected = HttpStatusCode.OK)
+            {
+                using var request = new HttpRequestMessage(method, path) { Headers = { Authorization = new("Bearer", admin) } };
+                if (raw is not null)
+                {
+                    request.Content = new StringContent(raw);
+                }
+                else if (body is not null)
+                {
+                    request.Content = JsonContent.Create(body);
+                }
+
+                using var response = await client.SendAsync(request);
+                response.StatusCode.Should().Be(expected, await response.Content.ReadAsStringAsync());
+                return await response.Content.ReadFromJsonAsync<JsonElement>();
+            }
+
+            var today = DateTime.UtcNow.Date;
+            string Day(int ago) => today.AddDays(-ago).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            var account = (await Call(HttpMethod.Post, "/api/v1/admin/finance/bank-accounts", new { name = "Main", bankName = "Sonali", number = "123456789", currency = "BDT" }, expected: HttpStatusCode.Created)).GetProperty("id").GetString();
+            foreach (var memo in new[] { "one", "two" })
+            {
+                await Call(HttpMethod.Post, "/api/v1/admin/finance/ledger/postings", new
+                {
+                    postedOn = Day(3),
+                    memo,
+                    reason = "postgres check",
+                    lines = new[] { new { account = "1020", debit = (string?)"250.00", credit = (string?)null, currency = "BDT" }, new { account = "4900", debit = (string?)null, credit = (string?)"250.00", currency = "BDT" } }
+                }, expected: HttpStatusCode.Created);
+            }
+
+            var report = await Call(HttpMethod.Post, $"/api/v1/admin/finance/bank-accounts/{account}/statements", raw: $"Date,Description,Debit,Credit,Balance\n{Day(3)},Deposit,,250.00,250.00\n{Day(2)},Fee,10.00,,240.00\n", expected: HttpStatusCode.Created);
+            report.GetProperty("imported").GetInt32().Should().Be(2);
+            report.GetProperty("autoMatched").GetInt32().Should().Be(0, "two equal entries are ambiguous");
+
+            var rec = await Call(HttpMethod.Get, "/api/v1/admin/finance/reconciliation");
+            var lineId = rec.GetProperty("lines").EnumerateArray().Single(l => l.GetProperty("description").GetString() == "Deposit").GetProperty("id").GetString();
+            var feeId = rec.GetProperty("lines").EnumerateArray().Single(l => l.GetProperty("description").GetString() == "Fee").GetProperty("id").GetString();
+            var entries = rec.GetProperty("entries").EnumerateArray().Select(e => e.GetProperty("id").GetString()).ToList();
+            entries.Should().HaveCount(2);
+
+            // The same entry offered to the line twice at once: exactly one wins, the other gets a clean conflict, not a 500.
+            var results = await Task.WhenAll(Enumerable.Range(0, 6).Select(async _ =>
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/finance/reconciliation/match") { Headers = { Authorization = new("Bearer", admin) }, Content = JsonContent.Create(new { lineId, entryId = entries[0] }) };
+                using var response = await client.SendAsync(request);
+                return response.StatusCode;
+            }));
+            results.Count(r => r == HttpStatusCode.OK).Should().Be(1);
+            results.Where(r => r != HttpStatusCode.OK).Should().OnlyContain(r => r == HttpStatusCode.Conflict);
+
+            await Call(HttpMethod.Post, "/api/v1/admin/finance/reconciliation/post-and-match", new { lineId = feeId, account = "5900" });
+            var summary = await Call(HttpMethod.Get, $"/api/v1/admin/finance/bank-accounts/{account}/summary");
+            summary.GetProperty("ledgerBalance").GetString().Should().Be("490.00");
+            summary.GetProperty("matched").GetInt32().Should().Be(2);
+            summary.GetProperty("unmatchedEntries").GetInt32().Should().Be(1);
+            (await Call(HttpMethod.Get, "/api/v1/admin/finance/reconciliation?status=matched")).GetProperty("lines").GetArrayLength().Should().Be(2);
+            (await Call(HttpMethod.Post, $"/api/v1/admin/finance/bank-accounts/{account}/rematch")).GetProperty("matched").GetInt32().Should().Be(0);
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            try
+            {
+                await TestPostgres.DropDatabaseAsync(databaseName);
+            }
+            catch (PostgresException)
+            {
+                // A leftover throwaway database is harmless.
             }
         }
     }
@@ -422,6 +507,34 @@ public sealed class FinancePostgresTests
             (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
         }
 
+        // Banking: one live bank account per ledger account, a statement file once per account, a line once per fingerprint and occurrence, a ledger entry matched at most once;
+        // statements, lines, match events and reveals are append-only; a line is never zero.
+        const string BankAccount = "INSERT INTO finance.bank_accounts (\"Id\", \"Name\", \"BankName\", \"NumberProtected\", \"Last4\", \"Currency\", \"LedgerAccountId\", \"CreatedAt\", \"ArchivedAt\") VALUES ('{0}', 'n', 'b', 'x', '1234', 'BDT', (SELECT \"Id\" FROM finance.accounts WHERE \"Code\" = '1020'), now(), {1})";
+        await Exec(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, BankAccount, "bnk_1", "NULL"));
+        await UniqueViolation(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, BankAccount, "bnk_2", "NULL"));
+        await Exec(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, BankAccount, "bnk_3", "now()"));
+        await Exec(connectionString, "INSERT INTO finance.bank_statements (\"BankAccountId\", \"FileHash\", \"Format\", \"LineCount\", \"DuplicateCount\", \"ImportedAt\") VALUES ('bnk_1', 'h1', 'csv', 2, 0, now())");
+        await UniqueViolation(connectionString, "INSERT INTO finance.bank_statements (\"BankAccountId\", \"FileHash\", \"Format\", \"LineCount\", \"DuplicateCount\", \"ImportedAt\") VALUES ('bnk_1', 'h1', 'csv', 0, 0, now())");
+        const string BankLine = "INSERT INTO finance.bank_lines (\"StatementId\", \"BankAccountId\", \"Date\", \"Description\", \"Amount\", \"Currency\", \"Fingerprint\", \"Occurrence\") SELECT \"Id\", 'bnk_1', current_date, 'd', {0}, 'BDT', '{1}', {2} FROM finance.bank_statements LIMIT 1";
+        await Exec(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, BankLine, "10", "fp1", "1"));
+        await Exec(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, BankLine, "10", "fp1", "2"));
+        await UniqueViolation(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, BankLine, "10", "fp1", "2"));
+        await CheckViolation(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, BankLine, "0", "fp0", "1"));
+        await Refused(connectionString, "UPDATE finance.bank_lines SET \"Amount\" = 99");
+        await Refused(connectionString, "DELETE FROM finance.bank_lines");
+        await Refused(connectionString, "UPDATE finance.bank_statements SET \"LineCount\" = 99");
+        await Refused(connectionString, "DELETE FROM finance.bank_statements");
+        await Exec(connectionString, "INSERT INTO finance.bank_match_events (\"LineId\", \"Action\", \"At\") SELECT \"Id\", 'matched', now() FROM finance.bank_lines LIMIT 1");
+        await Refused(connectionString, "UPDATE finance.bank_match_events SET \"Action\" = 'unmatched'");
+        await Refused(connectionString, "DELETE FROM finance.bank_match_events");
+        await Exec(connectionString, "INSERT INTO finance.bank_reveals (\"BankAccountId\", \"At\") VALUES ('bnk_1', now())");
+        await Refused(connectionString, "UPDATE finance.bank_reveals SET \"By\" = 'x'");
+        await Refused(connectionString, "DELETE FROM finance.bank_reveals");
+        const string Link = "INSERT INTO finance.bank_line_links (\"LineId\", \"State\", \"LedgerEntryId\", \"Automatic\", \"At\") SELECT \"Id\", 'matched', (SELECT \"Id\" FROM finance.ledger_entries ORDER BY \"Id\" LIMIT 1), false, now() FROM finance.bank_lines WHERE \"Occurrence\" = {0}";
+        await Exec(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, Link, "1"));
+        await UniqueViolation(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, Link, "2"));
+        await Exec(connectionString, "DELETE FROM finance.bank_line_links");
+
         // The replay guard and the settle-once rule are unique indexes.
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync();
@@ -491,6 +604,14 @@ public sealed class FinancePostgresTests
         await using var command = new NpgsqlCommand(sql, connection);
         var failure = await command.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>();
         failure.Which.SqlState.Should().Be("42501");
+    }
+
+    private static async Task UniqueViolation(string connectionString, string sql)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new NpgsqlCommand(sql, connection);
+        (await command.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
     }
 
     private static async Task CheckViolation(string connectionString, string sql)

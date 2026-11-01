@@ -49,3 +49,5 @@
 - [2026-09-29] domain — kolpojontro.org and venue.kolpojontro.org do not respond; see FrontEnd #121 (found: 009-issue-14)
 - [2026-10-15] ContentService/settings — bootstrap returns empty settings; needs a settings store (found: 019-issue-26-content-contract)
 - [2026-10-15] db — PostgreSQL tests verified on PG 18.6 only; ADR-004 targets 17 (found: 021-issue-21-audit)
+- [2026-11-01] FinanceService/banking — OFX LEDGERBAL (closing balance) is not read, so OFX statements give no `bankBalance` in the summary; CSV balance column only (found: 064-issue-70-banking)
+- [2026-11-01] FinanceService/banking — bank-account statement CSV layouts beyond the single mapping (two date columns, separate time column) are untested against real bank exports; confirm with the organisation's actual files (found: 064-issue-70-banking)

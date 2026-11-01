@@ -4479,6 +4479,256 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/finance/bank-accounts:
+    get:
+      tags:
+        - "Banking"
+      summary: "Bank accounts with the number masked to its last four digits"
+      operationId: "ListBankAccounts"
+      parameters:
+        -
+          name: "includeArchived"
+          in: "query"
+          schema:
+            type: "boolean"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Banking"
+      summary: "Register a bank account"
+      description: "\u0060{name, bankName, number, currency, ledgerAccount?, csvMapping?}\u0060. The number is stored encrypted and shown masked; \u0060ledgerAccount\u0060 is the asset account of the ledger that holds this bank\u0027s balance (default 1020) and may be used by one live bank account only. \u0060csvMapping\u0060 names the statement\u0027s columns (\u0060date\u0060, \u0060description\u0060, \u0060reference\u0060, \u0060amount\u0060 or \u0060debit\u0060\u002B\u0060credit\u0060, \u0060balance\u0060, \u0060dateFormat\u0060, \u0060delimiter\u0060); without it the header row is detected. Requires \u0060finance.bank.manage\u0060."
+      operationId: "CreateBankAccount"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/bank-accounts/{id}":
+    patch:
+      tags:
+        - "Banking"
+      summary: "Rename, re-map or archive a bank account"
+      description: "Any of \u0060name\u0060, \u0060bankName\u0060, \u0060csvMapping\u0060 (or \u0060clearCsvMapping\u0060), \u0060archived\u0060, and \u0060ledgerAccount\u0060 (only before the first statement is imported). The number cannot be changed: register a new account. Requires \u0060finance.bank.manage\u0060."
+      operationId: "UpdateBankAccount"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountChange"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/bank-accounts/{id}/number":
+    get:
+      tags:
+        - "Banking"
+      summary: "The full account number (logged)"
+      description: "Every read is recorded with who read it. Requires \u0060finance.bank.reveal\u0060, which only Admin holds by default."
+      operationId: "RevealBankAccountNumber"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/bank-accounts/{id}/statements":
+    post:
+      tags:
+        - "Banking"
+      summary: "Import a CSV or OFX statement"
+      description: "Send the file as the request body (\u0060?format=csv|ofx\u0060, detected if omitted; \u0060X-Filename\u0060 is recorded). All or nothing: if any row cannot be read the response is 422 \u0060IMPORT_REJECTED\u0060 with \u0060errors:[{row, reason}]\u0060 for every bad row and nothing is stored. Lines already imported from an earlier statement are not stored again and are listed under \u0060duplicates\u0060. The same file cannot be imported twice (409). Unambiguous lines are matched to ledger entries automatically. Requires \u0060finance.reconcile\u0060."
+      operationId: "ImportBankStatement"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "format"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Banking"
+      summary: "Statements imported for a bank account, newest first"
+      operationId: "ListBankStatements"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/bank-accounts/{id}/rematch":
+    post:
+      tags:
+        - "Banking"
+      summary: "Run automatic matching again for an account"
+      description: "Useful after new ledger entries were posted. Same rules as at import. Requires \u0060finance.reconcile\u0060."
+      operationId: "RematchBankLines"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/bank-accounts/{id}/summary":
+    get:
+      tags:
+        - "Banking"
+      summary: "Ledger balance against the statement, with what is still unexplained"
+      description: "\u0060ledgerBalance\u0060 of the mapped ledger account, \u0060bankBalance\u0060 (the running balance on the newest statement line, when the file has one), counts and net of unmatched lines and entries, and \u0060unexplained\u0060: the bank balance less unmatched and dismissed lines, less the ledger balance less unmatched entries. It is zero when every difference is itemised in the queue."
+      operationId: "GetBankReconciliationSummary"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/reconciliation:
+    get:
+      tags:
+        - "Banking"
+      summary: "Statement lines and the ledger entries they can be matched with"
+      description: "\u0060lines\u0060 are statement lines (unmatched first, then newest first; \u0060amount\u0060 is signed, money in positive) with \u0060status\u0060 unmatched, matched or dismissed and \u0060matchedEntryId\u0060; \u0060entries\u0060 are the unmatched ledger entries on the bank accounts\u0027 ledger accounts plus the ones the listed lines are matched to. Filters: \u0060account\u0060, \u0060status\u0060, \u0060limit\u0060."
+      operationId: "GetReconciliation"
+      parameters:
+        -
+          name: "account"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/reconciliation/match:
+    post:
+      tags:
+        - "Banking"
+      summary: "Match a statement line to a ledger entry"
+      description: "\u0060{lineId, entryId}\u0060. The entry must be on the bank account\u0027s ledger account, on the matching side (money in is a debit, out a credit), for exactly the line\u0027s amount and currency, and not matched to another line. Requires \u0060finance.reconcile\u0060."
+      operationId: "MatchBankLine"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/reconciliation/unmatch:
+    post:
+      tags:
+        - "Banking"
+      summary: "Undo a match"
+      description: "\u0060{lineId}\u0060. Only a match is undone; a posting made by post-and-match stays in the ledger (reverse it from the ledger if it was wrong). A dismissed line is reopened with its own endpoint. Requires \u0060finance.reconcile\u0060."
+      operationId: "UnmatchBankLine"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnmatchRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/reconciliation/dismiss:
+    post:
+      tags:
+        - "Banking"
+      summary: "Set a line aside with a reason"
+      description: "\u0060{lineId, reason}\u0060 (3 to 500 characters), for a line that needs no ledger entry. Requires \u0060finance.reconcile\u0060."
+      operationId: "DismissBankLine"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DismissRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/reconciliation/reopen:
+    post:
+      tags:
+        - "Banking"
+      summary: "Put a dismissed line back in the queue"
+      operationId: "ReopenBankLine"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnmatchRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/reconciliation/post-and-match:
+    post:
+      tags:
+        - "Banking"
+      summary: "Post the missing ledger entry for a line and match it"
+      description: "\u0060{lineId, account, memo?}\u0060: posts a balanced entry between the bank account\u0027s ledger account and \u0060account\u0060 (a ledger account code), dated the line\u0027s date, then matches the bank side to the line. Money in debits the bank account, money out credits it. It follows the ledger\u0027s rules (no future date, no closed period) and cannot post twice for one line. Requires \u0060finance.ledger.adjust\u0060."
+      operationId: "PostAndMatchBankLine"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAndMatchRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/ledger:
     get:
       tags:
@@ -5537,6 +5787,8 @@ tags:
   -
     name: "Budgets"
   -
+    name: "Banking"
+  -
     name: "Ledger"
   -
     name: "Reconciliation"
@@ -6345,6 +6597,78 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/AdjustmentLineRequest"
+    BankAccountChange:
+      required:
+        - "name"
+        - "bankName"
+        - "ledgerAccount"
+        - "csvMapping"
+        - "clearCsvMapping"
+        - "archived"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        bankName:
+          type:
+            - "null"
+            - "string"
+        ledgerAccount:
+          type:
+            - "null"
+            - "string"
+        csvMapping:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/CsvMapping"
+        clearCsvMapping:
+          type:
+            - "null"
+            - "boolean"
+        archived:
+          type:
+            - "null"
+            - "boolean"
+    BankAccountRequest:
+      required:
+        - "name"
+        - "bankName"
+        - "number"
+        - "currency"
+        - "ledgerAccount"
+        - "csvMapping"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        bankName:
+          type:
+            - "null"
+            - "string"
+        number:
+          type:
+            - "null"
+            - "string"
+        currency:
+          type:
+            - "null"
+            - "string"
+        ledgerAccount:
+          type:
+            - "null"
+            - "string"
+        csvMapping:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/CsvMapping"
     BudgetChange:
       required:
         - "planned"
@@ -6400,6 +6724,55 @@ components:
           type:
             - "null"
             - "string"
+    CsvMapping:
+      required:
+        - "date"
+        - "description"
+        - "reference"
+        - "amount"
+        - "debit"
+        - "credit"
+        - "balance"
+        - "dateFormat"
+        - "delimiter"
+      type: "object"
+      properties:
+        date:
+          type:
+            - "null"
+            - "string"
+        description:
+          type:
+            - "null"
+            - "string"
+        reference:
+          type:
+            - "null"
+            - "string"
+        amount:
+          type:
+            - "null"
+            - "string"
+        debit:
+          type:
+            - "null"
+            - "string"
+        credit:
+          type:
+            - "null"
+            - "string"
+        balance:
+          type:
+            - "null"
+            - "string"
+        dateFormat:
+          type:
+            - "null"
+            - "string"
+        delimiter:
+          type:
+            - "null"
+            - "string"
     DesignationRequest:
       required:
         - "type"
@@ -6411,6 +6784,20 @@ components:
             - "null"
             - "string"
         id:
+          type:
+            - "null"
+            - "string"
+    DismissRequest:
+      required:
+        - "lineId"
+        - "reason"
+      type: "object"
+      properties:
+        lineId:
+          type:
+            - "null"
+            - "string"
+        reason:
           type:
             - "null"
             - "string"
@@ -6622,6 +7009,20 @@ components:
           type:
             - "null"
             - "string"
+    MatchRequest:
+      required:
+        - "lineId"
+        - "entryId"
+      type: "object"
+      properties:
+        lineId:
+          type:
+            - "null"
+            - "string"
+        entryId:
+          type:
+            - "null"
+            - "string"
     OfflineDonationRequest:
       required:
         - "donorName"
@@ -6749,6 +7150,25 @@ components:
           type:
             - "null"
             - "string"
+    PostAndMatchRequest:
+      required:
+        - "lineId"
+        - "account"
+        - "memo"
+      type: "object"
+      properties:
+        lineId:
+          type:
+            - "null"
+            - "string"
+        account:
+          type:
+            - "null"
+            - "string"
+        memo:
+          type:
+            - "null"
+            - "string"
     PostingReversalRequest:
       required:
         - "reason"
@@ -6794,6 +7214,15 @@ components:
       type: "object"
       properties:
         fiscalYear:
+          type:
+            - "null"
+            - "string"
+    UnmatchRequest:
+      required:
+        - "lineId"
+      type: "object"
+      properties:
+        lineId:
           type:
             - "null"
             - "string"
