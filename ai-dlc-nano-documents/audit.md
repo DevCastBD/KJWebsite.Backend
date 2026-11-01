@@ -285,3 +285,9 @@
 - 2026-10-31T14:25Z [claude] 061-issue-66-campaigns BRANCH @69fe98a: Feature/issue-66-campaigns stacked on Feature/issue-65-donor-crm (user confirmed)
 - 2026-10-31T14:25Z [claude] 061-issue-66-campaigns PHASE PLAN→CONSTRUCT @69fe98a: plan approved (user)
 - 2026-10-31T14:36Z [claude] 061-issue-66-campaigns DONE @8ee5af0: campaigns, cached progress, designation rules, reconcile; 707+46 tests green incl PG; committed locally, not pushed
+- 2026-10-31T15:37Z [claude] 062-issue-67-expenses CREATED @ac17cd6: stacked on #66 branch
+- 2026-10-31T15:37Z [claude] 062-issue-67-expenses SIDE-EFFECT @ac17cd6: assigned #67 to FHShubho (user asked)
+- 2026-10-31T15:37Z [claude] 062-issue-67-expenses DECISION @ac17cd6: distinct-approver tiers; accrue on approval, separate pay step (user)
+- 2026-10-31T15:37Z [claude] 062-issue-67-expenses BRANCH @ac17cd6: Feature/issue-67-expenses stacked on Feature/issue-66-campaigns (user confirmed)
+- 2026-10-31T15:37Z [claude] 062-issue-67-expenses PHASE PLAN→CONSTRUCT @ac17cd6: plan approved (user)
+- 2026-10-31T15:46Z [claude] 062-issue-67-expenses DONE @6212921: expenses, tiers, receipts, pay, rollups; 759+46 tests green incl PG concurrency; committed locally, not pushed

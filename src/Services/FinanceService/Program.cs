@@ -3,6 +3,7 @@ using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Donations;
 using FinanceService.Donors;
+using FinanceService.Expenses;
 using FinanceService.Ledger;
 using FinanceService.Offline;
 using FinanceService.Payments;
@@ -71,6 +72,11 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<DonorConsentEntity>()
     .Audit<DonorExportEntity>()
     .Audit<CampaignEntity>()
+    .Audit<ExpenseEntity>()
+    .Audit<ExpenseApprovalEntity>()
+    .Audit<ExpenseDecisionEntity>()
+    .Audit<ExpensePaymentEntity>()
+    .Audit<ExpenseReceiptEntity>()
     .Audit<PayoutEntity>()
     .Audit<PayoutLineEntity>()
     .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
@@ -97,6 +103,8 @@ builder.Services.Configure<DonorOptions>(builder.Configuration.GetSection(DonorO
 builder.Services.AddScoped<DonorMessenger>();
 builder.Services.AddScoped<DonorService>();
 builder.Services.AddScoped<DonorData>();
+builder.Services.Configure<ExpenseOptions>(builder.Configuration.GetSection(ExpenseOptions.SectionName));
+builder.Services.AddScoped<ExpenseService>();
 builder.Services.Configure<CampaignOptions>(builder.Configuration.GetSection(CampaignOptions.SectionName));
 builder.Services.AddSingleton<CampaignProgressCache>();
 builder.Services.AddScoped<LedgerService>();
@@ -165,6 +173,7 @@ app.MapOffline();
 app.MapReceipts();
 app.MapDonors();
 app.MapCampaigns();
+app.MapExpenses();
 app.MapLedger();
 app.MapWebhooks();
 app.MapReconciliation();

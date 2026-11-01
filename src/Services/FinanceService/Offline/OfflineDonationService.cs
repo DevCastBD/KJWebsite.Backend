@@ -207,43 +207,27 @@ public sealed partial class OfflineDonationService(
             return Result.Failure<ProofView>("TOO_MANY_PROOFS", $"At most {ProofRules.MaxPerRecord} proof files per donation.");
         }
 
-        var type = contentType?.Split(';')[0].Trim().ToLowerInvariant();
-        if (type is null || !ProofRules.ContentTypes.Contains(type))
+        var prepared = await ProofIntake.PrepareAsync(content, contentType, fileName, cancellationToken);
+        if (!prepared.IsSuccess)
         {
-            return Result.Failure<ProofView>("UNSUPPORTED_TYPE", "A proof is a PDF, JPEG, PNG or WebP file.");
-        }
-
-        using var buffer = new MemoryStream();
-        var chunk = new byte[81920];
-        int read;
-        while ((read = await content.ReadAsync(chunk, cancellationToken)) > 0)
-        {
-            if (buffer.Length + read > ProofRules.MaxBytes)
-            {
-                return Result.Failure<ProofView>("FILE_TOO_LARGE", $"A proof is at most {ProofRules.MaxBytes / (1024 * 1024)} MB.");
-            }
-
-            buffer.Write(chunk, 0, read);
-        }
-
-        if (buffer.Length == 0 || !ProofRules.MatchesSignature(type, buffer.GetBuffer().AsSpan(0, (int)Math.Min(buffer.Length, 16))))
-        {
-            return Result.Failure<ProofView>("CONTENT_MISMATCH", "The file's content does not match its declared type.");
+            return Result.Failure<ProofView>(prepared.Error!.Code, prepared.Error.Message);
         }
 
         var key = Guid.NewGuid().ToString("N");
-        buffer.Position = 0;
-        await proofs.SaveAsync(key, buffer, cancellationToken);
+        using (var stream = new MemoryStream(prepared.Value!.Bytes))
+        {
+            await proofs.SaveAsync(key, stream, cancellationToken);
+        }
 
         var now = clock.GetUtcNow();
         var entity = new OfflineProofEntity
         {
             Id = PublicDonationEndpoints.NewId("prf"),
             OfflineRecordId = record.Id,
-            FileName = ProofRules.SafeFileName(fileName),
-            ContentType = type,
-            SizeBytes = buffer.Length,
-            Sha256 = Convert.ToHexString(SHA256.HashData(buffer.GetBuffer().AsSpan(0, (int)buffer.Length))).ToLowerInvariant(),
+            FileName = prepared.Value.FileName,
+            ContentType = prepared.Value.ContentType,
+            SizeBytes = prepared.Value.Bytes.Length,
+            Sha256 = prepared.Value.Sha256,
             StorageKey = key,
             UploadedBy = actor,
             UploadedAt = now,

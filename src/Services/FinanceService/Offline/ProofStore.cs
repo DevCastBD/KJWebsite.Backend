@@ -76,3 +76,40 @@ public sealed class LocalDiskProofStore(IOptions<ProofOptions> options) : IProof
     private string PathFor(string key) =>
         key.All(c => char.IsAsciiLetterOrDigit(c) || c == '-') ? System.IO.Path.Combine(_root, key) : throw new ArgumentException("Invalid proof key.", nameof(key));
 }
+
+/// <summary>A proof file that passed every check, ready to store.</summary>
+public sealed record PreparedProof(string ContentType, byte[] Bytes, string Sha256, string FileName);
+
+/// <summary>The checks every uploaded proof or receipt goes through, in one place: type, size, content against declared type, hash and a safe name.</summary>
+public static class ProofIntake
+{
+    public static async Task<KJWebsite.BuildingBlocks.Result<PreparedProof>> PrepareAsync(Stream content, string? contentType, string? fileName, CancellationToken cancellationToken)
+    {
+        var type = contentType?.Split(';')[0].Trim().ToLowerInvariant();
+        if (type is null || !ProofRules.ContentTypes.Contains(type))
+        {
+            return KJWebsite.BuildingBlocks.Result.Failure<PreparedProof>("UNSUPPORTED_TYPE", "A proof is a PDF, JPEG, PNG or WebP file.");
+        }
+
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int read;
+        while ((read = await content.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            if (buffer.Length + read > ProofRules.MaxBytes)
+            {
+                return KJWebsite.BuildingBlocks.Result.Failure<PreparedProof>("FILE_TOO_LARGE", $"A proof is at most {ProofRules.MaxBytes / (1024 * 1024)} MB.");
+            }
+
+            buffer.Write(chunk, 0, read);
+        }
+
+        var bytes = buffer.ToArray();
+        if (bytes.Length == 0 || !ProofRules.MatchesSignature(type, bytes.AsSpan(0, Math.Min(bytes.Length, 16))))
+        {
+            return KJWebsite.BuildingBlocks.Result.Failure<PreparedProof>("CONTENT_MISMATCH", "The file's content does not match its declared type.");
+        }
+
+        return KJWebsite.BuildingBlocks.Result.Success(new PreparedProof(type, bytes, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant(), ProofRules.SafeFileName(fileName)));
+    }
+}

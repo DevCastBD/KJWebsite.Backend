@@ -4078,6 +4078,239 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/finance/expenses:
+    post:
+      tags:
+        - "Expenses"
+      summary: "Submit an expense"
+      description: "\u0060{payee, description, category, amount, currency, project?, date?, reimbursement?}\u0060. \u0060category\u0060 is one of the configured keys (programme, fundraising, administrative, events, other); \u0060project\u0060 is an optional project slug for rollups; \u0060reimbursement: true\u0060 means the money is owed to the person who paid out of pocket. How many different people must approve is fixed now from the amount tier. Attach receipts with \u0060PUT .../{id}/receipts\u0060. Requires \u0060finance.expense.submit\u0060."
+      operationId: "SubmitExpense"
+      parameters:
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Expenses"
+      summary: "Expenses, newest first"
+      description: "\u0060status\u0060 is pending (no final decision yet, including part-approved), approved or rejected; \u0060approvals\u0060 of \u0060requiredApprovals\u0060 shows progress and \u0060paid\u0060 whether the money has gone out. Filters: status, project, category."
+      operationId: "ListExpenses"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "project"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "category"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/expenses/{id}":
+    get:
+      tags:
+        - "Expenses"
+      summary: "One expense with approvals, receipts, payment and its ledger posting"
+      operationId: "GetExpense"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/expenses/{id}/receipts":
+    put:
+      tags:
+        - "Expenses"
+      summary: "Attach a receipt"
+      description: "Raw file body with its Content-Type (pdf, jpeg, png, webp, up to 5 MB, checked against the file\u0027s own bytes) and an optional URL-encoded \u0060X-Filename\u0060; up to ten, only before the expense is decided. A receipt is a financial record: nothing can delete it. Requires \u0060finance.expense.submit\u0060."
+      operationId: "AddExpenseReceipt"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/expenses/{id}/receipts/{receiptId}/file":
+    get:
+      tags:
+        - "Expenses"
+      summary: "Download a receipt"
+      operationId: "DownloadExpenseReceipt"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "receiptId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/expenses/{id}/approve":
+    post:
+      tags:
+        - "Expenses"
+      summary: "Add your approval"
+      description: "The submitter cannot approve (403 SEPARATION_OF_DUTIES), nobody approves twice, and a receipt must be attached first (409 RECEIPT_REQUIRED). The expense becomes \u0060approved\u0060, and posts to the ledger (Dr the category\u0027s expense account, Cr payables), when the number of different approvers its amount tier requires has approved. Requires \u0060finance.expense.approve\u0060."
+      operationId: "ApproveExpense"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseDecisionRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/expenses/{id}/reject":
+    post:
+      tags:
+        - "Expenses"
+      summary: "Reject an expense"
+      description: "One rejection ends it, with a note of 3-500 characters; nothing is posted. The submitter cannot decide their own expense. A rejected expense is submitted again, not edited. Requires \u0060finance.expense.approve\u0060."
+      operationId: "RejectExpense"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseDecisionRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/expenses/{id}/pay":
+    post:
+      tags:
+        - "Expenses"
+      summary: "Record that an approved expense was paid"
+      description: "\u0060{method: bank|cash|cheque|bkash|nagad, reference?, paidOn?}\u0060. Only an approved expense can be paid, once, and not by its submitter. Posts Dr payable (2020 for a reimbursement, 2100 for a vendor) / Cr the cash, bank or wallet account. Requires \u0060finance.expense.pay\u0060."
+      operationId: "PayExpense"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpensePayRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/expenses/rollups:
+    get:
+      tags:
+        - "Expenses"
+      summary: "Approved spend by project and by category"
+      description: "Approved expenses only, per currency (never added together), with how much of it has been paid. Optional \u0060from\u0060/\u0060to\u0060 filter on the date the expense was incurred."
+      operationId: "GetExpenseRollups"
+      parameters:
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/expenses/rollups/reconciliation:
+    get:
+      tags:
+        - "Expenses"
+      summary: "Compare approved spend per project and category with the ledger"
+      description: "For each project and category and currency: approved expenses against the net debit the ledger holds on expense accounts for the same expenses (reversals netted). Every difference is zero when the books agree."
+      operationId: "ReconcileExpenseRollups"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/ledger:
     get:
       tags:
@@ -5132,6 +5365,8 @@ tags:
   -
     name: "Campaigns"
   -
+    name: "Expenses"
+  -
     name: "Ledger"
   -
     name: "Reconciliation"
@@ -6065,6 +6300,76 @@ components:
           type:
             - "null"
             - "string"
+    ExpenseDecisionRequest:
+      required:
+        - "note"
+      type: "object"
+      properties:
+        note:
+          type:
+            - "null"
+            - "string"
+    ExpensePayRequest:
+      required:
+        - "method"
+        - "reference"
+        - "paidOn"
+      type: "object"
+      properties:
+        method:
+          type:
+            - "null"
+            - "string"
+        reference:
+          type:
+            - "null"
+            - "string"
+        paidOn:
+          type:
+            - "null"
+            - "string"
+    ExpenseRequest:
+      required:
+        - "payee"
+        - "description"
+        - "category"
+        - "amount"
+        - "currency"
+        - "project"
+        - "date"
+        - "reimbursement"
+      type: "object"
+      properties:
+        payee:
+          type:
+            - "null"
+            - "string"
+        description:
+          type:
+            - "null"
+            - "string"
+        category:
+          type:
+            - "null"
+            - "string"
+        amount:
+          type:
+            - "null"
+            - "string"
+        currency:
+          type:
+            - "null"
+            - "string"
+        project:
+          type:
+            - "null"
+            - "string"
+        date:
+          type:
+            - "null"
+            - "string"
+        reimbursement:
+          type: "boolean"
     FundraisingCampaignRequest:
       required:
         - "title"
