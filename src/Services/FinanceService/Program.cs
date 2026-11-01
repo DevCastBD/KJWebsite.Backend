@@ -11,6 +11,7 @@ using FinanceService.Offline;
 using FinanceService.Payments;
 using FinanceService.Receipts;
 using FinanceService.Reconciliation;
+using FinanceService.Reports;
 using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Idempotency;
 using KJWebsite.BuildingBlocks.Security;
@@ -88,6 +89,7 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<BankLineLinkEntity>()
     .Audit<BankMatchEventEntity>()
     .Audit<BankRevealEntity>()
+    .Audit<ReportPackEntity>()
     .Audit<PayoutEntity>()
     .Audit<PayoutLineEntity>()
     .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
@@ -119,6 +121,9 @@ builder.Services.AddScoped<ExpenseService>();
 builder.Services.Configure<BudgetOptions>(builder.Configuration.GetSection(BudgetOptions.SectionName));
 builder.Services.Configure<BankingOptions>(builder.Configuration.GetSection(BankingOptions.SectionName));
 builder.Services.AddScoped<BankingService>();
+builder.Services.Configure<ReportOptions>(builder.Configuration.GetSection(ReportOptions.SectionName));
+builder.Services.AddScoped<ReportBuilder>();
+builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<BudgetMath>();
 builder.Services.AddScoped<BudgetAlertService>();
 builder.Services.Configure<CampaignOptions>(builder.Configuration.GetSection(CampaignOptions.SectionName));
@@ -193,6 +198,7 @@ app.MapCampaigns();
 app.MapExpenses();
 app.MapBudgets();
 app.MapBanking();
+app.MapReports();
 app.MapLedger();
 app.MapWebhooks();
 app.MapReconciliation();

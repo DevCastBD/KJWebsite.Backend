@@ -4729,6 +4729,114 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/finance/reports:
+    get:
+      tags:
+        - "Reports"
+      summary: "Generated monthly report packs, newest first"
+      description: "Each item is \u0060{id, month, generatedAt, url}\u0060 (plus who made it, its SHA-256 and size). \u0060url\u0060 is an absolute link to the stored workbook that is valid for a few minutes (\u0060Finance:Reports:LinkMinutes\u0060); list again for a fresh one."
+      operationId: "ListReportPacks"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Reports"
+      summary: "Generate and store a month\u0027s financial report pack"
+      description: "\u0060{month: \u00222026-03\u0022}\u0060. Builds one workbook from the ledger (summary with the reconciliation checks, trial balance, income statement, balance sheet, cash flow, donations, project costs, donors, donation and expense registers, general ledger), stores it and returns \u0060{id, month, generatedAt, url}\u0060. The stored file never changes; generating again makes a new pack. Requires \u0060finance.report.generate\u0060."
+      operationId: "GenerateReportPack"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateReportRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/finance/report-downloads/{id}":
+    get:
+      tags:
+        - "Reports"
+      summary: "Download a stored report pack with its signed link"
+      description: "Needs no bearer token (a browser link cannot send one); the short-lived \u0060token\u0060 from the list or generate response is the credential. The file\u0027s hash is checked before it is served."
+      operationId: "DownloadReportPack"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "token"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/reports/{name}":
+    get:
+      tags:
+        - "Reports"
+      summary: "A financial report as JSON, CSV or XLSX"
+      description: "\u0060name\u0060: income-statement, balance-sheet, cash-flow, donations, project-costs, donors, trial-balance, general-ledger, donation-register, expense-register or auditor-pack (every sheet). Query: \u0060from\u0060, \u0060to\u0060 (default: this month), \u0060asOf\u0060 (balances, default \u0060to\u0060), \u0060currency\u0060, \u0060format\u0060 (json default; csv is UTF-8 with a byte-order mark so Excel reads Bengali, a zip of CSVs for the auditor pack; xlsx). Amounts are decimal strings in JSON and never converted between currencies. Statements are per currency and carry reconciliation \u0060checks\u0060. Requires \u0060finance.view\u0060."
+      operationId: "GetFinancialReport"
+      parameters:
+        -
+          name: "name"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "asOf"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "currency"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "format"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/ledger:
     get:
       tags:
@@ -5788,6 +5896,8 @@ tags:
     name: "Budgets"
   -
     name: "Banking"
+  -
+    name: "Reports"
   -
     name: "Ledger"
   -
@@ -7006,6 +7116,15 @@ components:
             - "null"
             - "string"
         endsOn:
+          type:
+            - "null"
+            - "string"
+    GenerateReportRequest:
+      required:
+        - "month"
+      type: "object"
+      properties:
+        month:
           type:
             - "null"
             - "string"

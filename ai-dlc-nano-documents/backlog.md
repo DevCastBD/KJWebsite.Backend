@@ -51,3 +51,6 @@
 - [2026-10-15] db — PostgreSQL tests verified on PG 18.6 only; ADR-004 targets 17 (found: 021-issue-21-audit)
 - [2026-11-01] FinanceService/banking — OFX LEDGERBAL (closing balance) is not read, so OFX statements give no `bankBalance` in the summary; CSV balance column only (found: 064-issue-70-banking)
 - [2026-11-01] FinanceService/banking — bank-account statement CSV layouts beyond the single mapping (two date columns, separate time column) are untested against real bank exports; confirm with the organisation's actual files (found: 064-issue-70-banking)
+- [2026-11-01] FinanceService/reports — reports load the ledger up to the period end and aggregate in memory; a very large history needs an aggregate query or snapshot table (found: 065-issue-71-reports)
+- [2026-11-01] FinanceService/reports — no year-end closing entries, so the balance sheet carries accumulated surplus as one line; revisit with the accounting standard (#112) (found: 065-issue-71-reports)
+- [2026-11-01] FinanceService/reports — a legal-entity-specific statutory layout is not built; waits on #112/#114 (found: 065-issue-71-reports)
