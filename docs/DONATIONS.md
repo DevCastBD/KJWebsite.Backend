@@ -24,7 +24,7 @@ Enforced three ways: `FinanceDbContext.SaveChanges` refuses edits, PostgreSQL tr
 | `GET /api/v1/donations/{reference}/status` | `{reference, status, amount, currency, anonymous, gateway?}`; 404 for unknown; never cached |
 | `GET\|POST /api/v1/donations/{reference}/return` | gateway return: `303` to the site's status page, changes nothing |
 
-Request: `{amount, currency, frequency: once|monthly|yearly, designation: {type: general|campaign|project, id?}, donor: {name, email, phone?}, anonymous, dedication?, coverFees, language: en|bn, gateway?: bkash|nagad|sslcommerz}`. Designation ids are opaque slugs for now; campaign validation arrives with #66. `monthly`/`yearly` also creates a recurring plan; later instalments are charged by the gateway work.
+Request: `{amount, currency, frequency: once|monthly|yearly, designation: {type: general|campaign|project, id?}, donor: {name, email, phone?}, anonymous, dedication?, coverFees, language: en|bn, gateway?: bkash|nagad|sslcommerz}`. Campaign designations must name an open campaign (see CAMPAIGNS.md); project ids are opaque slugs. `monthly`/`yearly` also creates a recurring plan; later instalments are charged by the gateway work.
 `reference` is `KJD-` plus 10 random Crockford base32 characters, so a status page cannot be guessed.
 
 ## Back office (`/api/v1/admin/finance`)

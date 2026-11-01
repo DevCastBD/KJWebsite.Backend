@@ -318,3 +318,26 @@ public sealed class PostgresFinanceApiFactory(string connectionString)
             configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
     }
 }
+
+public static class TestCampaigns
+{
+    /// <summary>Creates an active campaign directly, so a test can designate gifts to it.</summary>
+    public static async Task SeedAsync(IServiceProvider services, string slug, string status = "active", string currency = "BDT", decimal goal = 500_000m, DateOnly? endsOn = null, DateOnly? startsOn = null)
+    {
+        using var scope = services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+        db.Campaigns.Add(new FinanceService.Data.Entities.CampaignEntity
+        {
+            Id = "cmp_" + Guid.NewGuid().ToString("N"),
+            Slug = slug,
+            Title = slug,
+            GoalAmount = goal,
+            Currency = currency,
+            Status = status,
+            StartsOn = startsOn,
+            EndsOn = endsOn,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+    }
+}

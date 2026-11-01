@@ -117,6 +117,7 @@ public sealed class FinanceOfflineTests : IDisposable
     [Fact]
     public async Task ARecordedGiftIsPendingAndPostsNothingUntilApproved()
     {
+        await TestCampaigns.SeedAsync(_factory.Services, "flood-relief");
         var (id, body) = await RecordAsync(Gift(designation: "campaign:flood-relief", date: Ymd(DateTime.UtcNow.AddDays(-3))));
 
         (body.GetProperty("status").GetString(), body.GetProperty("offline").GetBoolean(), body.GetProperty("method").GetString(), body.GetProperty("designation").GetString(), body.GetProperty("amount").GetString())

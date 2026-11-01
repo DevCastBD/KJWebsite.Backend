@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (#59, #60, #69, #62, #61, #63, #64, #65 done)
+- Active work item: none  (#59,#60,#69,#62,#61,#63,#64,#65,#66 done)
 - Phase: —
-- Branch: Feature/issue-65-donor-crm
-- Base SHA: 21b2f16
-- Next step: start #66 (BE-061) stacked on Feature/issue-65-donor-crm; queue: #66,#67,#68,#70,#71,#72
+- Branch: Feature/issue-66-campaigns
+- Base SHA: 69fe98a
+- Next step: start #67 (BE-062) stacked on Feature/issue-66-campaigns; queue: #67,#68,#70,#71,#72
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

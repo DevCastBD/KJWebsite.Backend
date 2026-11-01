@@ -1,3 +1,4 @@
+using FinanceService.Campaigns;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Payments;
@@ -41,6 +42,13 @@ public static class PublicDonationEndpoints
 
             var now = clock.GetUtcNow();
             var today = DateOnly.FromDateTime(now.UtcDateTime);
+
+            // A donor can only designate a campaign that exists and is open to gifts today.
+            if (donation.DesignationType == Designations.Campaign && !await CampaignRules.AcceptsPublicGiftAsync(db, donation.DesignationId!, today))
+            {
+                return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid fields: designation.id.");
+            }
+
             var name = protector.Protect(donation.DonorName);
             var email = protector.Protect(donation.DonorEmail);
             var phone = donation.DonorPhone is null ? null : protector.Protect(donation.DonorPhone);

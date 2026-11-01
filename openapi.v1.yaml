@@ -3979,6 +3979,105 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/campaigns/{slug}/progress":
+    get:
+      tags:
+        - "Campaigns"
+      summary: "A campaign\u0027s public progress"
+      description: "\u0060raised\u0060 is a decimal string in the campaign\u0027s own \u0060currency\u0060 and counts only confirmed, un-reversed gifts in that currency; gifts in other currencies are listed in \u0060otherCurrencies\u0060 and are never converted into it. The figure is computed at most once per \u0060cacheSeconds\u0060 however many requests arrive, carries an ETag and Cache-Control, and answers 503 rather than a stale-beyond-limit number. 404 for an unknown or draft campaign."
+      operationId: "GetCampaignProgress"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/campaigns:
+    get:
+      tags:
+        - "Campaigns"
+      summary: "Campaigns with what each has raised"
+      description: "Figures are computed live from receipts, not from the public cache."
+      operationId: "ListFundraisingCampaigns"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Campaigns"
+      summary: "Create a campaign"
+      description: "\u0060{title, titleBn?, slug?, goal, currency, status?, startsOn?, endsOn?}\u0060; \u0060goal\u0060 is a positive decimal string. The slug (default: made from the title) is the public identifier and never changes. New campaigns are drafts unless \u0060status\u0060 says otherwise. Requires \u0060finance.campaign.manage\u0060."
+      operationId: "CreateFundraisingCampaign"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FundraisingCampaignRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/campaigns/{id}":
+    put:
+      tags:
+        - "Campaigns"
+      summary: "Edit a campaign\u0027s title, goal, dates or status"
+      description: "Same body as create. The slug cannot change (409 SLUG_LOCKED) and neither can the currency once gifts are designated to the campaign (409 CURRENCY_LOCKED). The public figure is refreshed at once. Requires \u0060finance.campaign.manage\u0060."
+      operationId: "UpdateFundraisingCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FundraisingCampaignRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/campaigns/reconciliation:
+    get:
+      tags:
+        - "Campaigns"
+      summary: "Compare each campaign\u0027s receipts with the ledger and with the public cache"
+      description: "Per campaign and currency: the receipts\u0027 total, the net designated-donation income in the ledger, their difference (zero when the books agree), and what the public cache currently holds for the campaign\u0027s own currency (it can lag by up to the cache interval, and never exceeds the receipts)."
+      operationId: "ReconcileFundraisingCampaigns"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/ledger:
     get:
       tags:
@@ -5031,6 +5130,8 @@ tags:
   -
     name: "Donors"
   -
+    name: "Campaigns"
+  -
     name: "Ledger"
   -
     name: "Reconciliation"
@@ -5961,6 +6062,50 @@ components:
             - "null"
             - "string"
         phone:
+          type:
+            - "null"
+            - "string"
+    FundraisingCampaignRequest:
+      required:
+        - "title"
+        - "titleBn"
+        - "slug"
+        - "goal"
+        - "currency"
+        - "status"
+        - "startsOn"
+        - "endsOn"
+      type: "object"
+      properties:
+        title:
+          type:
+            - "null"
+            - "string"
+        titleBn:
+          type:
+            - "null"
+            - "string"
+        slug:
+          type:
+            - "null"
+            - "string"
+        goal:
+          type:
+            - "null"
+            - "string"
+        currency:
+          type:
+            - "null"
+            - "string"
+        status:
+          type:
+            - "null"
+            - "string"
+        startsOn:
+          type:
+            - "null"
+            - "string"
+        endsOn:
           type:
             - "null"
             - "string"
