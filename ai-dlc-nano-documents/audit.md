@@ -302,3 +302,8 @@
 - 2026-11-01T09:00Z [claude] 064-issue-70-banking BRANCH @b4436c7: Feature/issue-70-banking stacked on Feature/issue-68-budgets (user confirmed)
 - 2026-11-01T09:00Z [claude] 064-issue-70-banking PHASE PLAN→CONSTRUCT @b4436c7: plan approved (user)
 - 2026-11-01T09:40Z [claude] 064-issue-70-banking DONE @b4436c7: bank registry, CSV/OFX import, auto-match, resolve queue, balance proof; 878+46 tests green twice incl PG; committed locally, not pushed
+- 2026-11-01T10:10Z [claude] 065-issue-71-reports SIDE-EFFECT @d974484: assigned #71 to FHShubho (user asked)
+- 2026-11-01T10:10Z [claude] 065-issue-71-reports DECISION @d974484: frozen file packs; generic auditor pack; direct cash flow (user)
+- 2026-11-01T10:10Z [claude] 065-issue-71-reports BRANCH @d974484: Feature/issue-71-reports stacked on Feature/issue-70-banking (user confirmed)
+- 2026-11-01T10:10Z [claude] 065-issue-71-reports PHASE PLAN→CONSTRUCT @d974484: plan approved (user)
+- 2026-11-01T11:30Z [claude] 065-issue-71-reports DONE @d974484: ledger-derived reports, CSV/XLSX exports, frozen monthly packs with signed links; 899+46 tests green twice incl PG; committed locally, not pushed

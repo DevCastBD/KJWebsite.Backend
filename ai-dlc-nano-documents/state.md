@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (#59,#60,#69,#62,#61,#63,#64,#65,#66,#67,#68,#70 done)
+- Active work item: none  (#59,#60,#69,#62,#61,#63,#64,#65,#66,#67,#68,#70,#71 done)
 - Phase: —
-- Branch: Feature/issue-70-banking
-- Base SHA: b4436c7
-- Next step: start #71 (BE-067 financial reports) stacked on Feature/issue-70-banking; queue: #71,#72
+- Branch: Feature/issue-71-reports
+- Base SHA: d974484
+- Next step: start #72 (BE-068 financial controls) stacked on Feature/issue-71-reports; last in queue
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

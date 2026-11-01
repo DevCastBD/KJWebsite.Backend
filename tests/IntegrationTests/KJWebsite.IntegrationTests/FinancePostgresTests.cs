@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(12);
+                db.Database.GetAppliedMigrations().Should().HaveCount(13);
             }
 
             await TestCampaigns.SeedAsync(factory.Services, "flood-relief", currency: "USD");
@@ -167,6 +167,69 @@ public sealed class FinancePostgresTests
             summary.GetProperty("unmatchedEntries").GetInt32().Should().Be(1);
             (await Call(HttpMethod.Get, "/api/v1/admin/finance/reconciliation?status=matched")).GetProperty("lines").GetArrayLength().Should().Be(2);
             (await Call(HttpMethod.Post, $"/api/v1/admin/finance/bank-accounts/{account}/rematch")).GetProperty("matched").GetInt32().Should().Be(0);
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            try
+            {
+                await TestPostgres.DropDatabaseAsync(databaseName);
+            }
+            catch (PostgresException)
+            {
+                // A leftover throwaway database is harmless.
+            }
+        }
+    }
+
+    [RequiresPostgresFact]
+    public async Task ReportsRunOnPostgresAndAPackIsStoredAndServedByItsSignedLink()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("finance_report_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            using var factory = new PostgresFinanceApiFactory(connectionString);
+            using var client = factory.CreateClient();
+            var admin = TestTokens.Issue([KJWebsite.BuildingBlocks.Security.Permissions.FinanceView, KJWebsite.BuildingBlocks.Security.Permissions.FinanceLedgerAdjust,
+                KJWebsite.BuildingBlocks.Security.Permissions.FinanceReportGenerate], subject: "usr_pg_report");
+
+            async Task<HttpResponseMessage> Send(HttpMethod method, string path, object? body = null)
+            {
+                using var request = new HttpRequestMessage(method, path) { Headers = { Authorization = new("Bearer", admin) } };
+                if (body is not null)
+                {
+                    request.Content = JsonContent.Create(body);
+                }
+
+                return await client.SendAsync(request);
+            }
+
+            foreach (var (debit, credit, amount) in new[] { ("1010", "4010", "900.00"), ("5010", "1010", "250.00") })
+            {
+                using var posted = await Send(HttpMethod.Post, "/api/v1/admin/finance/ledger/postings", new
+                {
+                    memo = "বাংলা memo",
+                    reason = "postgres report",
+                    lines = new[] { new { account = debit, debit = (string?)amount, credit = (string?)null, currency = "BDT" }, new { account = credit, debit = (string?)null, credit = (string?)amount, currency = "BDT" } }
+                });
+                posted.StatusCode.Should().Be(HttpStatusCode.Created, await posted.Content.ReadAsStringAsync());
+            }
+
+            foreach (var name in new[] { "income-statement", "balance-sheet", "cash-flow", "donations", "project-costs", "donors", "trial-balance", "general-ledger", "donation-register", "expense-register" })
+            {
+                using var response = await Send(HttpMethod.Get, $"/api/v1/admin/finance/reports/{name}");
+                response.StatusCode.Should().Be(HttpStatusCode.OK, name + await response.Content.ReadAsStringAsync());
+            }
+
+            using var made = await Send(HttpMethod.Post, "/api/v1/admin/finance/reports", new { month = DateTime.UtcNow.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture) });
+            made.StatusCode.Should().Be(HttpStatusCode.Created, await made.Content.ReadAsStringAsync());
+            var pack = await made.Content.ReadFromJsonAsync<JsonElement>();
+            using var download = await client.GetAsync(new Uri(pack.GetProperty("url").GetString()!).PathAndQuery);
+            download.StatusCode.Should().Be(HttpStatusCode.OK);
+            (await download.Content.ReadAsByteArrayAsync()).Length.Should().Be(pack.GetProperty("sizeBytes").GetInt32());
+            using var list = await Send(HttpMethod.Get, "/api/v1/admin/finance/reports");
+            (await list.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").GetArrayLength().Should().Be(1);
         }
         finally
         {
@@ -534,6 +597,10 @@ public sealed class FinancePostgresTests
         await Exec(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, Link, "1"));
         await UniqueViolation(connectionString, string.Format(System.Globalization.CultureInfo.InvariantCulture, Link, "2"));
         await Exec(connectionString, "DELETE FROM finance.bank_line_links");
+
+        await Exec(connectionString, "INSERT INTO finance.report_packs (\"Id\", \"Month\", \"EntityName\", \"Sha256\", \"SizeBytes\", \"StorageKey\", \"GeneratedAt\") VALUES ('rpt_1', '2030-01', 'e', 'h', 1, 'report-1', now())");
+        await Refused(connectionString, "UPDATE finance.report_packs SET \"Sha256\" = 'x'");
+        await Refused(connectionString, "DELETE FROM finance.report_packs");
 
         // The replay guard and the settle-once rule are unique indexes.
         await using var connection = new NpgsqlConnection(connectionString);

@@ -48,6 +48,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<BankLineLinkEntity> BankLineLinks => Set<BankLineLinkEntity>();
     public DbSet<BankMatchEventEntity> BankMatchEvents => Set<BankMatchEventEntity>();
     public DbSet<BankRevealEntity> BankReveals => Set<BankRevealEntity>();
+    public DbSet<ReportPackEntity> ReportPacks => Set<ReportPackEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -74,7 +75,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             or DonorConsentEntity or DonorSuppressionEntity or DonorExportEntity
             or ExpenseEntity or ExpenseReceiptEntity or ExpenseApprovalEntity or ExpenseDecisionEntity or ExpensePaymentEntity
             or FiscalYearCloseEntity or BudgetAlertEntity
-            or BankStatementEntity or BankLineEntity or BankMatchEventEntity or BankRevealEntity
+            or BankStatementEntity or BankLineEntity or BankMatchEventEntity or BankRevealEntity or ReportPackEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -655,6 +656,19 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.Id).ValueGeneratedOnAdd();
             entity.Property(x => x.BankAccountId).HasMaxLength(40).IsRequired();
             entity.Property(x => x.By).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<ReportPackEntity>(entity =>
+        {
+            entity.ToTable("report_packs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.Month).HasMaxLength(7).IsRequired();
+            entity.Property(x => x.EntityName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.StorageKey).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.GeneratedBy).HasMaxLength(64);
+            entity.HasIndex(x => x.Month);
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>
