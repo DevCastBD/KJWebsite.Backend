@@ -110,3 +110,29 @@ public sealed class RecurringPlanEntity
     public DateOnly StartsOn { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+public static class PaymentAttemptStatuses
+{
+    /// <summary>The gateway accepted the request and returned a hosted checkout. It says nothing about whether the donor paid.</summary>
+    public const string Created = "created";
+
+    /// <summary>The gateway was unavailable or refused; the donation stays pending and falls back to offline giving.</summary>
+    public const string Failed = "failed";
+}
+
+/// <summary>One try at starting a hosted checkout for a donation. Append-only like the rest of the ledger: a retry or a different gateway is another row.</summary>
+public sealed class PaymentAttemptEntity
+{
+    public long Id { get; set; }
+    public string DonationId { get; set; } = string.Empty;
+    public string Gateway { get; set; } = string.Empty;
+    public string Status { get; set; } = PaymentAttemptStatuses.Created;
+
+    /// <summary>The gateway's own payment id, which confirmation (BE-056) uses to find the donation.</summary>
+    public string? ProviderPaymentId { get; set; }
+
+    /// <summary>A short stable code for a failed attempt; never a message from the gateway and never a credential.</summary>
+    public string? ErrorCode { get; set; }
+
+    public DateTimeOffset At { get; set; }
+}

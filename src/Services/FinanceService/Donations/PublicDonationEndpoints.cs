@@ -1,5 +1,6 @@
 using FinanceService.Data;
 using FinanceService.Data.Entities;
+using FinanceService.Payments;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Idempotency;
 using Microsoft.EntityFrameworkCore;
@@ -29,9 +30,9 @@ public static class PublicDonationEndpoints
         .WithTags("Donations")
         .AllowAnonymous();
 
-        app.MapPost(Route, async (HttpContext context, DonationRequest payload, FinanceDbContext db, IDonorProtector protector, IOptions<DonationOptions> options, TimeProvider clock) =>
+        app.MapPost(Route, async (HttpContext context, DonationRequest payload, FinanceDbContext db, IDonorProtector protector, IOptions<DonationOptions> options, PaymentGatewayRegistry gateways, IOptions<PaymentOptions> payments, ILogger<DonationRequest> logger, TimeProvider clock) =>
         {
-            var (donation, invalid) = DonationValidator.Validate(payload, options.Value);
+            var (donation, invalid) = DonationValidator.Validate(payload, options.Value, gateways.KnownIds);
             if (donation is null)
             {
                 return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Invalid fields: {string.Join(", ", invalid)}.");
@@ -93,14 +94,17 @@ public static class PublicDonationEndpoints
             await db.SaveChangesAsync();
 
             var total = donation.Fee.IsZero ? null : (donation.Amount + donation.Fee).ToDecimalString();
+            // The donation is already saved: whatever happens at the gateway, the donor's intent is never lost.
+            var checkout = await StartCheckoutAsync(context, db, gateways, payments.Value, logger, entity, donation, clock);
             var body = new CreatedDonation(entity.Id, reference, DonationStatuses.Pending, donation.Amount.ToDecimalString(), donation.Amount.Currency,
-                donation.Fee.IsZero ? null : donation.Fee.ToDecimalString(), total);
+                donation.Fee.IsZero ? null : donation.Fee.ToDecimalString(), total,
+                checkout?.Gateway, checkout?.Url, checkout is null ? "offline" : null);
             return Results.Created($"{Route}/{reference}/status", body);
         })
         .RequireIdempotency()
         .WithName("CreateDonation")
         .WithSummary("Start a donation")
-        .WithDescription("Records the intent as `pending`; payment is attached later by the gateway adapters. Amounts are decimal strings with at most two decimals and must sit inside the currency's limits (see presets). With `coverFees` the response carries `fee` and `total`, and `amount` stays the designated gift. A `monthly` or `yearly` frequency also creates a recurring plan. Anonymous gifts are never attributed in any public response.")
+        .WithDescription("Records the intent as `pending` and starts a hosted checkout: the response carries `gateway` and `checkoutUrl` to send the donor to. Pass `gateway` (bkash, nagad, sslcommerz) to choose one; otherwise the first enabled gateway that supports the currency is used. When no checkout can be started (no gateway switched on, or it is down) the donation is still recorded and the response has `fallback: offline` instead. A return from the gateway never confirms payment. Amounts are decimal strings with at most two decimals and must sit inside the currency's limits (see presets). With `coverFees` the response carries `fee` and `total`, and `amount` stays the designated gift. A `monthly` or `yearly` frequency also creates a recurring plan. Anonymous gifts are never attributed in any public response.")
         .WithTags("Donations")
         .AllowAnonymous();
 
@@ -121,7 +125,8 @@ public static class PublicDonationEndpoints
                     d.Currency,
                     d.IsAnonymous,
                     Latest = db.DonationEvents.Where(e => e.DonationId == d.Id).OrderByDescending(e => e.Id).Select(e => e.Status).FirstOrDefault(),
-                    Reversed = db.Donations.Any(r => r.ReversesDonationId == d.Id)
+                    Reversed = db.Donations.Any(r => r.ReversesDonationId == d.Id),
+                    Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault()
                 })
                 .FirstOrDefaultAsync();
             if (row is null)
@@ -131,14 +136,108 @@ public static class PublicDonationEndpoints
 
             // A reversed gift is no longer money we hold, so the donor's page shows it as cancelled.
             var status = row.Reversed ? DonationStatuses.Cancelled : row.Latest ?? DonationStatuses.Pending;
-            return Results.Ok(new DonationStatusView(row.Reference, status, Format(row.Amount), row.Currency, row.IsAnonymous));
+            return Results.Ok(new DonationStatusView(row.Reference, status, Format(row.Amount), row.Currency, row.IsAnonymous, row.Gateway));
         })
         .WithName("GetDonationStatus")
         .WithSummary("The outcome of one donation, by its public reference")
-        .WithDescription("Never cached. Returns the reference, status, designated amount, currency and the anonymous flag, and nothing about the donor.")
+        .WithDescription("Never cached. Returns the reference, status, designated amount, currency, the gateway used (when one was) and the anonymous flag, and nothing about the donor.")
         .WithTags("Donations")
         .AllowAnonymous();
+
+        // Gateways send the donor back here (SSLCommerz with a POST, the wallets with a GET). The request is only a redirect to the site's status page:
+        // nothing in it is trusted or read, and payment is confirmed solely by the signed webhook (BE-056).
+        // The gateways disagree on the method (SSLCommerz POSTs, the wallets GET), so both are mapped to one handler under distinct operation ids.
+        var returnHandler = async (HttpContext context, string reference, string? result, FinanceDbContext db, IOptions<PaymentOptions> payments) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            var language = "en";
+            string? gateway = null;
+            var known = false;
+            if (DonationReference.LooksValid(reference))
+            {
+                var row = await db.Donations.AsNoTracking()
+                    .Where(d => d.Reference == reference && d.Kind != DonationKinds.Reversal)
+                    .Select(d => new
+                    {
+                        d.Language,
+                        Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault()
+                    })
+                    .FirstOrDefaultAsync();
+                if (row is not null)
+                {
+                    known = true;
+                    language = row.Language;
+                    gateway = row.Gateway;
+                }
+            }
+
+            var site = $"{payments.Value.SiteBaseUrl.TrimEnd('/')}/{language}/donate/status";
+            var target = known
+                ? $"{site}?ref={Uri.EscapeDataString(reference)}{(gateway is null ? string.Empty : $"&gateway={Uri.EscapeDataString(gateway)}")}&result={(result == "cancel" ? "cancel" : "return")}"
+                : site;
+            context.Response.Headers.Location = target;
+            return Results.StatusCode(StatusCodes.Status303SeeOther);
+        };
+
+        foreach (var method in new[] { HttpMethods.Get, HttpMethods.Post })
+        {
+            app.MapMethods($"{Route}/{{reference}}/return", [method], returnHandler)
+            .WithName($"DonationGatewayReturn{method[0]}{method[1..].ToLowerInvariant()}")
+            .WithSummary("Where a payment gateway sends the donor back to")
+            .WithDescription("Accepts `?result=success|fail|cancel` and answers `303` to the site's `/{lang}/donate/status?ref=&gateway=&result=return|cancel`. It never changes a donation: only the signed webhook confirms payment.")
+            .WithTags("Donations")
+            .AllowAnonymous();
+        }
     }
+
+    private static readonly Action<ILogger, string, string, string, Exception?> GatewayFailed = LoggerMessage.Define<string, string, string>(
+        LogLevel.Warning, new EventId(1, nameof(GatewayFailed)), "Gateway {Gateway} could not start a checkout for {Reference}: {Code}");
+
+    private sealed record StartedCheckout(string Gateway, string Url);
+
+    // Tries each candidate gateway in turn; every try, good or bad, is recorded. Nothing a gateway does can fail the donation: no candidate means offline giving.
+    private static async Task<StartedCheckout?> StartCheckoutAsync(
+        HttpContext context, FinanceDbContext db, PaymentGatewayRegistry gateways, PaymentOptions payments, ILogger logger,
+        DonationEntity entity, ValidDonation donation, TimeProvider clock)
+    {
+        var request = new CheckoutRequest(
+            entity.Id, entity.Reference, donation.Amount + donation.Fee, donation.DonorName, donation.DonorEmail, donation.DonorPhone, donation.Language,
+            ReturnUrlsFor(payments, entity.Reference), ClientIp(context));
+
+        foreach (var gateway in gateways.Candidates(donation.Gateway, entity.Currency))
+        {
+            try
+            {
+                var session = await gateway.CreateCheckoutAsync(request, context.RequestAborted);
+                db.PaymentAttempts.Add(new PaymentAttemptEntity { DonationId = entity.Id, Gateway = gateway.Id, Status = PaymentAttemptStatuses.Created, ProviderPaymentId = session.ProviderPaymentId, At = clock.GetUtcNow() });
+                await db.SaveChangesAsync();
+                return new StartedCheckout(gateway.Id, session.RedirectUrl.ToString());
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                var code = exception is GatewayException gatewayException ? gatewayException.Code : "GATEWAY_ERROR";
+                // Only the stable code is logged and stored: a gateway's own message or request could carry credentials or donor details.
+                GatewayFailed(logger, gateway.Id, entity.Reference, code, null);
+                db.PaymentAttempts.Add(new PaymentAttemptEntity { DonationId = entity.Id, Gateway = gateway.Id, Status = PaymentAttemptStatuses.Failed, ErrorCode = code, At = clock.GetUtcNow() });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        return null;
+    }
+
+    private static ReturnUrls ReturnUrlsFor(PaymentOptions payments, string reference)
+    {
+        Uri Url(string result) => new($"{payments.PublicApiBaseUrl.TrimEnd('/')}{Route}/{reference}/return?result={result}");
+        return new ReturnUrls(Url("success"), Url("fail"), Url("cancel"));
+    }
+
+    private static string ClientIp(HttpContext context) => context.Connection.RemoteIpAddress switch
+    {
+        { IsIPv4MappedToIPv6: true } mapped => mapped.MapToIPv4().ToString(),
+        { AddressFamily: System.Net.Sockets.AddressFamily.InterNetwork } v4 => v4.ToString(),
+        _ => "127.0.0.1"
+    };
 
     internal static string NewId(string prefix) => $"{prefix}_{Guid.NewGuid():N}";
 

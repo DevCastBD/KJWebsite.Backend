@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (#59 done)
+- Active work item: none  (#59, #60 done)
 - Phase: —
-- Branch: Feature/issue-59-donation-intake
-- Base SHA: efa2bc6
-- Next step: start #60 (BE-055) stacked on Feature/issue-59-donation-intake; queue: #60,#62,#61,#63,#64,#65,#66,#67,#68,#69,#70,#71,#72
+- Branch: Feature/issue-60-payment-gateways
+- Base SHA: 253ee9d
+- Next step: start #62 (BE-056) stacked on Feature/issue-60-payment-gateways; queue: #62,#61,#63,#64,#65,#66,#67,#68,#69,#70,#71,#72
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

@@ -269,13 +269,37 @@ public sealed class GatewayApiFactory : WebApplicationFactory<ApiGateway.ApiGate
     protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Development");
 }
 
-public sealed class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.FinanceServiceTestEntryPoint, FinanceDbContext>
+public class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.FinanceServiceTestEntryPoint, FinanceDbContext>
 {
+    /// <summary>Extra configuration for this factory's service (gateway switches and credentials); set before the first client is created.</summary>
+    public Dictionary<string, string?> Settings { get; } = [];
+
+    /// <summary>Stands in for every payment gateway's HTTP endpoint; with none set, calls would go to the real network, so tests that enable a gateway set one.</summary>
+    public HttpMessageHandler? GatewayHandler { get; set; }
+
+    /// <summary>Lets a test register extra services (for example another payment gateway) before the host is built.</summary>
+    public Action<IServiceCollection>? ConfigureTestServices { get; set; }
+
+    public CapturingLoggerProvider Logs { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
         builder.ConfigureAppConfiguration((_, configuration) =>
-            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+        {
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) });
+            configuration.AddInMemoryCollection(Settings);
+        });
+        builder.ConfigureServices(services =>
+        {
+            foreach (var name in new[] { "gateway-sslcommerz", "gateway-bkash", "gateway-nagad" })
+            {
+                services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => GatewayHandler ?? new HttpClientHandler());
+            }
+
+            services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(Logs);
+            ConfigureTestServices?.Invoke(services);
+        });
     }
 }
 

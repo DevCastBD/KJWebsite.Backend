@@ -14,11 +14,13 @@ public sealed record DonationRequest(
     bool Anonymous,
     string? Dedication,
     bool CoverFees,
-    string? Language);
+    string? Language,
+    string? Gateway = null);
 
 /// <summary>
 /// What the donor gets back. `Fee` and `Total` are present only when the donor covers the fee; `Amount` is always the designated gift.
-/// No donor detail is ever echoed.
+/// `Gateway` and `CheckoutUrl` are present when a hosted checkout was started: the frontend sends the donor there. When none could be
+/// (no gateway switched on, or it was down) `Fallback` is `offline` and the donation stays pending for the offline-giving path. No donor detail is ever echoed.
 /// </summary>
 public sealed record CreatedDonation(
     string Id,
@@ -27,15 +29,24 @@ public sealed record CreatedDonation(
     string Amount,
     string Currency,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Fee,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Total);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Total,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Gateway = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? CheckoutUrl = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Fallback = null);
 
-public sealed record DonationStatusView(string Reference, string Status, string Amount, string Currency, bool Anonymous);
+public sealed record DonationStatusView(
+    string Reference,
+    string Status,
+    string Amount,
+    string Currency,
+    bool Anonymous,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Gateway = null);
 
 public sealed record CurrencyPresets(string Code, string[] Presets, string Min, string Max);
 
 public sealed record DonationPresets(string DefaultCurrency, IReadOnlyList<CurrencyPresets> Currencies, string[] Frequencies);
 
-/// <summary>A row of the finance back office. `Method` is null until gateways and offline recording exist (BE-055, BE-058).</summary>
+/// <summary>A row of the finance back office. `Method` is the gateway of the latest started checkout; null until one exists (offline recording, BE-058, adds the rest).</summary>
 public sealed record FinanceDonationRow(
     string Id,
     string Reference,

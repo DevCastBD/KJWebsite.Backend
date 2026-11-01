@@ -159,6 +159,49 @@ namespace FinanceService.Migrations
                     b.ToTable("donation_events", "finance");
                 });
 
+            modelBuilder.Entity("FinanceService.Data.Entities.PaymentAttemptEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DonationId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Gateway")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ProviderPaymentId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DonationId", "Id");
+
+                    b.HasIndex("Gateway", "ProviderPaymentId");
+
+                    b.ToTable("payment_attempts", "finance");
+                });
+
             modelBuilder.Entity("FinanceService.Data.Entities.RecurringPlanEntity", b =>
                 {
                     b.Property<string>("Id")
