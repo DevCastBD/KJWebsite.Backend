@@ -1,5 +1,8 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-10-31] tests/PrivacyTests — ApplicationsPastTheirWindowArePurged failed once in a full run, passes alone (found: 053-issue-59-donation-intake)
+- [2026-10-31] finance/donations — FE adaptDonation drops rows lacking method/donorId; filled by #60/#63/#65 (found: 053-issue-59-donation-intake)
+- [2026-10-31] finance/donations — add BDT-equivalent (rate+date) snapshot on payment confirmation, #60/#62 (found: 053-issue-59-donation-intake)
 - [2026-10-31] privacy — #110 windows still undecided (nothing purges until set); backups must expire within the published window; donor/analytics retention (P4, #111, #114); frontend privacy statement (F2-6) must read GET /membership/privacy (found: 052-issue-58)
 - [2026-10-31] privacy — one AuditLogTests PATCH case failed once on PG (connection), passed on 3 reruns; erasure of an in-flight Identity failure leaves an anonymised login until retried (found: 052-issue-58)
 - [2026-10-31] lifecycle — reinstating: if the DB commit fails after Identity enabled the login, a terminated record could have a live login (rare); no automatic inactive/lapse (needs dues #56); lifecycle migration backfill SQL only run on an empty table (found: 051-issue-57)

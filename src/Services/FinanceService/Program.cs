@@ -1,0 +1,113 @@
+using FinanceService.Data;
+using FinanceService.Data.Entities;
+using FinanceService.Donations;
+using KJWebsite.BuildingBlocks.Auditing;
+using KJWebsite.BuildingBlocks.Idempotency;
+using KJWebsite.BuildingBlocks.Security;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, ct) =>
+    {
+        document.Info.Title = "Finance Service API";
+        document.Info.Description = "Donations: the public donation form and status lookup, and the finance back office. Money is always a decimal string with an explicit currency; financial records are append-only.";
+        document.Info.Version = "v1";
+        return Task.CompletedTask;
+    });
+    options.AddOperationTransformer((operation, context, ct) =>
+    {
+        if (context.Description.ActionDescriptor.EndpointMetadata.OfType<IdempotentEndpointMetadata>().Any())
+        {
+            operation.Parameters ??= [];
+            operation.Parameters.Add(new Microsoft.OpenApi.OpenApiParameter
+            {
+                Name = IdempotencyExtensions.HeaderName,
+                In = Microsoft.OpenApi.ParameterLocation.Header,
+                Required = false,
+                Description = "Optional. A repeat with the same key and body returns the original response (header `Idempotency-Replayed: true`) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours.",
+                Schema = new Microsoft.OpenApi.OpenApiSchema { Type = Microsoft.OpenApi.JsonSchemaType.String }
+            });
+        }
+
+        return Task.CompletedTask;
+    });
+});
+
+builder.Services.AddDbContext<FinanceDbContext>((services, options) =>
+{
+    var configuration = services.GetRequiredService<IConfiguration>();
+    var connectionString = configuration.GetConnectionString("FinanceDb")
+        ?? (configuration.GetValue<bool>("OpenApi:Export") ? "Host=localhost;Database=finance" : throw new InvalidOperationException("ConnectionStrings:FinanceDb is required."));
+    options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "finance"));
+    options.AddInterceptors(services.GetRequiredService<AuditInterceptor>());
+});
+builder.Services.AddKjAuditing("finance", audit => audit
+    // Donor details stay out of the log; amounts, designation and state are what an auditor needs.
+    .Audit<DonationEntity>(nameof(DonationEntity.DonorNameProtected), nameof(DonationEntity.DonorEmailProtected), nameof(DonationEntity.DonorPhoneProtected), nameof(DonationEntity.Dedication))
+    .Audit<DonationEventEntity>()
+    .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
+builder.Services.AddSingleton(TimeProvider.System);
+
+builder.Services.Configure<DonationOptions>(builder.Configuration.GetSection(DonationOptions.SectionName));
+// Persist the key ring (DataProtection:KeysPath) in any deployment: donor details encrypted by one instance must open on the next.
+var dataProtection = builder.Services.AddDataProtection(o => o.ApplicationDiscriminator = "KJWebsite.Finance");
+if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+}
+
+builder.Services.AddSingleton<IDonorProtector, DataProtectionDonorProtector>();
+builder.Services.AddKjJwtAuthentication();
+builder.Services.AddKjIdempotency(builder.Configuration);
+
+var app = builder.Build();
+
+if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+    // Tests swap in the Sqlite provider, which has no migrations to replay; Postgres keeps its migration history.
+    if (db.Database.IsNpgsql())
+    {
+        db.Database.Migrate();
+    }
+    else
+    {
+        db.Database.EnsureCreated();
+    }
+}
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi().AllowAnonymous();
+    app.MapScalarApiReference(options =>
+    {
+        options.WithTitle("Finance Service API")
+               .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+    }).AllowAnonymous();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseKjIdempotency();
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "FinanceService" }))
+   .WithName("FinanceHealth")
+   .WithSummary("Finance service health check")
+   .WithTags("System")
+   .AllowAnonymous();
+
+app.MapPublicDonations();
+app.MapAdminDonations();
+app.MapAuditLog<FinanceDbContext>("/api/v1/admin/finance/audit", "Finance");
+
+app.Run();
+
+namespace FinanceService
+{
+    public sealed class FinanceServiceTestEntryPoint;
+}

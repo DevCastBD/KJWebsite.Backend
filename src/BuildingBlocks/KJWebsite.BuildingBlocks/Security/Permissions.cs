@@ -28,6 +28,8 @@ public static class Permissions
     public const string FinanceView = "finance.view";
     public const string FinanceExpenseSubmit = "finance.expense.submit";
     public const string FinanceExpenseApprove = "finance.expense.approve";
+    /// <summary>Post a reversing entry against a confirmed donation: money moving back out, so held by administrators until the four-eyes controls (BE-068) split it further.</summary>
+    public const string FinanceDonationReverse = "finance.donation.reverse";
     public const string AuditView = "audit.view";
     public const string CtaManage = "cta.manage";
     public const string MediaView = "media.view";
@@ -76,6 +78,7 @@ public static class PermissionCatalog
         new("finance", Permissions.FinanceView, "View finance records"),
         new("finance", Permissions.FinanceExpenseSubmit, "Submit expenses"),
         new("finance", Permissions.FinanceExpenseApprove, "Approve expenses (separate from submitting)"),
+        new("finance", Permissions.FinanceDonationReverse, "Reverse a confirmed donation with a correcting entry"),
         new("settings", Permissions.SettingsView, "View site settings"),
         new("settings", Permissions.SettingsManage, "Change site settings and maintenance mode"),
         new("dashboard", Permissions.DashboardView, "See the back-office dashboard and global search"),
