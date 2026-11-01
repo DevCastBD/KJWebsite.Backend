@@ -3441,6 +3441,28 @@ paths:
       responses:
         "200":
           description: "OK"
+    post:
+      tags:
+        - "Offline donations"
+      summary: "Record a gift that arrived offline"
+      description: "\u0060{donorName, email?, phone?, amount, currency, method, date?, designation?, anonymous?, dedication?, referenceNo?, note?, valuation?}\u0060 with \u0060method\u0060 one of bank, cash, cheque, bkash, nagad, in_kind. The donation is created \u0060pending\u0060 and posts nothing until a different user approves it. \u0060date\u0060 is when it arrived (not in the future). An in_kind gift needs \u0060valuation: {basis, itemDescription, note?}\u0060 (basis market_price, appraisal, donor_receipt, cost or other; a note is required for other), and its amount is the valuation. Requires \u0060finance.donation.record\u0060."
+      operationId: "RecordOfflineDonation"
+      parameters:
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfflineDonationRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/donations/totals:
     get:
       tags:
@@ -3521,6 +3543,102 @@ paths:
               - "integer"
               - "string"
             format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donations/{id}/proofs":
+    put:
+      tags:
+        - "Offline donations"
+      summary: "Attach a proof document"
+      description: "Raw file body with its Content-Type (pdf, jpeg, png, webp, up to 5 MB, checked against the file\u0027s own bytes) and an optional URL-encoded \u0060X-Filename\u0060. Up to ten per donation, only while it awaits a decision. A proof is a financial record: nothing can delete it, and it is kept for the configured retention period. Requires \u0060finance.donation.record\u0060."
+      operationId: "AddOfflineDonationProof"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donations/{id}/offline":
+    get:
+      tags:
+        - "Offline donations"
+      summary: "The offline record, its proofs and its decision"
+      operationId: "GetOfflineDonation"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donations/{id}/proofs/{proofId}/file":
+    get:
+      tags:
+        - "Offline donations"
+      summary: "Download a proof document"
+      description: "Served as an attachment, never cached. Requires \u0060finance.view\u0060."
+      operationId: "DownloadOfflineDonationProof"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "proofId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donations/{id}/approve":
+    post:
+      tags:
+        - "Offline donations"
+      summary: "Approve an offline donation: confirms it and posts it to the ledger"
+      description: "Only a user other than the recorder may approve (403 SEPARATION_OF_DUTIES). A bank, cheque or wallet gift needs at least one proof (409 PROOF_REQUIRED). The gift posts to the ledger dated the day it arrived, or today if that month is closed. Approving again is harmless. Requires \u0060finance.donation.approve\u0060."
+      operationId: "ApproveOfflineDonation"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donations/{id}/reject":
+    post:
+      tags:
+        - "Offline donations"
+      summary: "Reject an offline donation: it is cancelled and posts nothing"
+      description: "A reason of 3-500 characters is required. A mistaken record is rejected and recorded again; records are never edited. Requires \u0060finance.donation.approve\u0060."
+      operationId: "RejectOfflineDonation"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectRequest"
+        required: true
       responses:
         "200":
           description: "OK"
@@ -4568,6 +4686,8 @@ tags:
   -
     name: "Finance"
   -
+    name: "Offline donations"
+  -
     name: "Ledger"
   -
     name: "Reconciliation"
@@ -5462,6 +5582,75 @@ components:
           type:
             - "null"
             - "string"
+    OfflineDonationRequest:
+      required:
+        - "donorName"
+        - "email"
+        - "phone"
+        - "amount"
+        - "currency"
+        - "method"
+        - "date"
+        - "designation"
+        - "anonymous"
+        - "dedication"
+        - "referenceNo"
+        - "note"
+        - "valuation"
+      type: "object"
+      properties:
+        donorName:
+          type:
+            - "null"
+            - "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        phone:
+          type:
+            - "null"
+            - "string"
+        amount:
+          type:
+            - "null"
+            - "string"
+        currency:
+          type:
+            - "null"
+            - "string"
+        method:
+          type:
+            - "null"
+            - "string"
+        date:
+          type:
+            - "null"
+            - "string"
+        designation:
+          type:
+            - "null"
+            - "string"
+        anonymous:
+          type: "boolean"
+        dedication:
+          type:
+            - "null"
+            - "string"
+        referenceNo:
+          type:
+            - "null"
+            - "string"
+        note:
+          type:
+            - "null"
+            - "string"
+        valuation:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/ValuationRequest"
     PayoutImport:
       required:
         - "gateway"
@@ -5526,12 +5715,40 @@ components:
           type:
             - "null"
             - "string"
+    RejectRequest:
+      required:
+        - "reason"
+      type: "object"
+      properties:
+        reason:
+          type:
+            - "null"
+            - "string"
     ReversalRequest:
       required:
         - "reason"
       type: "object"
       properties:
         reason:
+          type:
+            - "null"
+            - "string"
+    ValuationRequest:
+      required:
+        - "basis"
+        - "note"
+        - "itemDescription"
+      type: "object"
+      properties:
+        basis:
+          type:
+            - "null"
+            - "string"
+        note:
+          type:
+            - "null"
+            - "string"
+        itemDescription:
           type:
             - "null"
             - "string"

@@ -2,6 +2,7 @@ using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Donations;
 using FinanceService.Ledger;
+using FinanceService.Offline;
 using FinanceService.Payments;
 using FinanceService.Reconciliation;
 using KJWebsite.BuildingBlocks.Auditing;
@@ -56,6 +57,9 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<PostingEntity>()
     .Audit<LedgerEntryEntity>()
     .Audit<PeriodCloseEntity>()
+    .Audit<OfflineRecordEntity>()
+    .Audit<OfflineDecisionEntity>()
+    .Audit<OfflineProofEntity>()
     .Audit<PayoutEntity>()
     .Audit<PayoutLineEntity>()
     .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
@@ -72,6 +76,9 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
 builder.Services.AddSingleton<IDonorProtector, DataProtectionDonorProtector>();
 builder.Services.Configure<LedgerOptions>(builder.Configuration.GetSection(LedgerOptions.SectionName));
 builder.Configuration.GetSection(LedgerOptions.SectionName).Get<LedgerOptions>()?.Validate();
+builder.Services.Configure<ProofOptions>(builder.Configuration.GetSection(ProofOptions.SectionName));
+builder.Services.AddSingleton<IProofStore, LocalDiskProofStore>();
+builder.Services.AddScoped<OfflineDonationService>();
 builder.Services.AddScoped<LedgerService>();
 builder.Services.AddScoped<DonationConfirmation>();
 builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(PaymentOptions.SectionName));
@@ -134,6 +141,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "FinanceSe
 
 app.MapPublicDonations();
 app.MapAdminDonations();
+app.MapOffline();
 app.MapLedger();
 app.MapWebhooks();
 app.MapReconciliation();

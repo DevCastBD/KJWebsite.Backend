@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (#59, #60, #69, #62, #61 done)
+- Active work item: none  (#59, #60, #69, #62, #61, #63 done)
 - Phase: —
-- Branch: Feature/issue-61-stripe-paypal
-- Base SHA: d9dcf0e
-- Next step: start #63 (BE-058) stacked on Feature/issue-61-stripe-paypal; queue: #63,#64,#65,#66,#67,#68,#70,#71,#72
+- Branch: Feature/issue-63-offline-donations
+- Base SHA: dadecc5
+- Next step: start #64 (BE-059) stacked on Feature/issue-63-offline-donations; queue: #64,#65,#66,#67,#68,#70,#71,#72
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

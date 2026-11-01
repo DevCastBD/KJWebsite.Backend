@@ -77,7 +77,8 @@ public sealed record FinanceDonationDetail(
     string? ReversedByDonationId,
     string? ReversalReason,
     IReadOnlyList<FinanceDonationEvent> Events,
-    SettlementView? Settlement = null);
+    SettlementView? Settlement = null,
+    FinanceService.Offline.OfflineView? Offline = null);
 
 public sealed record ReversalRequest(string? Reason);
 

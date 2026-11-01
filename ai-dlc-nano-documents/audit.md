@@ -261,3 +261,9 @@
 - 2026-10-31T09:47Z [claude] 057-issue-61-stripe-paypal BRANCH @d9dcf0e: Feature/issue-61-stripe-paypal stacked on Feature/issue-62-webhooks (user confirmed)
 - 2026-10-31T09:47Z [claude] 057-issue-61-stripe-paypal PHASE PLAN→CONSTRUCT @d9dcf0e: plan approved (user)
 - 2026-10-31T09:54Z [claude] 057-issue-61-stripe-paypal DONE @5a0fdd6: Stripe+PayPal, settlement, notices; 600+46 tests green incl PG; committed locally, not pushed
+- 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations CREATED @dadecc5: stacked on #61 branch
+- 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations SIDE-EFFECT @dadecc5: assigned #63 to FHShubho (user asked)
+- 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations DECISION @dadecc5: finance proof store; in-kind asset 1250 (user)
+- 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations BRANCH @dadecc5: Feature/issue-63-offline-donations stacked on Feature/issue-61-stripe-paypal (user confirmed)
+- 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations PHASE PLAN→CONSTRUCT @dadecc5: plan approved (user)
+- 2026-10-31T12:10Z [claude] 058-issue-63-offline-donations DONE @548ffbf: offline recording, maker-checker, proofs, in-kind; 635+46 tests green incl PG; committed locally, not pushed

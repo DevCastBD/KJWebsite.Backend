@@ -45,7 +45,7 @@ public sealed class PaymentSettlement(FinanceDbContext db, DonationConfirmation 
                     return SettlementOutcome.Mismatch;
                 }
 
-                var confirmed = await confirmation.ConfirmAsync(donation.Id, gateway, $"Confirmed by {gateway}", cancellationToken);
+                var confirmed = await confirmation.ConfirmAsync(donation.Id, gateway, $"Confirmed by {gateway}", cancellationToken: cancellationToken);
                 if (!confirmed.IsSuccess)
                 {
                     return SettlementOutcome.Ignored;
@@ -57,7 +57,7 @@ public sealed class PaymentSettlement(FinanceDbContext db, DonationConfirmation 
             case PaymentOutcome.Failed:
             case PaymentOutcome.Cancelled:
                 var status = verification.Outcome == PaymentOutcome.Failed ? DonationStatuses.Failed : DonationStatuses.Cancelled;
-                var marked = await confirmation.MarkAsync(donation.Id, status, $"{status} at {gateway}", cancellationToken);
+                var marked = await confirmation.MarkAsync(donation.Id, status, $"{status} at {gateway}", cancellationToken: cancellationToken);
                 return !marked.IsSuccess || !marked.Value ? SettlementOutcome.Ignored : verification.Outcome == PaymentOutcome.Failed ? SettlementOutcome.Failed : SettlementOutcome.Cancelled;
 
             default:

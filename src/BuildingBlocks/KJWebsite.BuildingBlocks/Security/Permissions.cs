@@ -36,6 +36,10 @@ public static class Permissions
     public const string FinancePeriodClose = "finance.period.close";
     /// <summary>Run the pending-payment resolver and import gateway payouts, which post fees and settlement to the ledger.</summary>
     public const string FinanceReconcile = "finance.reconcile";
+    /// <summary>Record a gift that arrived offline (bank, cash, cheque, wallet, in kind). It posts only after someone else approves it.</summary>
+    public const string FinanceDonationRecord = "finance.donation.record";
+    /// <summary>Approve or reject an offline donation recorded by someone else: the checker of the maker-checker pair.</summary>
+    public const string FinanceDonationApprove = "finance.donation.approve";
     public const string AuditView = "audit.view";
     public const string CtaManage = "cta.manage";
     public const string MediaView = "media.view";
@@ -88,6 +92,8 @@ public static class PermissionCatalog
         new("finance", Permissions.FinanceLedgerAdjust, "Post manual ledger adjustments, reverse postings and manage accounts"),
         new("finance", Permissions.FinancePeriodClose, "Close an accounting period"),
         new("finance", Permissions.FinanceReconcile, "Resolve stale payments and import gateway payouts"),
+        new("finance", Permissions.FinanceDonationRecord, "Record an offline donation (bank, cash, cheque, wallet, in kind)"),
+        new("finance", Permissions.FinanceDonationApprove, "Approve or reject an offline donation recorded by someone else"),
         new("settings", Permissions.SettingsView, "View site settings"),
         new("settings", Permissions.SettingsManage, "Change site settings and maintenance mode"),
         new("dashboard", Permissions.DashboardView, "See the back-office dashboard and global search"),
@@ -113,7 +119,7 @@ public static class KjRoles
         [SuperAdmin] = Permissions.All,
         [Admin] = [.. Permissions.All.Where(p => p != Permissions.RolesManage)],
         [Moderator] = [Permissions.ContentView, Permissions.ContentUpdate, Permissions.CtaView, Permissions.CtaManage, Permissions.DashboardView],
-        [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove],
+        [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate, Permissions.MediaView, Permissions.MediaUpload, Permissions.DashboardView],
         [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],
         [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MembershipLifecycle, Permissions.MemberProfileView, Permissions.UsersView],
