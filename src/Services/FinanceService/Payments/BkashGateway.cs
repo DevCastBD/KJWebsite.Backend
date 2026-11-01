@@ -135,7 +135,9 @@ public sealed class BkashGateway(IHttpClientFactory httpClients, IOptions<Paymen
     }
 
     /// <summary>bKash does not sign its browser callback: `paymentID` and `status` are claims, and the payment-status query decides.</summary>
-    public WebhookParse ParseWebhook(IncomingWebhook webhook) =>
+    public Task<WebhookParse> ParseWebhookAsync(IncomingWebhook webhook, CancellationToken cancellationToken) => Task.FromResult(ParseWebhook(webhook));
+
+    private static WebhookParse ParseWebhook(IncomingWebhook webhook) =>
         webhook.Query.TryGetValue("paymentID", out var paymentId) && paymentId.Length is > 0 and <= 100
             ? new WebhookParse(WebhookAuthenticity.NotSigned, null, paymentId, $"{paymentId}:{(webhook.Query.TryGetValue("status", out var status) ? status : string.Empty)}")
             : new WebhookParse(WebhookAuthenticity.Invalid, null, null, null);

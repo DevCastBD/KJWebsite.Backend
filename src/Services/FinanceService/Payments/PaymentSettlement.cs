@@ -2,6 +2,7 @@ using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Ledger;
 using KJWebsite.BuildingBlocks.Finance;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinanceService.Payments;
 
@@ -45,7 +46,13 @@ public sealed class PaymentSettlement(FinanceDbContext db, DonationConfirmation 
                 }
 
                 var confirmed = await confirmation.ConfirmAsync(donation.Id, gateway, $"Confirmed by {gateway}", cancellationToken);
-                return !confirmed.IsSuccess ? SettlementOutcome.Ignored : confirmed.Value ? SettlementOutcome.Confirmed : SettlementOutcome.AlreadyConfirmed;
+                if (!confirmed.IsSuccess)
+                {
+                    return SettlementOutcome.Ignored;
+                }
+
+                await RecordSettlementAsync(donation.Id, gateway, verification.Settlement, cancellationToken);
+                return confirmed.Value ? SettlementOutcome.Confirmed : SettlementOutcome.AlreadyConfirmed;
 
             case PaymentOutcome.Failed:
             case PaymentOutcome.Cancelled:
@@ -55,6 +62,36 @@ public sealed class PaymentSettlement(FinanceDbContext db, DonationConfirmation 
 
             default:
                 return SettlementOutcome.Pending;
+        }
+    }
+
+    // What the gateway settled is kept apart from the donor's designated amount; one record per donation, so repeating a confirmation adds nothing.
+    private async Task RecordSettlementAsync(string donationId, string gateway, SettlementInfo? info, CancellationToken cancellationToken)
+    {
+        if (info is null || await db.PaymentSettlements.AnyAsync(p => p.DonationId == donationId, cancellationToken))
+        {
+            return;
+        }
+
+        db.PaymentSettlements.Add(new PaymentSettlementEntity
+        {
+            DonationId = donationId,
+            Gateway = gateway,
+            TransactionId = info.TransactionId,
+            SettledAmount = info.Settled.Amount,
+            SettledCurrency = info.Settled.Currency,
+            Fee = info.Fee?.Amount,
+            ExchangeRate = info.ExchangeRate,
+            At = clock.GetUtcNow()
+        });
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // A concurrent confirmation recorded it first.
+            db.ChangeTracker.Clear();
         }
     }
 

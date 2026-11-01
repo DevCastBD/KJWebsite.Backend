@@ -240,10 +240,14 @@ public static class AdminDonationEndpoints
         var d = view.Donation;
         var events = await db.DonationEvents.AsNoTracking().Where(e => e.DonationId == d.Id).OrderBy(e => e.Id).ToListAsync();
         var reversedBy = await db.Donations.AsNoTracking().Where(r => r.ReversesDonationId == d.Id).Select(r => r.Id).FirstOrDefaultAsync();
+        var paid = await db.PaymentSettlements.AsNoTracking().FirstOrDefaultAsync(p => p.DonationId == d.Id);
+        var settlement = paid is null ? null : new SettlementView(
+            paid.Gateway, PublicDonationEndpoints.Format(paid.SettledAmount), paid.SettledCurrency, paid.Fee is { } f ? PublicDonationEndpoints.Format(f) : null,
+            paid.ExchangeRate?.ToString("0.########", System.Globalization.CultureInfo.InvariantCulture), paid.TransactionId);
         return new FinanceDonationDetail(
             Row(view, protector), protector.Unprotect(d.DonorEmailProtected), d.DonorPhoneProtected is null ? null : protector.Unprotect(d.DonorPhoneProtected),
             d.Dedication, d.RecurringPlanId, d.ReversesDonationId, reversedBy, d.ReversalReason,
-            [.. events.Select(e => new FinanceDonationEvent(e.Status, e.Note, e.At))]);
+            [.. events.Select(e => new FinanceDonationEvent(e.Status, e.Note, e.At))], settlement);
     }
 
     private static string DesignationText(string type, string? id) => type == Designations.General ? type : $"{type}:{id}";

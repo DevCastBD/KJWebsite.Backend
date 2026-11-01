@@ -255,3 +255,9 @@
 - 2026-10-31T06:19Z [claude] 056-issue-62-webhooks BRANCH @d243a57: Feature/issue-62-webhooks stacked on Feature/issue-69-ledger (user confirmed)
 - 2026-10-31T06:19Z [claude] 056-issue-62-webhooks PHASE PLAN→CONSTRUCT @d243a57: plan approved (user)
 - 2026-10-31T06:28Z [claude] 056-issue-62-webhooks DONE @e7fd492: webhooks, replay guard, resolver, payouts; 568+46 tests green incl PG; committed locally, not pushed
+- 2026-10-31T09:47Z [claude] 057-issue-61-stripe-paypal CREATED @d9dcf0e: stacked on #62 branch
+- 2026-10-31T09:47Z [claude] 057-issue-61-stripe-paypal SIDE-EFFECT @d9dcf0e: assigned #61 to FHShubho (user asked)
+- 2026-10-31T09:47Z [claude] 057-issue-61-stripe-paypal DECISION @d9dcf0e: settlement record; notices only for refund/dispute; Stripe Checkout + PayPal Orders v2 (user)
+- 2026-10-31T09:47Z [claude] 057-issue-61-stripe-paypal BRANCH @d9dcf0e: Feature/issue-61-stripe-paypal stacked on Feature/issue-62-webhooks (user confirmed)
+- 2026-10-31T09:47Z [claude] 057-issue-61-stripe-paypal PHASE PLAN→CONSTRUCT @d9dcf0e: plan approved (user)
+- 2026-10-31T09:54Z [claude] 057-issue-61-stripe-paypal DONE @5a0fdd6: Stripe+PayPal, settlement, notices; 600+46 tests green incl PG; committed locally, not pushed

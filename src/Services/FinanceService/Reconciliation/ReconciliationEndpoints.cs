@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinanceService.Reconciliation;
 
+public sealed record ProviderNoticeRow(string Id, string Gateway, string Kind, string DonationId, string? Reference, string? TransactionId, string? Amount, string? Currency, DateTimeOffset At);
+
 public sealed record WebhookRejectionRow(string Id, string Gateway, string ReasonCode, string SourceIp, string? Reference, DateTimeOffset At);
 
 public static class ReconciliationEndpoints
@@ -40,6 +42,35 @@ public static class ReconciliationEndpoints
         .WithName("ListWebhookRejections")
         .WithSummary("Refused gateway calls, newest first")
         .WithDescription("The alert list: unsigned or badly signed webhooks, calls about unknown payments, and paid amounts that did not match the donation. Reason codes: BAD_SIGNATURE, UNKNOWN_GATEWAY, GATEWAY_DISABLED, UNKNOWN_PAYMENT, REFERENCE_MISMATCH, AMOUNT_MISMATCH.")
+        .WithTags("Reconciliation")
+        .RequirePermission(Permissions.FinanceView);
+
+        app.MapGet($"{Route}/provider-notices", async (FinanceDbContext db, string? gateway, string? kind, int? limit, int? offset) =>
+        {
+            var query = from n in db.ProviderNotices.AsNoTracking()
+                        join d in db.Donations.AsNoTracking() on n.DonationId equals d.Id
+                        select new { Notice = n, d.Reference };
+            if (!string.IsNullOrWhiteSpace(gateway))
+            {
+                query = query.Where(x => x.Notice.Gateway == gateway);
+            }
+
+            if (!string.IsNullOrWhiteSpace(kind))
+            {
+                query = query.Where(x => x.Notice.Kind == kind);
+            }
+
+            var take = Math.Clamp(limit ?? DefaultLimit, 1, MaxLimit);
+            var skip = Math.Max(0, offset ?? 0);
+            var total = await query.CountAsync();
+            var page = await query.OrderByDescending(x => x.Notice.Id).Skip(skip).Take(take).ToListAsync();
+            return Results.Ok(new PagingEnvelope<ProviderNoticeRow>([.. page.Select(x => new ProviderNoticeRow(
+                x.Notice.Id.ToString(CultureInfo.InvariantCulture), x.Notice.Gateway, x.Notice.Kind, x.Notice.DonationId, x.Reference, x.Notice.TransactionId,
+                x.Notice.Amount?.ToString("0.00", CultureInfo.InvariantCulture), x.Notice.Currency, x.Notice.At))], total, null, take, skip));
+        })
+        .WithName("ListProviderNotices")
+        .WithSummary("Refunds and disputes the gateways reported, newest first")
+        .WithDescription("Signed refund and dispute messages from Stripe and PayPal. They change nothing by themselves: finance reviews each and, where money went back, reverses the donation with the reversal endpoint (the full refund and dispute workflow is BE-068). Filters: gateway, kind (refund, dispute).")
         .WithTags("Reconciliation")
         .RequirePermission(Permissions.FinanceView);
 

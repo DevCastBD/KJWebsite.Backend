@@ -20,9 +20,12 @@ public sealed class PaymentOptions
     /// </summary>
     public string[] Order { get; set; } = [];
 
-    public static readonly IReadOnlyList<string> DefaultOrder = [GatewayIds.SslCommerz, GatewayIds.Bkash, GatewayIds.Nagad];
+    public static readonly IReadOnlyList<string> DefaultOrder = [GatewayIds.SslCommerz, GatewayIds.Bkash, GatewayIds.Nagad, GatewayIds.Stripe, GatewayIds.PayPal];
 
-    public IReadOnlyList<string> EffectiveOrder => Order is { Length: > 0 } ? Order : DefaultOrder;
+    /// <summary>For donors paying in a foreign currency the international gateways come first by default: they are built for cards from abroad.</summary>
+    public static readonly IReadOnlyList<string> DefaultForeignOrder = [GatewayIds.Stripe, GatewayIds.PayPal, GatewayIds.SslCommerz];
+
+    public IReadOnlyList<string> EffectiveOrder(string currency) => Order is { Length: > 0 } ? Order : currency == "BDT" ? DefaultOrder : DefaultForeignOrder;
 
     public int TimeoutSeconds { get; set; } = 10;
 
@@ -35,6 +38,8 @@ public sealed class PaymentOptions
     public SslCommerzOptions SslCommerz { get; set; } = new();
     public BkashOptions Bkash { get; set; } = new();
     public NagadOptions Nagad { get; set; } = new();
+    public StripeOptions Stripe { get; set; } = new();
+    public PayPalOptions PayPal { get; set; } = new();
 }
 
 public abstract class GatewayOptions
@@ -71,4 +76,22 @@ public sealed class NagadOptions : GatewayOptions
 
     /// <summary>Nagad's RSA public key (SPKI, PEM or base64 DER): encrypts what we send.</summary>
     public string PgPublicKey { get; set; } = string.Empty;
+}
+
+public sealed class StripeOptions : GatewayOptions
+{
+    /// <summary>The secret API key (`sk_test_...` in sandbox).</summary>
+    public string SecretKey { get; set; } = string.Empty;
+
+    /// <summary>The signing secret of the webhook endpoint (`whsec_...`).</summary>
+    public string WebhookSecret { get; set; } = string.Empty;
+}
+
+public sealed class PayPalOptions : GatewayOptions
+{
+    public string ClientId { get; set; } = string.Empty;
+    public string ClientSecret { get; set; } = string.Empty;
+
+    /// <summary>The id of the webhook registered in PayPal, needed to verify its signatures.</summary>
+    public string WebhookId { get; set; } = string.Empty;
 }

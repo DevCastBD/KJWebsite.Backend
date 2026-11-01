@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(4);
+                db.Database.GetAppliedMigrations().Should().HaveCount(5);
             }
 
             using var created = await client.PostAsJsonAsync("/api/v1/donations", new
@@ -158,6 +158,22 @@ public sealed class FinancePostgresTests
         await Refused(connectionString, "UPDATE finance.webhook_rejections SET \"ReasonCode\" = 'X'");
         await Refused(connectionString, "UPDATE finance.payouts SET \"PayoutRef\" = 'P2'");
         await Refused(connectionString, "UPDATE finance.payout_lines SET \"Gross\" = 99");
+
+        await Exec(connectionString, "INSERT INTO finance.payment_settlements (\"DonationId\", \"Gateway\", \"TransactionId\", \"SettledAmount\", \"SettledCurrency\", \"Fee\", \"ExchangeRate\", \"At\") VALUES ('don_a', 'stripe', 'pi_1', 19.50, 'GBP', 0.87, 0.78123456, now())");
+        await Exec(connectionString, "INSERT INTO finance.provider_notices (\"Gateway\", \"EventKey\", \"Kind\", \"DonationId\", \"At\") VALUES ('stripe', 'evt_1', 'refund', 'don_a', now())");
+        foreach (var table in new[] { "payment_settlements", "provider_notices" })
+        {
+            await Refused(connectionString, $"DELETE FROM finance.{table}");
+        }
+
+        await Refused(connectionString, "UPDATE finance.payment_settlements SET \"SettledAmount\" = 1");
+        await Refused(connectionString, "UPDATE finance.provider_notices SET \"Kind\" = 'dispute'");
+        await using (var settleTwice = new NpgsqlConnection(connectionString))
+        {
+            await settleTwice.OpenAsync();
+            await using var again = new NpgsqlCommand("INSERT INTO finance.payment_settlements (\"DonationId\", \"Gateway\", \"SettledAmount\", \"SettledCurrency\", \"At\") VALUES ('don_a', 'stripe', 1, 'GBP', now())", settleTwice);
+            (await again.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23505");
+        }
 
         // The replay guard and the settle-once rule are unique indexes.
         await using var connection = new NpgsqlConnection(connectionString);

@@ -81,3 +81,46 @@ public sealed class PayoutLineEntity
     public long? PostingId { get; set; }
     public PostingEntity? Posting { get; set; }
 }
+
+/// <summary>
+/// What the gateway actually settled for a confirmed donation. Kept apart from the donation, whose `Amount` and `Currency` are what the donor designated:
+/// the two can differ (a card charged in another currency, less the gateway's fee) and neither is ever converted into the other. One per donation, append-only.
+/// </summary>
+public sealed class PaymentSettlementEntity
+{
+    public long Id { get; set; }
+    public string DonationId { get; set; } = string.Empty;
+    public string Gateway { get; set; } = string.Empty;
+
+    /// <summary>The gateway's own transaction (Stripe payment intent, PayPal capture): how refunds and disputes find the donation.</summary>
+    public string? TransactionId { get; set; }
+
+    public decimal SettledAmount { get; set; }
+    public string SettledCurrency { get; set; } = string.Empty;
+    public decimal? Fee { get; set; }
+
+    /// <summary>The rate the gateway reports, when it converted; recorded as given, never used by us to convert anything.</summary>
+    public decimal? ExchangeRate { get; set; }
+
+    public DateTimeOffset At { get; set; }
+}
+
+public static class NoticeKinds
+{
+    public const string Refund = "refund";
+    public const string Dispute = "dispute";
+}
+
+/// <summary>A signed refund or dispute message from a gateway, kept for finance to act on (reversal stays a human step until BE-068). Unique per gateway event; append-only.</summary>
+public sealed class ProviderNoticeEntity
+{
+    public long Id { get; set; }
+    public string Gateway { get; set; } = string.Empty;
+    public string EventKey { get; set; } = string.Empty;
+    public string Kind { get; set; } = NoticeKinds.Refund;
+    public string DonationId { get; set; } = string.Empty;
+    public string? TransactionId { get; set; }
+    public decimal? Amount { get; set; }
+    public string? Currency { get; set; }
+    public DateTimeOffset At { get; set; }
+}

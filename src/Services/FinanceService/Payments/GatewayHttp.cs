@@ -62,6 +62,33 @@ internal static class GatewayHttp
         decimal.TryParse(text, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var value)
         && KJWebsite.BuildingBlocks.Finance.Money.TryCreate(value, currency) is { IsSuccess: true } made ? made.Value : null;
 
+    /// <summary>Follows a path of property names (and array indexes written as digits); an absent step gives an undefined element rather than an exception.</summary>
+    public static JsonElement At(JsonElement element, params string[] path)
+    {
+        var current = element;
+        foreach (var step in path)
+        {
+            if (current.ValueKind == JsonValueKind.Array && int.TryParse(step, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var index) && index < current.GetArrayLength())
+            {
+                current = current[index];
+            }
+            else if (current.ValueKind == JsonValueKind.Object && current.TryGetProperty(step, out var next))
+            {
+                current = next;
+            }
+            else
+            {
+                return default;
+            }
+        }
+
+        return current;
+    }
+
+    public static string? TextAt(JsonElement element, params string[] path) => At(element, path) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
+
+    public static long? LongAt(JsonElement element, params string[] path) => At(element, path) is { ValueKind: JsonValueKind.Number } value && value.TryGetInt64(out var number) ? number : null;
+
     public static string? Text(JsonElement element, string name) =>
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 

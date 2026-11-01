@@ -297,7 +297,7 @@ public class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.Fina
         });
         builder.ConfigureServices(services =>
         {
-            foreach (var name in new[] { "gateway-sslcommerz", "gateway-bkash", "gateway-nagad" })
+            foreach (var name in new[] { "gateway-sslcommerz", "gateway-bkash", "gateway-nagad", "gateway-stripe", "gateway-paypal" })
             {
                 services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => GatewayHandler ?? new HttpClientHandler());
             }

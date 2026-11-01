@@ -1,6 +1,8 @@
+using System.Text;
 using FinanceService.Data;
 using FinanceService.Donations;
 using KJWebsite.BuildingBlocks;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 
 namespace FinanceService.Payments;
@@ -52,25 +54,39 @@ public static class WebhookEndpoints
         }
     }
 
+    private const int MaxBody = 1_000_000;
+
     private static async Task<IncomingWebhook> ReadAsync(HttpContext context)
     {
         var query = context.Request.Query.ToDictionary(q => q.Key, q => q.Value.ToString(), StringComparer.Ordinal);
-        var form = new Dictionary<string, string>(StringComparer.Ordinal);
-        if (context.Request.HasFormContentType)
+        var headers = context.Request.Headers.ToDictionary(h => h.Key.ToLowerInvariant(), h => h.Value.ToString(), StringComparer.Ordinal);
+
+        // The body is read once as text: signatures such as Stripe's cover its exact bytes, and form bodies are parsed from the same text.
+        var raw = string.Empty;
+        if (!HttpMethods.IsGet(context.Request.Method) && context.Request.ContentLength is null or <= MaxBody)
         {
             try
             {
-                foreach (var field in await context.Request.ReadFormAsync(context.RequestAborted))
-                {
-                    form[field.Key] = field.Value.ToString();
-                }
+                using var reader = new StreamReader(context.Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 4096, leaveOpen: true);
+                var buffer = new char[MaxBody + 1];
+                var read = await reader.ReadBlockAsync(buffer, context.RequestAborted);
+                raw = read > MaxBody ? string.Empty : new string(buffer, 0, read);
             }
-            catch (Exception exception) when (exception is InvalidDataException or BadHttpRequestException or IOException)
+            catch (Exception exception) when (exception is IOException or BadHttpRequestException or DecoderFallbackException)
             {
                 // An unreadable body is treated as an empty one, which the adapter then refuses.
             }
         }
 
-        return new IncomingWebhook(context.Request.Method, query, form, context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        var form = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (raw.Length > 0 && context.Request.HasFormContentType)
+        {
+            foreach (var field in QueryHelpers.ParseQuery(raw))
+            {
+                form[field.Key] = field.Value.ToString();
+            }
+        }
+
+        return new IncomingWebhook(context.Request.Method, query, form, context.Connection.RemoteIpAddress?.ToString() ?? "unknown", headers, raw);
     }
 }

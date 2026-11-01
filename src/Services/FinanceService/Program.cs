@@ -79,6 +79,8 @@ builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(Paym
 builder.Services.AddPaymentGateway<SslCommerzGateway>(SslCommerzGateway.ClientName);
 builder.Services.AddPaymentGateway<BkashGateway>(BkashGateway.ClientName);
 builder.Services.AddPaymentGateway<NagadGateway>(NagadGateway.ClientName);
+builder.Services.AddPaymentGateway<StripeGateway>(StripeGateway.ClientName);
+builder.Services.AddPaymentGateway<PayPalGateway>(PayPalGateway.ClientName);
 builder.Services.AddSingleton<PaymentGatewayRegistry>();
 builder.Services.AddScoped<PaymentSettlement>();
 builder.Services.AddScoped<WebhookProcessor>();

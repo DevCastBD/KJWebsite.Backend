@@ -524,7 +524,7 @@ public sealed class FinanceGatewayTests
         public bool IsEnabled => true;
         public bool Supports(string currency) => currency == Currencies.Bdt;
 
-        public WebhookParse ParseWebhook(IncomingWebhook webhook) => new(WebhookAuthenticity.NotSigned, null, null, null);
+        public Task<WebhookParse> ParseWebhookAsync(IncomingWebhook webhook, CancellationToken cancellationToken) => Task.FromResult(new WebhookParse(WebhookAuthenticity.NotSigned, null, null, null));
 
         public Task<PaymentVerification> VerifyAsync(VerifyRequest request, CancellationToken cancellationToken) => Task.FromResult(new PaymentVerification(PaymentOutcome.Pending, null, null));
 

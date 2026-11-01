@@ -28,7 +28,7 @@ public sealed class PaymentGatewayRegistry(IEnumerable<IPaymentGateway> gateways
             return [.. usable.Where(g => string.Equals(g.Id, requested, StringComparison.Ordinal)).Take(1)];
         }
 
-        var order = options.Value.EffectiveOrder.ToList();
+        var order = options.Value.EffectiveOrder(currency).ToList();
         return [.. usable.OrderBy(g => order.IndexOf(g.Id) is var i and >= 0 ? i : int.MaxValue).ThenBy(g => g.Id, StringComparer.Ordinal)];
     }
 }

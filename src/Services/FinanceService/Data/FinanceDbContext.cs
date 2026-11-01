@@ -19,6 +19,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<WebhookRejectionEntity> WebhookRejections => Set<WebhookRejectionEntity>();
     public DbSet<PayoutEntity> Payouts => Set<PayoutEntity>();
     public DbSet<PayoutLineEntity> PayoutLines => Set<PayoutLineEntity>();
+    public DbSet<PaymentSettlementEntity> PaymentSettlements => Set<PaymentSettlementEntity>();
+    public DbSet<ProviderNoticeEntity> ProviderNotices => Set<ProviderNoticeEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -39,7 +41,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
         ChangeTracker.DetectChanges();
         var offender = ChangeTracker.Entries().FirstOrDefault(e =>
             e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity or PostingEntity or LedgerEntryEntity or PeriodCloseEntity
-            or PaymentEventEntity or WebhookRejectionEntity or PayoutEntity or PayoutLineEntity
+            or PaymentEventEntity or WebhookRejectionEntity or PayoutEntity or PayoutLineEntity or PaymentSettlementEntity or ProviderNoticeEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
@@ -216,6 +218,38 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.SourceIp).HasMaxLength(64).IsRequired();
             entity.Property(x => x.Reference).HasMaxLength(64);
             entity.HasIndex(x => x.Id);
+        });
+
+        modelBuilder.Entity<PaymentSettlementEntity>(entity =>
+        {
+            entity.ToTable("payment_settlements");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.DonationId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Gateway).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.TransactionId).HasMaxLength(200);
+            entity.Property(x => x.SettledAmount).HasPrecision(18, 2);
+            entity.Property(x => x.SettledCurrency).HasMaxLength(3).IsRequired();
+            entity.Property(x => x.Fee).HasPrecision(18, 2);
+            entity.Property(x => x.ExchangeRate).HasPrecision(18, 8);
+            entity.HasIndex(x => x.DonationId).IsUnique();
+            entity.HasIndex(x => new { x.Gateway, x.TransactionId });
+        });
+
+        modelBuilder.Entity<ProviderNoticeEntity>(entity =>
+        {
+            entity.ToTable("provider_notices");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Gateway).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.EventKey).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Kind).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.DonationId).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.TransactionId).HasMaxLength(200);
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(3);
+            entity.HasIndex(x => new { x.Gateway, x.EventKey }).IsUnique();
+            entity.HasIndex(x => x.DonationId);
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

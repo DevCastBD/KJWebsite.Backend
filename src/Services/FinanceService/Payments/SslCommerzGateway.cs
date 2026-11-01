@@ -77,7 +77,9 @@ public sealed class SslCommerzGateway(IHttpClientFactory httpClients, IOptions<P
     /// the store password) sorted by name and joined as a query string. A missing, malformed or wrong signature is invalid; a good one only proves the
     /// call came from SSLCommerz, not that the payment succeeded.
     /// </summary>
-    public WebhookParse ParseWebhook(IncomingWebhook webhook)
+    public Task<WebhookParse> ParseWebhookAsync(IncomingWebhook webhook, CancellationToken cancellationToken) => Task.FromResult(ParseWebhook(webhook));
+
+    private WebhookParse ParseWebhook(IncomingWebhook webhook)
     {
         var form = webhook.Form;
         var invalid = new WebhookParse(WebhookAuthenticity.Invalid, null, null, null);

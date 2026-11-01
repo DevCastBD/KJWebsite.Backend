@@ -3787,6 +3787,45 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/finance/provider-notices:
+    get:
+      tags:
+        - "Reconciliation"
+      summary: "Refunds and disputes the gateways reported, newest first"
+      description: "Signed refund and dispute messages from Stripe and PayPal. They change nothing by themselves: finance reviews each and, where money went back, reverses the donation with the reversal endpoint (the full refund and dispute workflow is BE-068). Filters: gateway, kind (refund, dispute)."
+      operationId: "ListProviderNotices"
+      parameters:
+        -
+          name: "gateway"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "kind"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/reconciliation/pending/run:
     post:
       tags:

@@ -52,14 +52,34 @@ public interface IPaymentGateway
     /// Reads an incoming webhook or browser callback. It checks the gateway's signature where the gateway signs and says which payment the call is about;
     /// it never decides that money arrived. A call that should be signed but is not, or whose signature is wrong, is <see cref="WebhookAuthenticity.Invalid"/>.
     /// </summary>
-    WebhookParse ParseWebhook(IncomingWebhook webhook);
+    Task<WebhookParse> ParseWebhookAsync(IncomingWebhook webhook, CancellationToken cancellationToken);
 
     /// <summary>Asks the gateway itself, with our credentials, what became of a payment. This answer, not the call that prompted it, is what confirms or fails a donation.</summary>
     Task<PaymentVerification> VerifyAsync(VerifyRequest request, CancellationToken cancellationToken);
 }
 
 /// <summary>An incoming call from a gateway or from a donor's browser coming back from one. Values are as received: untrusted until verified.</summary>
-public sealed record IncomingWebhook(string Method, IReadOnlyDictionary<string, string> Query, IReadOnlyDictionary<string, string> Form, string SourceIp);
+public sealed record IncomingWebhook(
+    string Method,
+    IReadOnlyDictionary<string, string> Query,
+    IReadOnlyDictionary<string, string> Form,
+    string SourceIp,
+    IReadOnlyDictionary<string, string>? Headers = null,
+    string RawBody = "")
+{
+    /// <summary>Header values by lower-case name; signatures that cover the exact bytes of the body need the raw body too.</summary>
+    public IReadOnlyDictionary<string, string> HeaderValues => Headers ?? new Dictionary<string, string>();
+}
+
+/// <summary>A gateway message that is not a payment result: money going back, or a dispute opened. Recorded for finance, never acted on automatically.</summary>
+public enum NoticeKind
+{
+    Refund,
+    Dispute
+}
+
+/// <summary>What the gateway actually settled for a payment, which can differ from the donor's designated amount (a different currency, less the gateway's fee).</summary>
+public sealed record SettlementInfo(Money Settled, Money? Fee, decimal? ExchangeRate, string? TransactionId);
 
 public enum WebhookAuthenticity
 {
@@ -74,7 +94,16 @@ public enum WebhookAuthenticity
 }
 
 /// <summary>What a webhook is about. `EventKey` identifies this delivery (so a replay is recognised); the identifiers locate the donation and are checked against the gateway's answer.</summary>
-public sealed record WebhookParse(WebhookAuthenticity Authenticity, string? Reference, string? ProviderPaymentId, string? EventKey);
+/// <summary>`Irrelevant` marks a genuine, authentic message about something we do not act on (an event type we did not ask for): acknowledged, never rejected.</summary>
+public sealed record WebhookParse(
+    WebhookAuthenticity Authenticity,
+    string? Reference,
+    string? ProviderPaymentId,
+    string? EventKey,
+    NoticeKind? Notice = null,
+    string? TransactionId = null,
+    Money? NoticeAmount = null,
+    bool Irrelevant = false);
 
 public sealed record VerifyRequest(string Reference, string? ProviderPaymentId);
 
@@ -87,7 +116,7 @@ public enum PaymentOutcome
 }
 
 /// <summary>The gateway's own account of a payment: what happened, and for `Paid` the exact amount and reference it holds.</summary>
-public sealed record PaymentVerification(PaymentOutcome Outcome, Money? Amount, string? Reference);
+public sealed record PaymentVerification(PaymentOutcome Outcome, Money? Amount, string? Reference, SettlementInfo? Settlement = null);
 
 public abstract class GatewayException(string code, string message, Exception? inner = null) : Exception(message, inner)
 {

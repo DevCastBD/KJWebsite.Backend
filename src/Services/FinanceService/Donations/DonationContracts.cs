@@ -64,6 +64,9 @@ public sealed record FinanceDonationRow(
 
 public sealed record FinanceDonationEvent(string Status, string? Note, DateTimeOffset At);
 
+/// <summary>What the gateway settled, apart from the designated amount: `ExchangeRate` is as the gateway reported it.</summary>
+public sealed record SettlementView(string Gateway, string Amount, string Currency, string? Fee, string? ExchangeRate, string? TransactionId);
+
 public sealed record FinanceDonationDetail(
     FinanceDonationRow Donation,
     string DonorEmail,
@@ -73,7 +76,8 @@ public sealed record FinanceDonationDetail(
     string? ReversesDonationId,
     string? ReversedByDonationId,
     string? ReversalReason,
-    IReadOnlyList<FinanceDonationEvent> Events);
+    IReadOnlyList<FinanceDonationEvent> Events,
+    SettlementView? Settlement = null);
 
 public sealed record ReversalRequest(string? Reason);
 
