@@ -475,6 +475,123 @@ namespace FinanceService.Migrations
                     b.ToTable("campaigns", "finance");
                 });
 
+            modelBuilder.Entity("FinanceService.Data.Entities.CloseEventEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("By")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Scope", "Key");
+
+                    b.ToTable("close_events", "finance");
+                });
+
+            modelBuilder.Entity("FinanceService.Data.Entities.ControlDecisionEntity", b =>
+                {
+                    b.Property<string>("RequestId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecidedBy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ResultRef")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("RequestId");
+
+                    b.ToTable("control_decisions", "finance");
+                });
+
+            modelBuilder.Entity("FinanceService.Data.Entities.ControlRequestEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestedBy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Kind", "Subject");
+
+                    b.ToTable("control_requests", "finance");
+                });
+
             modelBuilder.Entity("FinanceService.Data.Entities.DonationEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -2079,6 +2196,17 @@ namespace FinanceService.Migrations
                         .IsRequired();
 
                     b.Navigation("Statement");
+                });
+
+            modelBuilder.Entity("FinanceService.Data.Entities.ControlDecisionEntity", b =>
+                {
+                    b.HasOne("FinanceService.Data.Entities.ControlRequestEntity", "Request")
+                        .WithOne()
+                        .HasForeignKey("FinanceService.Data.Entities.ControlDecisionEntity", "RequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Request");
                 });
 
             modelBuilder.Entity("FinanceService.Data.Entities.DonationEventEntity", b =>

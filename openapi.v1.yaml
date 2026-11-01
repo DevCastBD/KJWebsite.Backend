@@ -3516,8 +3516,8 @@ paths:
     post:
       tags:
         - "Finance"
-      summary: "Post a reversing entry for a confirmed donation"
-      description: "The original is never changed: a new entry with negated amount and fee is appended, the donation\u0027s ledger posting is reversed in the same commit, and the original reads as \u0060refunded\u0060. A donation can be reversed once, and not when the month the reversal would land in is closed (\u0060PERIOD_CLOSED\u0060). Requires \u0060finance.donation.reverse\u0060."
+      summary: "Ask to refund a confirmed donation (needs a second person to approve)"
+      description: "Creates a refund request (\u0060202\u0060). When a different person with \u0060finance.control.approve\u0060 approves it, a new entry with negated amount and fee is appended, the donation\u0027s ledger posting is reversed and its receipt voided in one commit, and the original reads as \u0060refunded\u0060. The original is never changed. A donation can be refunded once, and not when the month the reversal would land in is closed (\u0060PERIOD_CLOSED\u0060, at approval). The gateway\u0027s own refund notice is matched to the request in \u0060GET controls/refunds\u0060. Requires \u0060finance.donation.reverse\u0060."
       operationId: "ReverseFinanceDonation"
       parameters:
         -
@@ -4729,6 +4729,195 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/finance/controls/requests:
+    get:
+      tags:
+        - "Controls"
+      summary: "Requests waiting for, or past, a second person\u0027s decision"
+      description: "Every sensitive action (manual adjustment, posting reversal, refund, period or fiscal-year reopen) is a request until a different person approves it. Filters: \u0060status\u0060 (pending, approved, rejected, withdrawn), \u0060kind\u0060. Requires \u0060finance.view\u0060."
+      operationId: "ListControlRequests"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "kind"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/controls/requests/{id}":
+    get:
+      tags:
+        - "Controls"
+      summary: "One request with its details and outcome"
+      operationId: "GetControlRequest"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/controls/requests/{id}/approve":
+    post:
+      tags:
+        - "Controls"
+      summary: "Approve someone else\u0027s request and carry it out"
+      description: "The action runs in the same commit as the approval, or not at all (for example \u0060PERIOD_CLOSED\u0060 leaves the request open to be rejected). Approving your own request is refused (\u0060403 SEGREGATION_OF_DUTIES\u0060, and by the database). A request is decided once. Requires \u0060finance.control.approve\u0060."
+      operationId: "ApproveControlRequest"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                -
+                  type: "null"
+                -
+                  $ref: "#/components/schemas/ControlNoteRequest"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/controls/requests/{id}/reject":
+    post:
+      tags:
+        - "Controls"
+      summary: "Reject someone else\u0027s request"
+      description: "Nothing is posted. Rejecting your own request is refused: withdraw it instead. Requires \u0060finance.control.approve\u0060."
+      operationId: "RejectControlRequest"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                -
+                  type: "null"
+                -
+                  $ref: "#/components/schemas/ControlNoteRequest"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/controls/requests/{id}/withdraw":
+    post:
+      tags:
+        - "Controls"
+      summary: "Withdraw your own open request"
+      description: "Only the person who made the request can withdraw it, and only while it is open. Requires \u0060finance.view\u0060."
+      operationId: "WithdrawControlRequest"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                -
+                  type: "null"
+                -
+                  $ref: "#/components/schemas/ControlNoteRequest"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/controls/refunds:
+    get:
+      tags:
+        - "Controls"
+      summary: "Refund requests reconciled against the gateways\u0027 own refund notices"
+      description: "Each refund request with \u0060status\u0060 and \u0060reconciliation\u0060: \u0060awaiting_gateway\u0060 (approved, no signed refund notice yet), \u0060reconciled\u0060 (the notice matches amount and currency), \u0060amount_mismatch\u0060, or \u0060n/a\u0060 while not approved. \u0060unexpectedNotices\u0060 lists refund notices for donations that finance never approved a refund for. Requires \u0060finance.view\u0060."
+      operationId: "ListRefunds"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/ledger/periods/{period}/reopen":
+    post:
+      tags:
+        - "Controls"
+      summary: "Ask to reopen a closed month"
+      description: "\u0060{reason}\u0060 (3 to 500 characters). Creates a request; a different person with \u0060finance.control.approve\u0060 must approve it before the month takes postings again. Closing again afterwards works as before. Requires \u0060finance.period.close\u0060."
+      operationId: "RequestPeriodReopen"
+      parameters:
+        -
+          name: "period"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ControlReasonRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/fiscal-years/{label}/reopen":
+    post:
+      tags:
+        - "Controls"
+      summary: "Ask to reopen a closed fiscal year"
+      description: "\u0060{reason}\u0060 (3 to 500 characters). Creates a request; a different person with \u0060finance.control.approve\u0060 must approve it. Requires \u0060finance.period.close\u0060."
+      operationId: "RequestFiscalYearReopen"
+      parameters:
+        -
+          name: "label"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ControlReasonRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/reports:
     get:
       tags:
@@ -4903,8 +5092,8 @@ paths:
     post:
       tags:
         - "Ledger"
-      summary: "Post a manual adjustment"
-      description: "A balanced posting by hand: at least two lines, each with an account code, exactly one of \u0060debit\u0060 or \u0060credit\u0060 (decimal strings) and a currency; debits must equal credits in every currency. A \u0060reason\u0060 is required. The date defaults to today and may not be in the future or in a closed period. Requires \u0060finance.ledger.adjust\u0060."
+      summary: "Ask for a manual adjustment (needs a second person to approve)"
+      description: "A balanced posting by hand: at least two lines, each with an account code, exactly one of \u0060debit\u0060 or \u0060credit\u0060 (decimal strings) and a currency; debits must equal credits in every currency. A \u0060reason\u0060 is required. The date defaults to today and may not be in the future or in a closed period. Nothing is posted yet: the answer is \u0060202\u0060 with a request that a different person holding \u0060finance.control.approve\u0060 must approve (\u0060POST controls/requests/{id}/approve\u0060); the posting is made then, in the same commit. Requires \u0060finance.ledger.adjust\u0060."
       operationId: "PostLedgerAdjustment"
       requestBody:
         content:
@@ -4919,8 +5108,8 @@ paths:
     post:
       tags:
         - "Ledger"
-      summary: "Reverse a posting"
-      description: "Appends a posting that mirrors the original with debits and credits swapped, dated today and linked to it. The original is untouched. A posting can be reversed once; a reversal cannot be reversed. Requires \u0060finance.ledger.adjust\u0060."
+      summary: "Ask to reverse a posting (needs a second person to approve)"
+      description: "Appends a posting that mirrors the original with debits and credits swapped, dated today and linked to it. The original is untouched. A posting can be reversed once; a reversal cannot be reversed. Creates a request (\u0060202\u0060) that a different person with \u0060finance.control.approve\u0060 must approve; the reversal is appended then. Requires \u0060finance.ledger.adjust\u0060."
       operationId: "ReverseLedgerPosting"
       parameters:
         -
@@ -5016,7 +5205,7 @@ paths:
       tags:
         - "Ledger"
       summary: "Close a month"
-      description: "A closed month rejects new postings and reversals dated in it, and there is no reopen in this version. Only a past or current month can be closed. Requires \u0060finance.period.close\u0060."
+      description: "A closed month rejects new postings and reversals dated in it; reopening needs an approved request (\u0060POST ledger/periods/{period}/reopen\u0060). Only a past or current month can be closed. Requires \u0060finance.period.close\u0060."
       operationId: "CloseLedgerPeriod"
       parameters:
         -
@@ -5896,6 +6085,8 @@ tags:
     name: "Budgets"
   -
     name: "Banking"
+  -
+    name: "Controls"
   -
     name: "Reports"
   -
@@ -6831,6 +7022,24 @@ components:
         granted:
           type: "boolean"
         source:
+          type:
+            - "null"
+            - "string"
+    ControlNoteRequest:
+      required:
+        - "note"
+      type: "object"
+      properties:
+        note:
+          type:
+            - "null"
+            - "string"
+    ControlReasonRequest:
+      required:
+        - "reason"
+      type: "object"
+      properties:
+        reason:
           type:
             - "null"
             - "string"

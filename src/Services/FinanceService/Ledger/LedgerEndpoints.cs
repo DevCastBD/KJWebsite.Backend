@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
+using FinanceService.Controls;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
 using KJWebsite.BuildingBlocks;
@@ -75,7 +76,7 @@ public static partial class LedgerEndpoints
         .WithTags("Ledger")
         .RequirePermission(Permissions.FinanceView);
 
-        app.MapPost($"{Route}/postings", async (HttpContext context, AdjustmentRequest payload, FinanceDbContext db, LedgerService ledger) =>
+        app.MapPost($"{Route}/postings", async (HttpContext context, AdjustmentRequest payload, ControlService controls, LedgerService ledger) =>
         {
             var parsed = ParseAdjustment(payload, ledger.Today);
             if (parsed.Draft is null)
@@ -83,21 +84,16 @@ public static partial class LedgerEndpoints
                 return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Invalid fields: {string.Join(", ", parsed.Invalid)}.");
             }
 
-            var posted = await ledger.PostAsync(parsed.Draft, Actor(context), context.RequestAborted);
-            if (!posted.IsSuccess)
-            {
-                return Failure(context, posted.Error!);
-            }
-
-            return Results.Created($"{Route}/postings/{posted.Value!.Posting.Id}", await PostingViewAsync(db, posted.Value.Posting.Id));
+            var reason = parsed.Draft.Reason!;
+            return await ControlEndpoints.Accepted(context, await controls.RequestAdjustmentAsync(parsed.Draft, reason, ControlEndpoints.Actor(context), context.RequestAborted), controls);
         })
         .WithName("PostLedgerAdjustment")
-        .WithSummary("Post a manual adjustment")
-        .WithDescription("A balanced posting by hand: at least two lines, each with an account code, exactly one of `debit` or `credit` (decimal strings) and a currency; debits must equal credits in every currency. A `reason` is required. The date defaults to today and may not be in the future or in a closed period. Requires `finance.ledger.adjust`.")
+        .WithSummary("Ask for a manual adjustment (needs a second person to approve)")
+        .WithDescription("A balanced posting by hand: at least two lines, each with an account code, exactly one of `debit` or `credit` (decimal strings) and a currency; debits must equal credits in every currency. A `reason` is required. The date defaults to today and may not be in the future or in a closed period. Nothing is posted yet: the answer is `202` with a request that a different person holding `finance.control.approve` must approve (`POST controls/requests/{id}/approve`); the posting is made then, in the same commit. Requires `finance.ledger.adjust`.")
         .WithTags("Ledger")
         .RequirePermission(Permissions.FinanceLedgerAdjust);
 
-        app.MapPost($"{Route}/postings/{{id:long}}/reversal", async (HttpContext context, long id, PostingReversalRequest payload, FinanceDbContext db, LedgerService ledger) =>
+        app.MapPost($"{Route}/postings/{{id:long}}/reversal", async (HttpContext context, long id, PostingReversalRequest payload, ControlService controls) =>
         {
             var reason = payload.Reason?.Trim();
             if (reason is not { Length: >= 3 and <= 500 })
@@ -105,17 +101,11 @@ public static partial class LedgerEndpoints
                 return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid fields: reason (3-500 characters).");
             }
 
-            var reversed = await ledger.ReverseAsync(id, reason, Actor(context), context.RequestAborted);
-            if (!reversed.IsSuccess)
-            {
-                return Failure(context, reversed.Error!);
-            }
-
-            return Results.Created($"{Route}/postings/{reversed.Value!.Posting.Id}", await PostingViewAsync(db, reversed.Value.Posting.Id));
+            return await ControlEndpoints.Accepted(context, await controls.RequestPostingReversalAsync(id, reason, ControlEndpoints.Actor(context), context.RequestAborted), controls);
         })
         .WithName("ReverseLedgerPosting")
-        .WithSummary("Reverse a posting")
-        .WithDescription("Appends a posting that mirrors the original with debits and credits swapped, dated today and linked to it. The original is untouched. A posting can be reversed once; a reversal cannot be reversed. Requires `finance.ledger.adjust`.")
+        .WithSummary("Ask to reverse a posting (needs a second person to approve)")
+        .WithDescription("Appends a posting that mirrors the original with debits and credits swapped, dated today and linked to it. The original is untouched. A posting can be reversed once; a reversal cannot be reversed. Creates a request (`202`) that a different person with `finance.control.approve` must approve; the reversal is appended then. Requires `finance.ledger.adjust`.")
         .WithTags("Ledger")
         .RequirePermission(Permissions.FinanceLedgerAdjust);
 
@@ -247,7 +237,7 @@ public static partial class LedgerEndpoints
         })
         .WithName("CloseLedgerPeriod")
         .WithSummary("Close a month")
-        .WithDescription("A closed month rejects new postings and reversals dated in it, and there is no reopen in this version. Only a past or current month can be closed. Requires `finance.period.close`.")
+        .WithDescription("A closed month rejects new postings and reversals dated in it; reopening needs an approved request (`POST ledger/periods/{period}/reopen`). Only a past or current month can be closed. Requires `finance.period.close`.")
         .WithTags("Ledger")
         .RequirePermission(Permissions.FinancePeriodClose);
     }

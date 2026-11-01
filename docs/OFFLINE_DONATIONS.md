@@ -15,4 +15,4 @@ The donation amount is the **valuation**, and the record must carry `valuation: 
 Offline records, decisions and proofs are append-only (application guard and PostgreSQL triggers); no endpoint deletes or edits them. Proof files carry `retainUntil` = upload + `Finance:Proofs:RetentionYears` (default 7, cautious until the retention decision #110). Proof bytes live behind `IProofStore` (local disk at `Finance:Proofs:Path` for now; object storage per ADR-006 later). Every step is audited with its own actor: the donation and record (maker), each proof (uploader), the decision (checker).
 
 ## Permissions
-`finance.donation.record` and `finance.donation.approve` are held by Admin, SuperAdmin and FinanceOfficer. Approval thresholds and further four-eyes controls arrive with BE-068.
+`finance.donation.record` and `finance.donation.approve` are held by Admin, SuperAdmin and FinanceOfficer. Further four-eyes controls (adjustments, refunds, reopen) are in CONTROLS.md.

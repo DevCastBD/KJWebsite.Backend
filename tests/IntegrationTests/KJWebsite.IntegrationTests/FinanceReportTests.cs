@@ -145,7 +145,7 @@ public sealed class FinanceReportTests : IDisposable
             request.Content = JsonContent.Create(body);
         }
 
-        return await _client.SendAsync(request);
+        return await TestControls.SendAsync(_client, request);
     }
 
     private async Task<JsonElement> JsonAsync(HttpMethod method, string path, string token, object? body = null, HttpStatusCode expected = HttpStatusCode.OK)

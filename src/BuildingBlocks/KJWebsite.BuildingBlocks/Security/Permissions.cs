@@ -58,6 +58,8 @@ public static class Permissions
     public const string FinanceBankReveal = "finance.bank.reveal";
     /// <summary>Generate and store a monthly report pack. Reading reports needs only finance.view.</summary>
     public const string FinanceReportGenerate = "finance.report.generate";
+    /// <summary>Approve or reject another person's request for an adjustment, posting reversal, refund or reopen. Never your own.</summary>
+    public const string FinanceControlApprove = "finance.control.approve";
     public const string AuditView = "audit.view";
     public const string CtaManage = "cta.manage";
     public const string MediaView = "media.view";
@@ -119,6 +121,7 @@ public static class PermissionCatalog
         new("finance", Permissions.FinanceCampaignManage, "Create and edit fundraising campaigns"),
         new("finance", Permissions.FinanceBudgetManage, "Create and edit budget lines for an open fiscal year"),
         new("finance", Permissions.FinanceBankManage, "Register and edit bank accounts and their statement mapping"),
+        new("finance", Permissions.FinanceControlApprove, "Approve or reject another person's request for an adjustment, reversal, refund or reopen"),
         new("finance", Permissions.FinanceReportGenerate, "Generate and store the monthly financial report pack"),
         new("finance", Permissions.FinanceBankReveal, "Read a bank account's full number (every read is logged)"),
         new("settings", Permissions.SettingsView, "View site settings"),
@@ -146,7 +149,7 @@ public static class KjRoles
         [SuperAdmin] = Permissions.All,
         [Admin] = [.. Permissions.All.Where(p => p != Permissions.RolesManage)],
         [Moderator] = [Permissions.ContentView, Permissions.ContentUpdate, Permissions.CtaView, Permissions.CtaManage, Permissions.DashboardView],
-        [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceExpensePay, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceReceiptManage, Permissions.FinanceDonorManage, Permissions.FinanceCampaignManage, Permissions.FinanceBudgetManage, Permissions.FinanceReconcile, Permissions.FinanceBankManage, Permissions.FinanceReportGenerate],
+        [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceExpensePay, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceReceiptManage, Permissions.FinanceDonorManage, Permissions.FinanceCampaignManage, Permissions.FinanceBudgetManage, Permissions.FinanceReconcile, Permissions.FinanceBankManage, Permissions.FinanceReportGenerate, Permissions.FinanceLedgerAdjust, Permissions.FinanceDonationReverse, Permissions.FinancePeriodClose, Permissions.FinanceControlApprove],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate, Permissions.MediaView, Permissions.MediaUpload, Permissions.DashboardView],
         [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],
         [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MembershipLifecycle, Permissions.MemberProfileView, Permissions.UsersView],

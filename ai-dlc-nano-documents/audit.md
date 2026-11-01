@@ -307,3 +307,8 @@
 - 2026-11-01T10:10Z [claude] 065-issue-71-reports BRANCH @d974484: Feature/issue-71-reports stacked on Feature/issue-70-banking (user confirmed)
 - 2026-11-01T10:10Z [claude] 065-issue-71-reports PHASE PLAN→CONSTRUCT @d974484: plan approved (user)
 - 2026-11-01T11:30Z [claude] 065-issue-71-reports DONE @d974484: ledger-derived reports, CSV/XLSX exports, frozen monthly packs with signed links; 899+46 tests green twice incl PG; committed locally, not pushed
+- 2026-11-01T12:00Z [claude] 066-issue-72-controls SIDE-EFFECT @200c277: assigned #72 to FHShubho (user asked)
+- 2026-11-01T12:00Z [claude] 066-issue-72-controls DECISION @200c277: one distinct approver for adjustments; refund workflow without live gateway calls; reopen included (user)
+- 2026-11-01T12:00Z [claude] 066-issue-72-controls BRANCH @200c277: Feature/issue-72-controls stacked on Feature/issue-71-reports (user confirmed)
+- 2026-11-01T12:00Z [claude] 066-issue-72-controls PHASE PLAN→CONSTRUCT @200c277: plan approved (user)
+- 2026-11-01T14:00Z [claude] 066-issue-72-controls DONE @200c277: control requests (adjustment, reversal, refund, reopen), four-eyes, refund reconciliation, audit coverage; 913+46 tests green incl PG (one unrelated membership timestamp flake in repeated full runs); committed locally, not pushed

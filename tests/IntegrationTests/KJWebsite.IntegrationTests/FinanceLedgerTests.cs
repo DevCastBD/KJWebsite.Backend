@@ -49,7 +49,7 @@ public sealed class FinanceLedgerTests : IDisposable
             request.Content = JsonContent.Create(body);
         }
 
-        return await _client.SendAsync(request);
+        return await TestControls.SendAsync(_client, request);
     }
 
     private async Task<JsonElement> GetAsync(string path, string? token = null)
@@ -394,7 +394,10 @@ public sealed class FinanceLedgerTests : IDisposable
 
         var events = audit.GetProperty("items").EnumerateArray().ToList();
         events.Select(e => e.GetProperty("entity").GetString()).Should().Contain(["Posting", "LedgerEntry", "PeriodClose"]);
-        events.Should().OnlyContain(e => e.GetProperty("actorId").GetString() == "usr_test");
+        events.Should().OnlyContain(e => e.GetProperty("actorId").GetString() == "usr_test" || e.GetProperty("actorId").GetString() == "usr_approver", "the request and the close come from the caller, the posting is made by the approver's click");
+        events.Select(e => e.GetProperty("entity").GetString()).Should().Contain(["ControlRequest", "ControlDecision"]);
+        events.Where(e => e.GetProperty("entity").GetString() is "ControlRequest" or "PeriodClose").Should().OnlyContain(e => e.GetProperty("actorId").GetString() == "usr_test");
+        events.Where(e => e.GetProperty("entity").GetString() is "ControlDecision").Should().OnlyContain(e => e.GetProperty("actorId").GetString() == "usr_approver");
         events.First(e => e.GetProperty("entity").GetString() == "Posting").GetProperty("entityId").GetString().Should().NotBeNullOrEmpty();
         posting.GetProperty("id").GetString().Should().NotBeNullOrEmpty();
     }

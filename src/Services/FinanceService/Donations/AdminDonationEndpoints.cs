@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using FinanceService.Controls;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Ledger;
@@ -118,7 +119,7 @@ public static class AdminDonationEndpoints
         .WithTags("Finance")
         .RequirePermission(Permissions.FinanceView);
 
-        app.MapPost($"{Route}/donations/{{id}}/reversal", async (HttpContext context, string id, ReversalRequest payload, FinanceDbContext db, IDonorProtector protector, LedgerService ledger, TimeProvider clock) =>
+        app.MapPost($"{Route}/donations/{{id}}/reversal", async (HttpContext context, string id, ReversalRequest payload, ControlService controls) =>
         {
             var reason = payload.Reason?.Trim();
             if (reason is not { Length: >= 3 and <= 500 })
@@ -126,86 +127,11 @@ public static class AdminDonationEndpoints
                 return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid fields: reason (3-500 characters).");
             }
 
-            var view = await Views(db).FirstOrDefaultAsync(v => v.Donation.Id == id);
-            if (view is null)
-            {
-                return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Donation not found.");
-            }
-
-            if (view.Reversed)
-            {
-                return ApiError.Create(context, StatusCodes.Status409Conflict, "ALREADY_REVERSED", "This donation has already been reversed.");
-            }
-
-            if (view.Donation.Kind == DonationKinds.Reversal || view.Latest != DonationStatuses.Confirmed)
-            {
-                return ApiError.Create(context, StatusCodes.Status409Conflict, "NOT_REVERSIBLE", "Only a confirmed donation can be reversed.");
-            }
-
-            var original = view.Donation;
-            var now = clock.GetUtcNow();
-
-            // The books are corrected in the same commit as the donation: a confirmed donation always has a posting, and its reversal gets one too.
-            var postingId = await db.Postings.AsNoTracking().Where(p => p.SourceType == PostingSources.Donation && p.SourceId == original.Id).Select(p => (long?)p.Id).FirstOrDefaultAsync();
-            if (postingId is null)
-            {
-                return ApiError.Create(context, StatusCodes.Status409Conflict, "NOT_POSTED", "This donation has no ledger posting to reverse.");
-            }
-
-            var stagedReversal = await ledger.StageReversalAsync(postingId.Value, reason, context.User.FindFirstValue(KjClaims.Subject), context.RequestAborted);
-            if (!stagedReversal.IsSuccess)
-            {
-                return ApiError.Create(context, stagedReversal.Error!.Code == "NOT_FOUND" ? StatusCodes.Status404NotFound : StatusCodes.Status409Conflict, stagedReversal.Error.Code, stagedReversal.Error.Message);
-            }
-
-            var reversal = new DonationEntity
-            {
-                Id = PublicDonationEndpoints.NewId("don"),
-                Reference = await PublicDonationEndpoints.NewReferenceAsync(db),
-                Kind = DonationKinds.Reversal,
-                Amount = -original.Amount,
-                FeeAmount = -original.FeeAmount,
-                Currency = original.Currency,
-                DesignationType = original.DesignationType,
-                DesignationId = original.DesignationId,
-                IsAnonymous = original.IsAnonymous,
-                DonorNameProtected = original.DonorNameProtected,
-                DonorEmailProtected = original.DonorEmailProtected,
-                DonorPhoneProtected = original.DonorPhoneProtected,
-                Language = original.Language,
-                RecurringPlanId = original.RecurringPlanId,
-                ReversesDonationId = original.Id,
-                ReversalReason = reason,
-                CreatedBy = context.User.FindFirstValue(KjClaims.Subject),
-                CreatedAt = now,
-                ReceivedOn = DateOnly.FromDateTime(now.UtcDateTime)
-            };
-            reversal.Events.Add(new DonationEventEntity { Status = DonationStatuses.Confirmed, Note = $"Reverses {original.Reference}", At = now });
-            db.Donations.Add(reversal);
-
-            // The donor's receipt is withdrawn with the gift: a void row, so the receipt keeps its number and the series stays gapless.
-            var receiptId = await db.Receipts.AsNoTracking().Where(r => r.DonationId == original.Id).Select(r => r.Id).FirstOrDefaultAsync();
-            if (receiptId is not null && !await db.ReceiptVoids.AnyAsync(v => v.ReceiptId == receiptId))
-            {
-                db.ReceiptVoids.Add(new ReceiptVoidEntity { ReceiptId = receiptId, Reason = reason, VoidedBy = context.User.FindFirstValue(KjClaims.Subject), At = now });
-            }
-
-            try
-            {
-                await db.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                // The unique index on the reversed donation: another request got there first.
-                return ApiError.Create(context, StatusCodes.Status409Conflict, "ALREADY_REVERSED", "This donation has already been reversed.");
-            }
-
-            var created = new DonationView { Donation = reversal, Latest = DonationStatuses.Confirmed, Reversed = false };
-            return Results.Created($"{Route}/donations/{reversal.Id}", await DetailAsync(db, created, protector));
+            return await ControlEndpoints.Accepted(context, await controls.RequestRefundAsync(id, reason, ControlEndpoints.Actor(context), context.RequestAborted), controls);
         })
         .WithName("ReverseFinanceDonation")
-        .WithSummary("Post a reversing entry for a confirmed donation")
-        .WithDescription("The original is never changed: a new entry with negated amount and fee is appended, the donation's ledger posting is reversed in the same commit, and the original reads as `refunded`. A donation can be reversed once, and not when the month the reversal would land in is closed (`PERIOD_CLOSED`). Requires `finance.donation.reverse`.")
+        .WithSummary("Ask to refund a confirmed donation (needs a second person to approve)")
+        .WithDescription("Creates a refund request (`202`). When a different person with `finance.control.approve` approves it, a new entry with negated amount and fee is appended, the donation's ledger posting is reversed and its receipt voided in one commit, and the original reads as `refunded`. The original is never changed. A donation can be refunded once, and not when the month the reversal would land in is closed (`PERIOD_CLOSED`, at approval). The gateway's own refund notice is matched to the request in `GET controls/refunds`. Requires `finance.donation.reverse`.")
         .WithTags("Finance")
         .RequirePermission(Permissions.FinanceDonationReverse);
 

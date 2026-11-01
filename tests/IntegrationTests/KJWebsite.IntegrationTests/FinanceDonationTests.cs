@@ -50,7 +50,7 @@ public sealed class FinanceDonationTests : IDisposable
             request.Headers.Add("Idempotency-Key", key);
         }
 
-        using var response = await _client.SendAsync(request);
+        using var response = await TestControls.SendAsync(_client, request);
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }
@@ -64,7 +64,7 @@ public sealed class FinanceDonationTests : IDisposable
             request.Content = JsonContent.Create(body);
         }
 
-        return await _client.SendAsync(request);
+        return await TestControls.SendAsync(_client, request);
     }
 
     private async Task<JsonElement> AdminJsonAsync(string path, string? token = null)

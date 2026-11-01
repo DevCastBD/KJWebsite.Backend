@@ -24,6 +24,9 @@ public sealed class AuditOptions
     }
 
     internal bool TryGet(Type type, out HashSet<string> ignored) => _audited.TryGetValue(type, out ignored!);
+
+    /// <summary>Whether changes to this entity type are written to the audit log.</summary>
+    public bool IsAudited(Type type) => _audited.ContainsKey(type);
 }
 
 /// <summary>

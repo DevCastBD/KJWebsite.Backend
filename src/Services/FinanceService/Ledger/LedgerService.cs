@@ -209,6 +209,7 @@ public sealed class LedgerService(FinanceDbContext db, IOptions<LedgerOptions> o
         }
 
         db.PeriodCloses.Add(new PeriodCloseEntity { PeriodKey = periodKey, ClosedAt = clock.GetUtcNow(), ClosedBy = actor });
+        db.CloseEvents.Add(new CloseEventEntity { Scope = "period", Key = periodKey, Kind = "closed", By = actor, At = clock.GetUtcNow() });
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -224,7 +225,7 @@ public sealed class LedgerService(FinanceDbContext db, IOptions<LedgerOptions> o
 
     /// <summary>
     /// Closes a fiscal year for good. Only a year that has ended can be closed, once; afterwards the ledger refuses any posting dated in it (and the database does too).
-    /// There is no reopen in this version: that arrives with the two-approver flow of BE-068.
+    /// Reopening needs an approved control request (see ControlService).
     /// </summary>
     public async Task<Result> CloseFiscalYearAsync(string label, string? actor, CancellationToken cancellationToken = default)
     {
@@ -244,6 +245,7 @@ public sealed class LedgerService(FinanceDbContext db, IOptions<LedgerOptions> o
         }
 
         db.FiscalYearCloses.Add(new FiscalYearCloseEntity { Label = label, ClosedAt = clock.GetUtcNow(), ClosedBy = actor });
+        db.CloseEvents.Add(new CloseEventEntity { Scope = "year", Key = label, Kind = "closed", By = actor, At = clock.GetUtcNow() });
         try
         {
             await db.SaveChangesAsync(cancellationToken);
@@ -263,6 +265,19 @@ public sealed class LedgerService(FinanceDbContext db, IOptions<LedgerOptions> o
         var period = FiscalCalendar.PeriodKey(date);
         var year = FiscalCalendar.FiscalYear(date, options.Value.FiscalYearStartMonth);
         return await db.PeriodCloses.AnyAsync(c => c.PeriodKey == period, cancellationToken) || await db.FiscalYearCloses.AnyAsync(c => c.Label == year, cancellationToken);
+    }
+
+    /// <summary>The error code a posting dated this day would meet (`PERIOD_CLOSED` or `FISCAL_YEAR_CLOSED`), or null when it is open.</summary>
+    public async Task<string?> ClosedCodeAsync(DateOnly date, CancellationToken cancellationToken = default)
+    {
+        var period = FiscalCalendar.PeriodKey(date);
+        var year = FiscalCalendar.FiscalYear(date, options.Value.FiscalYearStartMonth);
+        if (await db.PeriodCloses.AnyAsync(c => c.PeriodKey == period, cancellationToken))
+        {
+            return "PERIOD_CLOSED";
+        }
+
+        return await db.FiscalYearCloses.AnyAsync(c => c.Label == year, cancellationToken) ? "FISCAL_YEAR_CLOSED" : null;
     }
 
     public string FiscalYearOf(DateOnly date) => FiscalCalendar.FiscalYear(date, options.Value.FiscalYearStartMonth);
