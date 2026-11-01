@@ -18,7 +18,7 @@
 - membership (`src/Services/MembershipService/**`)
   purpose: public application intake (port 7004, schema `membership`); encrypted PII fields, HMAC duplicate check, attachments behind `IAttachmentStore`; entry: `Program.cs`, `Intake/`; docs: `docs/MEMBERSHIP_INTAKE.md`
 - finance (`src/Services/FinanceService/**`)
-  purpose: donations (port 7005, schema `finance`): public intake/status/presets, finance back office, append-only ledger (entities + PG triggers), `Money` lives in BuildingBlocks `Finance/`; `Payments/` holds the gateway abstraction + SSLCommerz/bKash/Nagad adapters; entry: `Program.cs`, `Donations/`; docs: `docs/DONATIONS.md`, `docs/PAYMENT_GATEWAYS.md`
+  purpose: donations (port 7005, schema `finance`): public intake/status/presets, finance back office, append-only ledger (entities + PG triggers), `Money` lives in BuildingBlocks `Finance/`; `Payments/` holds the gateway abstraction + SSLCommerz/bKash/Nagad adapters; `Ledger/` holds the double-entry ledger (LedgerService, posting rules, donation posting/confirmation); entry: `Program.cs`, `Donations/`; docs: `docs/DONATIONS.md`, `docs/PAYMENT_GATEWAYS.md`, `docs/LEDGER.md`
 - auth (`src/Services/AuthIdentityService/**`)
   purpose: ASP.NET Core Identity accounts, RS256 JWT + hashed rotating refresh tokens (`Tokens/`), sessions, password reset; entry: `Program.cs`; migrations: `Migrations/`; docs: `docs/AUTH_TOKENS.md`
 - shared (`src/BuildingBlocks/**`)

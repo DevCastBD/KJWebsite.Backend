@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
+using FinanceService.Ledger;
 using FinanceService.Payments;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Finance;
@@ -115,7 +116,7 @@ public static class AdminDonationEndpoints
         .WithTags("Finance")
         .RequirePermission(Permissions.FinanceView);
 
-        app.MapPost($"{Route}/donations/{{id}}/reversal", async (HttpContext context, string id, ReversalRequest payload, FinanceDbContext db, IDonorProtector protector, TimeProvider clock) =>
+        app.MapPost($"{Route}/donations/{{id}}/reversal", async (HttpContext context, string id, ReversalRequest payload, FinanceDbContext db, IDonorProtector protector, LedgerService ledger, TimeProvider clock) =>
         {
             var reason = payload.Reason?.Trim();
             if (reason is not { Length: >= 3 and <= 500 })
@@ -141,6 +142,20 @@ public static class AdminDonationEndpoints
 
             var original = view.Donation;
             var now = clock.GetUtcNow();
+
+            // The books are corrected in the same commit as the donation: a confirmed donation always has a posting, and its reversal gets one too.
+            var postingId = await db.Postings.AsNoTracking().Where(p => p.SourceType == PostingSources.Donation && p.SourceId == original.Id).Select(p => (long?)p.Id).FirstOrDefaultAsync();
+            if (postingId is null)
+            {
+                return ApiError.Create(context, StatusCodes.Status409Conflict, "NOT_POSTED", "This donation has no ledger posting to reverse.");
+            }
+
+            var stagedReversal = await ledger.StageReversalAsync(postingId.Value, reason, context.User.FindFirstValue(KjClaims.Subject), context.RequestAborted);
+            if (!stagedReversal.IsSuccess)
+            {
+                return ApiError.Create(context, stagedReversal.Error!.Code == "NOT_FOUND" ? StatusCodes.Status404NotFound : StatusCodes.Status409Conflict, stagedReversal.Error.Code, stagedReversal.Error.Message);
+            }
+
             var reversal = new DonationEntity
             {
                 Id = PublicDonationEndpoints.NewId("don"),
@@ -180,7 +195,7 @@ public static class AdminDonationEndpoints
         })
         .WithName("ReverseFinanceDonation")
         .WithSummary("Post a reversing entry for a confirmed donation")
-        .WithDescription("The original is never changed: a new entry with negated amount and fee is appended and the original reads as `refunded`. A donation can be reversed once. Requires `finance.donation.reverse`.")
+        .WithDescription("The original is never changed: a new entry with negated amount and fee is appended, the donation's ledger posting is reversed in the same commit, and the original reads as `refunded`. A donation can be reversed once, and not when the month the reversal would land in is closed (`PERIOD_CLOSED`). Requires `finance.donation.reverse`.")
         .WithTags("Finance")
         .RequirePermission(Permissions.FinanceDonationReverse);
 

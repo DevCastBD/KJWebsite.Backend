@@ -77,9 +77,7 @@ public sealed class FinanceDonationTests : IDisposable
     private async Task ConfirmAsync(string donationId)
     {
         using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
-        db.DonationEvents.Add(new DonationEventEntity { DonationId = donationId, Status = DonationStatuses.Confirmed, At = DateTimeOffset.UtcNow });
-        await db.SaveChangesAsync();
+        (await scope.ServiceProvider.GetRequiredService<FinanceService.Ledger.DonationConfirmation>().ConfirmAsync(donationId, "bkash", null)).IsSuccess.Should().BeTrue();
     }
 
     [Fact]

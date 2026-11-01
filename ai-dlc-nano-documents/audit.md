@@ -243,3 +243,9 @@
 - 2026-10-31T05:43Z [claude] 054-issue-60-payment-gateways BRANCH @253ee9d: Feature/issue-60-payment-gateways stacked on Feature/issue-59-donation-intake (user confirmed)
 - 2026-10-31T05:43Z [claude] 054-issue-60-payment-gateways PHASE PLAN→CONSTRUCT @253ee9d: plan approved (user)
 - 2026-10-31T05:51Z [claude] 054-issue-60-payment-gateways DONE @668acd0: gateway abstraction + 3 adapters vs fakes; 437+46 tests green incl PG; committed locally, not pushed
+- 2026-10-31T05:54Z [claude] 055-issue-69-ledger CREATED @c25e550: stacked on #60 branch; order change #69 before #62 (user)
+- 2026-10-31T05:54Z [claude] 055-issue-69-ledger SIDE-EFFECT @c25e550: assigned #69 to FHShubho (user asked)
+- 2026-10-31T05:55Z [claude] 055-issue-69-ledger DECISION @c25e550: fiscal Jul-Jun configurable; seeded chart; manual adjustment + monthly close admin-only (user)
+- 2026-10-31T05:55Z [claude] 055-issue-69-ledger BRANCH @c25e550: Feature/issue-69-ledger stacked on Feature/issue-60-payment-gateways (user confirmed)
+- 2026-10-31T05:55Z [claude] 055-issue-69-ledger PHASE PLAN→CONSTRUCT @c25e550: plan approved (user)
+- 2026-10-31T06:10Z [claude] 055-issue-69-ledger DONE @6dcaf52: ledger, chart, periods, donation posting; 524 integration + 46 unit green incl PG; ledger coverage 96%; committed locally, not pushed

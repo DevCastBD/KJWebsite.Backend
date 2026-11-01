@@ -30,6 +30,10 @@ public static class Permissions
     public const string FinanceExpenseApprove = "finance.expense.approve";
     /// <summary>Post a reversing entry against a confirmed donation: money moving back out, so held by administrators until the four-eyes controls (BE-068) split it further.</summary>
     public const string FinanceDonationReverse = "finance.donation.reverse";
+    /// <summary>Post manual adjustments, reverse postings and manage accounts: changes the books by hand, so held by administrators until four-eyes approval (BE-068).</summary>
+    public const string FinanceLedgerAdjust = "finance.ledger.adjust";
+    /// <summary>Close an accounting period, after which it takes no postings.</summary>
+    public const string FinancePeriodClose = "finance.period.close";
     public const string AuditView = "audit.view";
     public const string CtaManage = "cta.manage";
     public const string MediaView = "media.view";
@@ -79,6 +83,8 @@ public static class PermissionCatalog
         new("finance", Permissions.FinanceExpenseSubmit, "Submit expenses"),
         new("finance", Permissions.FinanceExpenseApprove, "Approve expenses (separate from submitting)"),
         new("finance", Permissions.FinanceDonationReverse, "Reverse a confirmed donation with a correcting entry"),
+        new("finance", Permissions.FinanceLedgerAdjust, "Post manual ledger adjustments, reverse postings and manage accounts"),
+        new("finance", Permissions.FinancePeriodClose, "Close an accounting period"),
         new("settings", Permissions.SettingsView, "View site settings"),
         new("settings", Permissions.SettingsManage, "Change site settings and maintenance mode"),
         new("dashboard", Permissions.DashboardView, "See the back-office dashboard and global search"),
