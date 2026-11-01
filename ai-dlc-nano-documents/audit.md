@@ -291,3 +291,9 @@
 - 2026-10-31T15:37Z [claude] 062-issue-67-expenses BRANCH @ac17cd6: Feature/issue-67-expenses stacked on Feature/issue-66-campaigns (user confirmed)
 - 2026-10-31T15:37Z [claude] 062-issue-67-expenses PHASE PLAN→CONSTRUCT @ac17cd6: plan approved (user)
 - 2026-10-31T15:46Z [claude] 062-issue-67-expenses DONE @6212921: expenses, tiers, receipts, pay, rollups; 759+46 tests green incl PG concurrency; committed locally, not pushed
+- 2026-10-31T18:09Z [claude] 063-issue-68-budgets CREATED @9d2c544: stacked on #67 branch
+- 2026-10-31T18:09Z [claude] 063-issue-68-budgets SIDE-EFFECT @9d2c544: assigned #68 to FHShubho (user asked)
+- 2026-10-31T18:09Z [claude] 063-issue-68-budgets DECISION @9d2c544: actuals via expense attribution; alerts rows+log+outbox (user)
+- 2026-10-31T18:09Z [claude] 063-issue-68-budgets BRANCH @9d2c544: Feature/issue-68-budgets stacked on Feature/issue-67-expenses (user confirmed)
+- 2026-10-31T18:09Z [claude] 063-issue-68-budgets PHASE PLAN→CONSTRUCT @9d2c544: plan approved (user)
+- 2026-10-31T18:17Z [claude] 063-issue-68-budgets DONE @543255a: fiscal-year close, budgets, variance, alerts; 801+46 tests green incl PG; committed locally, not pushed

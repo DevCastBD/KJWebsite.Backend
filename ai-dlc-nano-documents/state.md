@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: none  (#59,#60,#69,#62,#61,#63,#64,#65,#66,#67 done)
+- Active work item: none  (#59,#60,#69,#62,#61,#63,#64,#65,#66,#67,#68 done)
 - Phase: —
-- Branch: Feature/issue-67-expenses
-- Base SHA: ac17cd6
-- Next step: start #68 (BE-064) stacked on Feature/issue-67-expenses; queue: #68,#70,#71,#72 (#112 fiscal calendar decision skipped; #68 is needs-decision)
+- Branch: Feature/issue-68-budgets
+- Base SHA: 9d2c544
+- Next step: start #70 (BE-066 banking reconciliation) stacked on Feature/issue-68-budgets; queue: #70,#71,#72
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)

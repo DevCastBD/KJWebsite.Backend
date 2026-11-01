@@ -60,6 +60,12 @@ public sealed class LedgerService(FinanceDbContext db, IOptions<LedgerOptions> o
             return Result.Failure<PostingOutcome>("PERIOD_CLOSED", $"Period {period} is closed.");
         }
 
+        var fiscalYear = FiscalCalendar.FiscalYear(draft.PostedOn, options.Value.FiscalYearStartMonth);
+        if (await db.FiscalYearCloses.AnyAsync(c => c.Label == fiscalYear, cancellationToken))
+        {
+            return Result.Failure<PostingOutcome>("FISCAL_YEAR_CLOSED", $"Fiscal year {fiscalYear} is closed.");
+        }
+
         var posting = new PostingEntity
         {
             PostedOn = draft.PostedOn,
@@ -139,6 +145,12 @@ public sealed class LedgerService(FinanceDbContext db, IOptions<LedgerOptions> o
             return Result.Failure<PostingOutcome>("PERIOD_CLOSED", $"Period {period} is closed; the reversal would land in it.");
         }
 
+        var reversalYear = FiscalCalendar.FiscalYear(today, options.Value.FiscalYearStartMonth);
+        if (await db.FiscalYearCloses.AnyAsync(c => c.Label == reversalYear, cancellationToken))
+        {
+            return Result.Failure<PostingOutcome>("FISCAL_YEAR_CLOSED", $"Fiscal year {reversalYear} is closed; the reversal would land in it.");
+        }
+
         var memo = $"Reversal of posting {original.Id}: {original.Memo}";
         var reversal = new PostingEntity
         {
@@ -209,6 +221,51 @@ public sealed class LedgerService(FinanceDbContext db, IOptions<LedgerOptions> o
 
         return Result.Success();
     }
+
+    /// <summary>
+    /// Closes a fiscal year for good. Only a year that has ended can be closed, once; afterwards the ledger refuses any posting dated in it (and the database does too).
+    /// There is no reopen in this version: that arrives with the two-approver flow of BE-068.
+    /// </summary>
+    public async Task<Result> CloseFiscalYearAsync(string label, string? actor, CancellationToken cancellationToken = default)
+    {
+        if (!FiscalCalendar.TryRange(label, options.Value.FiscalYearStartMonth, out _, out var end))
+        {
+            return Result.Failure("FISCAL_YEAR_INVALID", $"Not a fiscal year of this calendar (for example {FiscalCalendar.FiscalYear(Today, options.Value.FiscalYearStartMonth)}).");
+        }
+
+        if (Today <= end)
+        {
+            return Result.Failure("FISCAL_YEAR_NOT_ENDED", $"Fiscal year {label} runs until {end:yyyy-MM-dd} and cannot be closed before it ends.");
+        }
+
+        if (await db.FiscalYearCloses.AnyAsync(c => c.Label == label, cancellationToken))
+        {
+            return Result.Failure("ALREADY_CLOSED", $"Fiscal year {label} is already closed.");
+        }
+
+        db.FiscalYearCloses.Add(new FiscalYearCloseEntity { Label = label, ClosedAt = clock.GetUtcNow(), ClosedBy = actor });
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            db.ChangeTracker.Clear();
+            return Result.Failure("ALREADY_CLOSED", $"Fiscal year {label} is already closed.");
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>True when a posting dated this day would be refused because its month or its fiscal year is closed.</summary>
+    public async Task<bool> IsClosedAsync(DateOnly date, CancellationToken cancellationToken = default)
+    {
+        var period = FiscalCalendar.PeriodKey(date);
+        var year = FiscalCalendar.FiscalYear(date, options.Value.FiscalYearStartMonth);
+        return await db.PeriodCloses.AnyAsync(c => c.PeriodKey == period, cancellationToken) || await db.FiscalYearCloses.AnyAsync(c => c.Label == year, cancellationToken);
+    }
+
+    public string FiscalYearOf(DateOnly date) => FiscalCalendar.FiscalYear(date, options.Value.FiscalYearStartMonth);
 
     /// <summary>
     /// Debits and credits per account up to and including <paramref name="asOf"/>, one section per currency (nothing is converted). Each section's

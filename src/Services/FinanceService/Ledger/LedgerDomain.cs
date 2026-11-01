@@ -30,6 +30,20 @@ public static class FiscalCalendar
         return startMonth == 1 ? startYear.ToString(CultureInfo.InvariantCulture) : $"{startYear}-{(startYear + 1) % 100:D2}";
     }
 
+    /// <summary>The first and last day of a fiscal year label under the given start month, or false when the label is not one this calendar would produce (`2026-27` for July, `2026` for January).</summary>
+    public static bool TryRange(string? label, int startMonth, out DateOnly start, out DateOnly end)
+    {
+        start = end = default;
+        if (label is null || label.Length < 4 || !int.TryParse(label.AsSpan(0, 4), System.Globalization.NumberStyles.None, CultureInfo.InvariantCulture, out var year) || year is < 1900 or > 2999)
+        {
+            return false;
+        }
+
+        start = new DateOnly(year, startMonth, 1);
+        end = start.AddYears(1).AddDays(-1);
+        return FiscalYear(start, startMonth) == label;
+    }
+
     public static string PeriodKey(DateOnly date) => date.ToString("yyyy-MM", CultureInfo.InvariantCulture);
 
     public static bool TryParsePeriod(string? key, out DateOnly firstDay) =>
