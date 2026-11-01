@@ -32,6 +32,6 @@ Request: `{amount, currency, frequency: once|monthly|yearly, designation: {type:
 |---|---|
 | `GET donations?from&to&status&designation&limit&offset` | `finance.view` |
 | `GET donations/{id}`, `GET donations/totals?designation`, `GET recurring-plans`, `GET audit` | `finance.view` / `audit.view` |
-| `POST donations/{id}/reversal {reason}` | `finance.donation.reverse` (Admin and SuperAdmin only until the four-eyes controls, #72) |
+| `POST donations/{id}/reversal {reason}` | `finance.donation.reverse` to ask (Admin, SuperAdmin, FinanceOfficer); returns `202` and a different person approves it (see CONTROLS.md) |
 
 Status is `pending`, `confirmed`, `failed`, `cancelled` or `refunded`. `method` is the gateway of the latest started checkout, `null` until one exists (offline recording, #63, adds the rest); `?method=` filters on it.

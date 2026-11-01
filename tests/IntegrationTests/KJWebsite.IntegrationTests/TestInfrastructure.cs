@@ -341,3 +341,50 @@ public static class TestCampaigns
         await db.SaveChangesAsync();
     }
 }
+
+/// <summary>
+/// Sensitive finance actions (manual adjustments, posting and donation reversals) are requests that a second person approves. Most tests only need the effect, so this sends
+/// the request as the caller, approves it as a different, fixed approver, and returns what the old direct endpoint returned. Tests of the control itself send requests directly.
+/// </summary>
+public static class TestControls
+{
+    public static readonly string Approver = TestTokens.Issue([KJWebsite.BuildingBlocks.Security.Permissions.FinanceView, KJWebsite.BuildingBlocks.Security.Permissions.FinanceControlApprove], subject: "usr_approver");
+
+    public static bool IsControlled(HttpRequestMessage request)
+    {
+        var path = request.RequestUri!.OriginalString.Split('?')[0];
+        return request.Method == HttpMethod.Post && (path.EndsWith("/ledger/postings", StringComparison.Ordinal)
+            || (path.Contains("/ledger/postings/", StringComparison.Ordinal) && path.EndsWith("/reversal", StringComparison.Ordinal))
+            || (path.Contains("/finance/donations/", StringComparison.Ordinal) && path.EndsWith("/reversal", StringComparison.Ordinal)));
+    }
+
+    public static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpRequestMessage request)
+    {
+        var controlled = IsControlled(request);
+        var response = await client.SendAsync(request);
+        if (!controlled || response.StatusCode != System.Net.HttpStatusCode.Accepted)
+        {
+            return response;
+        }
+
+        var asked = await System.Net.Http.Json.HttpContentJsonExtensions.ReadFromJsonAsync<System.Text.Json.JsonElement>(response.Content);
+        using var approve = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/admin/finance/controls/requests/{asked.GetProperty("id").GetString()}/approve")
+        {
+            Headers = { Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Approver) },
+            Content = System.Net.Http.Json.JsonContent.Create(new { })
+        };
+        var approved = await client.SendAsync(approve);
+        if (!approved.IsSuccessStatusCode)
+        {
+            return approved;
+        }
+
+        var decided = await System.Net.Http.Json.HttpContentJsonExtensions.ReadFromJsonAsync<System.Text.Json.JsonElement>(approved.Content);
+        var path = decided.GetProperty("postingId").ValueKind == System.Text.Json.JsonValueKind.String
+            ? $"/api/v1/admin/finance/ledger/postings/{decided.GetProperty("postingId").GetString()}"
+            : $"/api/v1/admin/finance/donations/{decided.GetProperty("donationId").GetString()}";
+        using var read = new HttpRequestMessage(HttpMethod.Get, path) { Headers = { Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Approver) } };
+        var view = await client.SendAsync(read);
+        return new HttpResponseMessage(System.Net.HttpStatusCode.Created) { Content = view.Content };
+    }
+}

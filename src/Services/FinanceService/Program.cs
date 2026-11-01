@@ -1,6 +1,7 @@
 using FinanceService.Banking;
 using FinanceService.Budgets;
 using FinanceService.Campaigns;
+using FinanceService.Controls;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Donations;
@@ -90,6 +91,13 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<BankMatchEventEntity>()
     .Audit<BankRevealEntity>()
     .Audit<ReportPackEntity>()
+    .Audit<ControlRequestEntity>()
+    .Audit<ControlDecisionEntity>()
+    .Audit<CloseEventEntity>()
+    .Audit<PaymentAttemptEntity>()
+    .Audit<PaymentSettlementEntity>()
+    .Audit<ProviderNoticeEntity>()
+    .Audit<DonorSuppressionEntity>()
     .Audit<PayoutEntity>()
     .Audit<PayoutLineEntity>()
     .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
@@ -121,6 +129,8 @@ builder.Services.AddScoped<ExpenseService>();
 builder.Services.Configure<BudgetOptions>(builder.Configuration.GetSection(BudgetOptions.SectionName));
 builder.Services.Configure<BankingOptions>(builder.Configuration.GetSection(BankingOptions.SectionName));
 builder.Services.AddScoped<BankingService>();
+builder.Services.AddScoped<DonationReversal>();
+builder.Services.AddScoped<ControlService>();
 builder.Services.Configure<ReportOptions>(builder.Configuration.GetSection(ReportOptions.SectionName));
 builder.Services.AddScoped<ReportBuilder>();
 builder.Services.AddScoped<ReportService>();
@@ -198,6 +208,7 @@ app.MapCampaigns();
 app.MapExpenses();
 app.MapBudgets();
 app.MapBanking();
+app.MapControls();
 app.MapReports();
 app.MapLedger();
 app.MapWebhooks();

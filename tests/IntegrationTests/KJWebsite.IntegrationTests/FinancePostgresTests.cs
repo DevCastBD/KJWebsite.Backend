@@ -24,7 +24,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(13);
+                db.Database.GetAppliedMigrations().Should().HaveCount(14);
             }
 
             await TestCampaigns.SeedAsync(factory.Services, "flood-relief", currency: "USD");
@@ -50,7 +50,7 @@ public sealed class FinancePostgresTests
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/admin/finance/{path}");
                 request.Headers.Authorization = new("Bearer", viewer);
-                using var response = await client.SendAsync(request);
+                using var response = await TestControls.SendAsync(client, request);
                 response.StatusCode.Should().Be(HttpStatusCode.OK, path + await response.Content.ReadAsStringAsync());
             }
 
@@ -121,7 +121,7 @@ public sealed class FinancePostgresTests
                     request.Content = JsonContent.Create(body);
                 }
 
-                using var response = await client.SendAsync(request);
+                using var response = await TestControls.SendAsync(client, request);
                 response.StatusCode.Should().Be(expected, await response.Content.ReadAsStringAsync());
                 return await response.Content.ReadFromJsonAsync<JsonElement>();
             }
@@ -154,7 +154,7 @@ public sealed class FinancePostgresTests
             var results = await Task.WhenAll(Enumerable.Range(0, 6).Select(async _ =>
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/admin/finance/reconciliation/match") { Headers = { Authorization = new("Bearer", admin) }, Content = JsonContent.Create(new { lineId, entryId = entries[0] }) };
-                using var response = await client.SendAsync(request);
+                using var response = await TestControls.SendAsync(client, request);
                 return response.StatusCode;
             }));
             results.Count(r => r == HttpStatusCode.OK).Should().Be(1);
@@ -202,7 +202,7 @@ public sealed class FinancePostgresTests
                     request.Content = JsonContent.Create(body);
                 }
 
-                return await client.SendAsync(request);
+                return await TestControls.SendAsync(client, request);
             }
 
             foreach (var (debit, credit, amount) in new[] { ("1010", "4010", "900.00"), ("5010", "1010", "250.00") })
@@ -230,6 +230,84 @@ public sealed class FinancePostgresTests
             (await download.Content.ReadAsByteArrayAsync()).Length.Should().Be(pack.GetProperty("sizeBytes").GetInt32());
             using var list = await Send(HttpMethod.Get, "/api/v1/admin/finance/reports");
             (await list.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").GetArrayLength().Should().Be(1);
+        }
+        finally
+        {
+            NpgsqlConnection.ClearAllPools();
+            try
+            {
+                await TestPostgres.DropDatabaseAsync(databaseName);
+            }
+            catch (PostgresException)
+            {
+                // A leftover throwaway database is harmless.
+            }
+        }
+    }
+
+    [RequiresPostgresFact]
+    public async Task ControlsRunOnPostgresApprovalsPostOnceAndAMonthReopensAndClosesAgain()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("finance_control_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            using var factory = new PostgresFinanceApiFactory(connectionString);
+            using var client = factory.CreateClient();
+            string Token(string subject) => TestTokens.Issue([KJWebsite.BuildingBlocks.Security.Permissions.FinanceView, KJWebsite.BuildingBlocks.Security.Permissions.FinanceLedgerAdjust,
+                KJWebsite.BuildingBlocks.Security.Permissions.FinancePeriodClose, KJWebsite.BuildingBlocks.Security.Permissions.FinanceControlApprove], subject: subject);
+
+            async Task<(HttpStatusCode Status, JsonElement Body)> Call(HttpMethod method, string path, string subject, object? body = null)
+            {
+                using var request = new HttpRequestMessage(method, path) { Headers = { Authorization = new("Bearer", Token(subject)) } };
+                if (body is not null)
+                {
+                    request.Content = JsonContent.Create(body);
+                }
+
+                using var response = await client.SendAsync(request);
+                var text = await response.Content.ReadAsStringAsync();
+                return (response.StatusCode, text.Length == 0 ? default : JsonDocument.Parse(text).RootElement.Clone());
+            }
+
+            var month = DateTime.UtcNow.AddMonths(-2);
+            var period = month.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
+            var day = new DateTime(month.Year, month.Month, 10).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            object Adjustment(string? postedOn) => new
+            {
+                postedOn,
+                memo = "pg control",
+                reason = "postgres control test",
+                lines = new[] { new { account = "1010", debit = (string?)"10.00", credit = (string?)null, currency = "BDT" }, new { account = "4900", debit = (string?)null, credit = (string?)"10.00", currency = "BDT" } }
+            };
+
+            var asked = await Call(HttpMethod.Post, "/api/v1/admin/finance/ledger/postings", "usr_alice", Adjustment(null));
+            asked.Status.Should().Be(HttpStatusCode.Accepted, asked.Body.ToString());
+            var id = asked.Body.GetProperty("id").GetString();
+            (await Call(HttpMethod.Post, $"/api/v1/admin/finance/controls/requests/{id}/approve", "usr_alice")).Status.Should().Be(HttpStatusCode.Forbidden);
+            var statuses = await Task.WhenAll(Enumerable.Range(0, 6).Select(async i => (await Call(HttpMethod.Post, $"/api/v1/admin/finance/controls/requests/{id}/approve", "usr_approver" + i)).Status));
+            statuses.Count(s => s == HttpStatusCode.OK).Should().Be(1);
+            statuses.Where(s => s != HttpStatusCode.OK).Should().OnlyContain(s => s == HttpStatusCode.Conflict);
+            await using (var connection = new NpgsqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                await using var count = new NpgsqlCommand("SELECT count(*) FROM finance.postings WHERE \"SourceType\" = 'adjustment'", connection);
+                ((long)(await count.ExecuteScalarAsync())!).Should().Be(1);
+            }
+
+            (await Call(HttpMethod.Post, $"/api/v1/admin/finance/ledger/periods/{period}/close", "usr_alice")).Status.Should().Be(HttpStatusCode.OK);
+            (await Call(HttpMethod.Post, "/api/v1/admin/finance/ledger/postings", "usr_alice", Adjustment(day))).Status.Should().Be(HttpStatusCode.Conflict);
+            var reopen = await Call(HttpMethod.Post, $"/api/v1/admin/finance/ledger/periods/{period}/reopen", "usr_alice", new { reason = "pg reopen" });
+            reopen.Status.Should().Be(HttpStatusCode.Accepted);
+            var reopenId = reopen.Body.GetProperty("id").GetString();
+            (await Call(HttpMethod.Post, $"/api/v1/admin/finance/controls/requests/{reopenId}/approve", "usr_alice")).Status.Should().Be(HttpStatusCode.Forbidden);
+            (await Call(HttpMethod.Post, $"/api/v1/admin/finance/controls/requests/{reopenId}/approve", "usr_bob")).Status.Should().Be(HttpStatusCode.OK);
+            var late = await Call(HttpMethod.Post, "/api/v1/admin/finance/ledger/postings", "usr_alice", Adjustment(day));
+            late.Status.Should().Be(HttpStatusCode.Accepted);
+            (await Call(HttpMethod.Post, $"/api/v1/admin/finance/controls/requests/{late.Body.GetProperty("id").GetString()}/approve", "usr_bob")).Status.Should().Be(HttpStatusCode.OK);
+            (await Call(HttpMethod.Post, $"/api/v1/admin/finance/ledger/periods/{period}/close", "usr_bob")).Status.Should().Be(HttpStatusCode.OK);
+            (await Call(HttpMethod.Get, "/api/v1/admin/finance/controls/refunds", "usr_bob")).Status.Should().Be(HttpStatusCode.OK);
+            (await Call(HttpMethod.Get, "/api/v1/admin/finance/controls/requests?status=approved", "usr_bob")).Body.GetProperty("items").GetArrayLength().Should().Be(3);
         }
         finally
         {
@@ -328,7 +406,7 @@ public sealed class FinancePostgresTests
                 {
                     using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/admin/finance/expenses/{id}/approve") { Content = JsonContent.Create(new { }) };
                     request.Headers.Authorization = new("Bearer", Token(approver, KJWebsite.BuildingBlocks.Security.Permissions.FinanceExpenseApprove));
-                    return (await client.SendAsync(request)).StatusCode;
+                    return (await TestControls.SendAsync(client, request)).StatusCode;
                 }));
 
                 results.Should().OnlyContain(r => r == HttpStatusCode.OK || r == HttpStatusCode.Conflict);
@@ -601,6 +679,35 @@ public sealed class FinancePostgresTests
         await Exec(connectionString, "INSERT INTO finance.report_packs (\"Id\", \"Month\", \"EntityName\", \"Sha256\", \"SizeBytes\", \"StorageKey\", \"GeneratedAt\") VALUES ('rpt_1', '2030-01', 'e', 'h', 1, 'report-1', now())");
         await Refused(connectionString, "UPDATE finance.report_packs SET \"Sha256\" = 'x'");
         await Refused(connectionString, "DELETE FROM finance.report_packs");
+
+        // Controls: a request is never edited, a decision is made by someone else (a withdrawal by the requester), and a close only disappears with an approved distinct-person reopen.
+        await Exec(connectionString, "INSERT INTO finance.control_requests (\"Id\", \"Kind\", \"Subject\", \"PayloadJson\", \"Reason\", \"RequestedBy\", \"RequestedAt\") VALUES ('ctl_a', 'adjustment', '', '{}', 'reason', 'usr_a', now()), ('ctl_b', 'adjustment', '', '{}', 'reason', 'usr_a', now()), ('ctl_c', 'adjustment', '', '{}', 'reason', 'usr_a', now())");
+        await Refused(connectionString, "UPDATE finance.control_requests SET \"Reason\" = 'x'");
+        await Refused(connectionString, "DELETE FROM finance.control_requests");
+        await CheckViolation(connectionString, "INSERT INTO finance.control_decisions (\"RequestId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('ctl_a', 'approved', 'usr_a', now())");
+        await CheckViolation(connectionString, "INSERT INTO finance.control_decisions (\"RequestId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('ctl_a', 'rejected', 'usr_a', now())");
+        await CheckViolation(connectionString, "INSERT INTO finance.control_decisions (\"RequestId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('ctl_a', 'withdrawn', 'usr_b', now())");
+        await Exec(connectionString, "INSERT INTO finance.control_decisions (\"RequestId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('ctl_a', 'approved', 'usr_b', now())");
+        await Exec(connectionString, "INSERT INTO finance.control_decisions (\"RequestId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('ctl_b', 'withdrawn', 'usr_a', now())");
+        await UniqueViolation(connectionString, "INSERT INTO finance.control_decisions (\"RequestId\", \"Decision\", \"DecidedBy\", \"At\") VALUES ('ctl_a', 'rejected', 'usr_c', now())");
+        await Refused(connectionString, "UPDATE finance.control_decisions SET \"Decision\" = 'rejected'");
+        await Refused(connectionString, "DELETE FROM finance.control_decisions");
+
+        await Exec(connectionString, "INSERT INTO finance.period_closes (\"PeriodKey\", \"ClosedAt\") VALUES ('2001-03', now())");
+        await Exec(connectionString, "INSERT INTO finance.close_events (\"Scope\", \"Key\", \"Kind\", \"By\", \"At\") VALUES ('period', '2001-03', 'closed', 'usr_a', now())");
+        await Refused(connectionString, "UPDATE finance.period_closes SET \"ClosedBy\" = 'x'");
+        await Refused(connectionString, "DELETE FROM finance.period_closes WHERE \"PeriodKey\" = '2001-03'");
+        await Exec(connectionString, "INSERT INTO finance.close_events (\"Scope\", \"Key\", \"Kind\", \"By\", \"ApprovedBy\", \"At\") VALUES ('period', '2001-03', 'reopened', 'usr_a', 'usr_a', now())");
+        await Refused(connectionString, "DELETE FROM finance.period_closes WHERE \"PeriodKey\" = '2001-03'");
+        await Exec(connectionString, "INSERT INTO finance.close_events (\"Scope\", \"Key\", \"Kind\", \"By\", \"ApprovedBy\", \"At\") VALUES ('period', '2001-03', 'reopened', 'usr_a', 'usr_b', now())");
+        await Exec(connectionString, "DELETE FROM finance.period_closes WHERE \"PeriodKey\" = '2001-03'");
+        await Exec(connectionString, "INSERT INTO finance.period_closes (\"PeriodKey\", \"ClosedAt\") VALUES ('2001-03', now())");
+        await Exec(connectionString, "INSERT INTO finance.close_events (\"Scope\", \"Key\", \"Kind\", \"By\", \"At\") VALUES ('period', '2001-03', 'closed', 'usr_a', now())");
+        await Refused(connectionString, "DELETE FROM finance.period_closes WHERE \"PeriodKey\" = '2001-03'");
+        await Refused(connectionString, "UPDATE finance.close_events SET \"Reason\" = 'x'");
+        await Refused(connectionString, "DELETE FROM finance.close_events");
+        await Exec(connectionString, "INSERT INTO finance.fiscal_year_closes (\"Label\", \"ClosedAt\") VALUES ('2002-03', now())");
+        await Refused(connectionString, "DELETE FROM finance.fiscal_year_closes WHERE \"Label\" = '2002-03'");
 
         // The replay guard and the settle-once rule are unique indexes.
         await using var connection = new NpgsqlConnection(connectionString);

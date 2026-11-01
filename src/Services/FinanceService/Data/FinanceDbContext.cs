@@ -49,6 +49,9 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<BankMatchEventEntity> BankMatchEvents => Set<BankMatchEventEntity>();
     public DbSet<BankRevealEntity> BankReveals => Set<BankRevealEntity>();
     public DbSet<ReportPackEntity> ReportPacks => Set<ReportPackEntity>();
+    public DbSet<ControlRequestEntity> ControlRequests => Set<ControlRequestEntity>();
+    public DbSet<ControlDecisionEntity> ControlDecisions => Set<ControlDecisionEntity>();
+    public DbSet<CloseEventEntity> CloseEvents => Set<CloseEventEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -68,18 +71,36 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     {
         ChangeTracker.DetectChanges();
         var offender = ChangeTracker.Entries().FirstOrDefault(e =>
-            e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity or PostingEntity or LedgerEntryEntity or PeriodCloseEntity
+            e.Entity is DonationEntity or DonationEventEntity or RecurringPlanEntity or PaymentAttemptEntity or PostingEntity or LedgerEntryEntity
             or PaymentEventEntity or WebhookRejectionEntity or PayoutEntity or PayoutLineEntity or PaymentSettlementEntity or ProviderNoticeEntity
             or OfflineRecordEntity or OfflineDecisionEntity or OfflineProofEntity
             or ReceiptEntity or ReceiptVoidEntity or ReceiptReissueEntity or StatementSendEntity
             or DonorConsentEntity or DonorSuppressionEntity or DonorExportEntity
             or ExpenseEntity or ExpenseReceiptEntity or ExpenseApprovalEntity or ExpenseDecisionEntity or ExpensePaymentEntity
-            or FiscalYearCloseEntity or BudgetAlertEntity
-            or BankStatementEntity or BankLineEntity or BankMatchEventEntity or BankRevealEntity or ReportPackEntity
+            or BudgetAlertEntity
+            or BankStatementEntity or BankLineEntity or BankMatchEventEntity or BankRevealEntity or ReportPackEntity or ControlRequestEntity or ControlDecisionEntity or CloseEventEntity
             && e.State is EntityState.Modified or EntityState.Deleted);
         if (offender is not null)
         {
             throw new InvalidOperationException($"{offender.Metadata.ClrType.Name} records are append-only: post a reversing entry instead of changing or deleting one.");
+        }
+
+        // A close is never edited. It may be deleted only by a reopen, and only together with the appended event that records who asked and who approved it
+        // (PostgreSQL refuses the delete without that event). Closing again adds a new close row.
+        var reopened = ChangeTracker.Entries<CloseEventEntity>().Where(e => e.State != EntityState.Deleted && e.Entity.Kind == "reopened" && e.Entity.ApprovedBy is not null && e.Entity.ApprovedBy != e.Entity.By)
+            .Select(e => (e.Entity.Scope, e.Entity.Key)).ToHashSet();
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            var scopeAndKey = entry.Entity switch { PeriodCloseEntity p => ("period", p.PeriodKey), FiscalYearCloseEntity y => ("year", y.Label), _ => default };
+            if (scopeAndKey == default)
+            {
+                continue;
+            }
+
+            if (entry.State == EntityState.Modified || (entry.State == EntityState.Deleted && !reopened.Contains(scopeAndKey)))
+            {
+                throw new InvalidOperationException("Period and fiscal-year closes are append-only: only an approved reopen may remove one.");
+            }
         }
 
         // An account is never deleted, and its code and type (which postings rely on) never change; renaming and archiving are fine.
@@ -669,6 +690,45 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.StorageKey).HasMaxLength(200).IsRequired();
             entity.Property(x => x.GeneratedBy).HasMaxLength(64);
             entity.HasIndex(x => x.Month);
+        });
+
+        modelBuilder.Entity<ControlRequestEntity>(entity =>
+        {
+            entity.ToTable("control_requests");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.Kind).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.Subject).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.PayloadJson).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.RequestedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.Kind, x.Subject });
+        });
+
+        modelBuilder.Entity<ControlDecisionEntity>(entity =>
+        {
+            entity.ToTable("control_decisions");
+            entity.HasKey(x => x.RequestId);
+            entity.Property(x => x.RequestId).HasMaxLength(40);
+            entity.Property(x => x.Decision).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.DecidedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.Property(x => x.ResultRef).HasMaxLength(64);
+            entity.HasOne(x => x.Request).WithOne().HasForeignKey<ControlDecisionEntity>(x => x.RequestId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CloseEventEntity>(entity =>
+        {
+            entity.ToTable("close_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedOnAdd();
+            entity.Property(x => x.Scope).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Key).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Kind).HasMaxLength(12).IsRequired();
+            entity.Property(x => x.By).HasMaxLength(64);
+            entity.Property(x => x.ApprovedBy).HasMaxLength(64);
+            entity.Property(x => x.Reason).HasMaxLength(500);
+            entity.HasIndex(x => new { x.Scope, x.Key });
         });
 
         modelBuilder.Entity<PayoutEntity>(entity =>

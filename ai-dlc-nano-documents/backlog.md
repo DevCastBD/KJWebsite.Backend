@@ -54,3 +54,6 @@
 - [2026-11-01] FinanceService/reports — reports load the ledger up to the period end and aggregate in memory; a very large history needs an aggregate query or snapshot table (found: 065-issue-71-reports)
 - [2026-11-01] FinanceService/reports — no year-end closing entries, so the balance sheet carries accumulated surplus as one line; revisit with the accounting standard (#112) (found: 065-issue-71-reports)
 - [2026-11-01] FinanceService/reports — a legal-entity-specific statutory layout is not built; waits on #112/#114 (found: 065-issue-71-reports)
+- [2026-11-01] MembershipReviewTests.ReviewerScoreAndNotesAreInternalOnly — asserts the response does not contain digit substrings such as "82", which timestamps randomly contain; flaky in full runs (found: 066-issue-72-controls)
+- [2026-11-01] FinanceService/controls — go-live gate: external review of the financial controls is not done; checklist in docs/CONTROLS.md (found: 066-issue-72-controls)
+- [2026-11-01] FinanceService/controls — no live gateway refund API calls; refunds are done in the gateway dashboard and reconciled by the signed notice (found: 066-issue-72-controls)

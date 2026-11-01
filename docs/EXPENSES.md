@@ -23,4 +23,4 @@ A currency with no defaults gets the strictest tier. Configured tiers replace a 
 `GET .../expenses/rollups[?from&to]` gives approved spend (and how much is paid) per project and per category, per currency (never added together); pending and rejected expenses are out. `GET .../expenses/rollups/reconciliation` compares each project's and category's approved total with the net debit the ledger holds on expense accounts for the same expenses (reversals netted); every difference is zero when the books agree.
 
 ## Records
-Expenses, approvals, the decision, receipts and the payment are append-only (application guard and PostgreSQL triggers; approvals, the decision and the payment are unique in the database). Every step is audited with its own actor. Budgets (BE-064) and the four-eyes controls on ledger adjustments (BE-068) build on this.
+Expenses, approvals, the decision, receipts and the payment are append-only (application guard and PostgreSQL triggers; approvals, the decision and the payment are unique in the database). Every step is audited with its own actor. Budgets (BE-064) and the four-eyes controls (BE-068, CONTROLS.md) build on this.

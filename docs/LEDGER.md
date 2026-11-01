@@ -36,7 +36,7 @@ Confirmation also issues the donation's numbered receipt in the same commit (see
 Importing a gateway payout (BE-056) posts each matched donation: Dr bank (net received), Dr `5040` payment processing fees, Cr the gateway's clearing account (gross), source `payout`, unique per payout and donation. Together with the confirmation posting this leaves the clearing account at zero once a donation is settled.
 
 ## Periods
-Months. Closing adds a `period_closes` row: no posting or reversal dated in it is accepted afterwards (`PERIOD_CLOSED`, 409). Only a past or current month can be closed, once. There is no reopen yet: it arrives with the two-approver flow of BE-068.
+Months. Closing adds a `period_closes` row: no posting or reversal dated in it is accepted afterwards (`PERIOD_CLOSED`, 409). Only a past or current month can be closed, once. Reopening a month needs an approved request (see CONTROLS.md).
 
 ## API (`/api/v1/admin/finance/ledger`)
 | Endpoint | Permission |
@@ -47,4 +47,4 @@ Months. Closing adds a `period_closes` row: no posting or reversal dated in it i
 | `POST postings/{id}/reversal {reason}`, `POST accounts {code,name,type}`, `POST accounts/{id}/archive` | `finance.ledger.adjust` |
 | `POST periods/{yyyy-MM}/close` | `finance.period.close` |
 
-`finance.ledger.adjust` and `finance.period.close` are held by Admin and SuperAdmin only until the four-eyes controls (BE-068). Every write is audited with the caller (`GET /api/v1/admin/finance/audit`), except automatic postings made by the system with no signed-in caller.
+A manual adjustment and a posting reversal are **requests that a different person approves** (`202`, then `POST controls/requests/{id}/approve`); the posting is made at approval. `finance.ledger.adjust` (ask) and `finance.control.approve` (decide) are held by Admin, SuperAdmin and FinanceOfficer. See CONTROLS.md. Every write is audited with the caller (`GET /api/v1/admin/finance/audit`), except automatic postings made by the system with no signed-in caller.
