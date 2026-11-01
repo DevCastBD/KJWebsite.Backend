@@ -150,31 +150,7 @@ public static class PublicDonationEndpoints
         var returnHandler = async (HttpContext context, string reference, string? result, FinanceDbContext db, IOptions<PaymentOptions> payments) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            var language = "en";
-            string? gateway = null;
-            var known = false;
-            if (DonationReference.LooksValid(reference))
-            {
-                var row = await db.Donations.AsNoTracking()
-                    .Where(d => d.Reference == reference && d.Kind != DonationKinds.Reversal)
-                    .Select(d => new
-                    {
-                        d.Language,
-                        Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault()
-                    })
-                    .FirstOrDefaultAsync();
-                if (row is not null)
-                {
-                    known = true;
-                    language = row.Language;
-                    gateway = row.Gateway;
-                }
-            }
-
-            var site = $"{payments.Value.SiteBaseUrl.TrimEnd('/')}/{language}/donate/status";
-            var target = known
-                ? $"{site}?ref={Uri.EscapeDataString(reference)}{(gateway is null ? string.Empty : $"&gateway={Uri.EscapeDataString(gateway)}")}&result={(result == "cancel" ? "cancel" : "return")}"
-                : site;
+            var target = await StatusPageUrlAsync(db, payments.Value, reference, result == "cancel" ? "cancel" : "return");
             context.Response.Headers.Location = target;
             return Results.StatusCode(StatusCodes.Status303SeeOther);
         };
@@ -190,6 +166,34 @@ public static class PublicDonationEndpoints
         }
     }
 
+    /// <summary>Where the donor lands after a gateway: the site's status page for their language and reference. Unknown or malformed references land on the plain lookup page.</summary>
+    internal static async Task<string> StatusPageUrlAsync(FinanceDbContext db, PaymentOptions payments, string reference, string result)
+    {
+        var language = "en";
+        string? gateway = null;
+        var known = false;
+        if (DonationReference.LooksValid(reference))
+        {
+            var row = await db.Donations.AsNoTracking()
+                .Where(d => d.Reference == reference && d.Kind != DonationKinds.Reversal)
+                .Select(d => new
+                {
+                    d.Language,
+                    Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault()
+                })
+                .FirstOrDefaultAsync();
+            if (row is not null)
+            {
+                known = true;
+                language = row.Language;
+                gateway = row.Gateway;
+            }
+        }
+
+        var site = $"{payments.SiteBaseUrl.TrimEnd('/')}/{language}/donate/status";
+        return known ? $"{site}?ref={Uri.EscapeDataString(reference)}{(gateway is null ? string.Empty : $"&gateway={Uri.EscapeDataString(gateway)}")}&result={result}" : site;
+    }
+
     private static readonly Action<ILogger, string, string, string, Exception?> GatewayFailed = LoggerMessage.Define<string, string, string>(
         LogLevel.Warning, new EventId(1, nameof(GatewayFailed)), "Gateway {Gateway} could not start a checkout for {Reference}: {Code}");
 
@@ -202,13 +206,13 @@ public static class PublicDonationEndpoints
     {
         var request = new CheckoutRequest(
             entity.Id, entity.Reference, donation.Amount + donation.Fee, donation.DonorName, donation.DonorEmail, donation.DonorPhone, donation.Language,
-            ReturnUrlsFor(payments, entity.Reference), ClientIp(context));
+            ReturnUrlsFor(payments, entity.Reference, string.Empty), ClientIp(context));
 
         foreach (var gateway in gateways.Candidates(donation.Gateway, entity.Currency))
         {
             try
             {
-                var session = await gateway.CreateCheckoutAsync(request, context.RequestAborted);
+                var session = await gateway.CreateCheckoutAsync(request with { Returns = ReturnUrlsFor(payments, entity.Reference, gateway.Id) }, context.RequestAborted);
                 db.PaymentAttempts.Add(new PaymentAttemptEntity { DonationId = entity.Id, Gateway = gateway.Id, Status = PaymentAttemptStatuses.Created, ProviderPaymentId = session.ProviderPaymentId, At = clock.GetUtcNow() });
                 await db.SaveChangesAsync();
                 return new StartedCheckout(gateway.Id, session.RedirectUrl.ToString());
@@ -226,10 +230,10 @@ public static class PublicDonationEndpoints
         return null;
     }
 
-    private static ReturnUrls ReturnUrlsFor(PaymentOptions payments, string reference)
+    private static ReturnUrls ReturnUrlsFor(PaymentOptions payments, string reference, string gateway)
     {
         Uri Url(string result) => new($"{payments.PublicApiBaseUrl.TrimEnd('/')}{Route}/{reference}/return?result={result}");
-        return new ReturnUrls(Url("success"), Url("fail"), Url("cancel"));
+        return new ReturnUrls(Url("success"), Url("fail"), Url("cancel"), new Uri($"{payments.PublicApiBaseUrl.TrimEnd('/')}{Route}/webhooks/{gateway}"));
     }
 
     private static string ClientIp(HttpContext context) => context.Connection.RemoteIpAddress switch

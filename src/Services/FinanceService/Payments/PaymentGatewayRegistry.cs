@@ -11,6 +11,9 @@ public sealed class PaymentGatewayRegistry(IEnumerable<IPaymentGateway> gateways
     /// <summary>Every registered adapter, switched on or not.</summary>
     public IReadOnlyList<string> KnownIds => [.. _gateways.Select(g => g.Id)];
 
+    /// <summary>The adapter with this id, switched on or not; null when no such adapter is registered.</summary>
+    public IPaymentGateway? Find(string id) => _gateways.FirstOrDefault(g => string.Equals(g.Id, id, StringComparison.Ordinal));
+
     public IReadOnlyList<string> EnabledIds => [.. _gateways.Where(g => g.IsEnabled).Select(g => g.Id)];
 
     /// <summary>

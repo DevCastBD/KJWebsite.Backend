@@ -249,3 +249,9 @@
 - 2026-10-31T05:55Z [claude] 055-issue-69-ledger BRANCH @c25e550: Feature/issue-69-ledger stacked on Feature/issue-60-payment-gateways (user confirmed)
 - 2026-10-31T05:55Z [claude] 055-issue-69-ledger PHASE PLAN→CONSTRUCT @c25e550: plan approved (user)
 - 2026-10-31T06:10Z [claude] 055-issue-69-ledger DONE @6dcaf52: ledger, chart, periods, donation posting; 524 integration + 46 unit green incl PG; ledger coverage 96%; committed locally, not pushed
+- 2026-10-31T06:13Z [claude] 056-issue-62-webhooks CREATED @d243a57: stacked on #69 branch
+- 2026-10-31T06:13Z [claude] 056-issue-62-webhooks SIDE-EFFECT @d243a57: assigned #62 to FHShubho (user asked)
+- 2026-10-31T06:19Z [claude] 056-issue-62-webhooks DECISION @d243a57: signature + server re-query; rejection table; payout JSON import with ledger posting (user)
+- 2026-10-31T06:19Z [claude] 056-issue-62-webhooks BRANCH @d243a57: Feature/issue-62-webhooks stacked on Feature/issue-69-ledger (user confirmed)
+- 2026-10-31T06:19Z [claude] 056-issue-62-webhooks PHASE PLAN→CONSTRUCT @d243a57: plan approved (user)
+- 2026-10-31T06:28Z [claude] 056-issue-62-webhooks DONE @e7fd492: webhooks, replay guard, resolver, payouts; 568+46 tests green incl PG; committed locally, not pushed

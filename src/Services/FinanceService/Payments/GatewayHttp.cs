@@ -57,6 +57,11 @@ internal static class GatewayHttp
         }
     }
 
+    /// <summary>A gateway amount ("1025.65", "1025.6500") as exact money, or null when it is not an exact two-decimal amount in a supported currency.</summary>
+    public static KJWebsite.BuildingBlocks.Finance.Money? Amount(string? text, string? currency) =>
+        decimal.TryParse(text, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var value)
+        && KJWebsite.BuildingBlocks.Finance.Money.TryCreate(value, currency) is { IsSuccess: true } made ? made.Value : null;
+
     public static string? Text(JsonElement element, string name) =>
         element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
 

@@ -12,6 +12,21 @@
 
 The charge is `amount + fee` (see DONATIONS.md). The gateway's order id is our donation `reference`.
 
+## Webhooks and confirmation (BE-056, #62)
+`GET|POST /api/v1/donations/webhooks/{gateway}` is where gateways call us. It is anonymous, so its safety is in the order of work:
+1. **Authenticate.** SSLCommerz signs its IPN: `verify_sign` is the MD5 of the fields listed in `verify_key` plus `store_passwd` (the MD5 of the store password), sorted by name. A missing or wrong signature is rejected with `400`, recorded and logged, and **nothing is asked of the gateway**. bKash and Nagad do not sign their browser callbacks, so for them the next step is the only check.
+2. **Find** the donation by the gateway's payment id (or SSLCommerz's `tran_id`, our reference). Unknown payments are rejected (`UNKNOWN_PAYMENT`).
+3. **Re-query the gateway** with our credentials (`VerifyAsync`): SSLCommerz by transaction id, bKash by payment status (executing an `Authorized` payment once), Nagad by payment verification. The call that prompted this is only a trigger; **only this answer decides**. It must name the same reference and, for a paid payment, the exact charge (amount + fee) in the charged currency, otherwise the donation is left alone and `AMOUNT_MISMATCH` / `REFERENCE_MISMATCH` is recorded.
+4. **Apply**: paid confirms through `DonationConfirmation` (event + ledger posting in one commit); failed or cancelled only moves a donation still `pending` (a late failure never undoes a confirmed one); pending changes nothing.
+5. **Remember the delivery** (`payment_events`, unique on gateway + event key), after handling. A replay of the same delivery is recognised and skipped without calling the gateway; a replay under a new key re-verifies but cannot confirm twice (the posting's source is unique). Ten replays leave one confirmed event and one posting.
+If the gateway cannot be reached the call answers `503` + `Retry-After` and is **not** remembered, so the gateway's redelivery is looked at; the donation stays `pending`. A donor's browser (GET) is always sent on to the site's status page (303), which shows the truth.
+
+Rejections are the alert list: `webhook_rejections` (append-only; gateway, reason code, source address, reference; never the body) with `GET /api/v1/admin/finance/webhook-rejections`, and a Warning log line per rejection to hang a log alert on. Reasons: `BAD_SIGNATURE`, `UNKNOWN_GATEWAY`, `GATEWAY_DISABLED`, `UNKNOWN_PAYMENT`, `REFERENCE_MISMATCH`, `AMOUNT_MISMATCH`.
+
+## Reconciliation
+- **Pending resolver:** asks the gateway about every donation still `pending` more than `ReconcileAfterMinutes` (default 15) after its checkout started, and applies the answer like a webhook. Runs on a timer (`ReconcileIntervalMinutes`, default 10, 0 = off) and on demand via `POST /api/v1/admin/finance/reconciliation/pending/run` (`finance.reconcile`). A gateway that does not answer leaves the donation pending.
+- **Payouts:** `POST /api/v1/admin/finance/payouts` imports a settlement `{gateway, payoutRef, paidOn?, lines:[{reference, gross, fee, net, currency}]}` (`gross = fee + net`). Each line is `matched` (donation confirmed, not reversed, via that gateway, not already settled, gross equal to the charge), `amount_mismatch`, `unmatched` (unknown, not confirmed or reversed) or `duplicate`. Matched lines post: Dr bank (net), Dr payment processing fees (fee), Cr the gateway's clearing account (gross), which clears what confirmation put there. The batch is written whole or not at all (a closed period rejects it), and a payout reference imports once. `GET .../reconciliation/unpaid` lists confirmed gateway donations no payout has settled. Bank statement matching is #70.
+
 ## Return is not confirmation
 The gateway sends the donor back to `GET|POST /api/v1/donations/{reference}/return?result=success|fail|cancel` (SSLCommerz POSTs; the wallets GET). That endpoint reads nothing from the request and answers `303` to `{SiteBaseUrl}/{lang}/donate/status?ref=&gateway=&result=return|cancel`. It changes nothing: only the signed webhook (#62) will confirm payment, so a forged or abandoned return can never mark a donation paid.
 

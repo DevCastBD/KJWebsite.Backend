@@ -194,7 +194,7 @@ public sealed class FinanceGatewayTests
         (create.GetProperty("amount").GetString(), create.GetProperty("currency").GetString(), create.GetProperty("intent").GetString(), create.GetProperty("mode").GetString())
             .Should().Be(("700.00", "BDT", "sale", "0011"));
         create.GetProperty("merchantInvoiceNumber").GetString().Should().Be(second.GetProperty("reference").GetString());
-        create.GetProperty("callbackURL").GetString().Should().Contain("/return?result=success");
+        create.GetProperty("callbackURL").GetString().Should().Be("https://api.example.org/api/v1/donations/webhooks/bkash");
     }
 
     [Fact]
@@ -523,6 +523,10 @@ public sealed class FinanceGatewayTests
         public string Id => "testpay";
         public bool IsEnabled => true;
         public bool Supports(string currency) => currency == Currencies.Bdt;
+
+        public WebhookParse ParseWebhook(IncomingWebhook webhook) => new(WebhookAuthenticity.NotSigned, null, null, null);
+
+        public Task<PaymentVerification> VerifyAsync(VerifyRequest request, CancellationToken cancellationToken) => Task.FromResult(new PaymentVerification(PaymentOutcome.Pending, null, null));
 
         public Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken cancellationToken)
         {

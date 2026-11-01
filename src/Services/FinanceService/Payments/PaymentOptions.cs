@@ -26,6 +26,12 @@ public sealed class PaymentOptions
 
     public int TimeoutSeconds { get; set; } = 10;
 
+    /// <summary>A checkout still pending after this many minutes is asked about at the gateway by the reconciliation job.</summary>
+    public int ReconcileAfterMinutes { get; set; } = 15;
+
+    /// <summary>How often the background resolver runs; 0 switches it off (the admin endpoint still works).</summary>
+    public int ReconcileIntervalMinutes { get; set; } = 10;
+
     public SslCommerzOptions SslCommerz { get; set; } = new();
     public BkashOptions Bkash { get; set; } = new();
     public NagadOptions Nagad { get; set; } = new();

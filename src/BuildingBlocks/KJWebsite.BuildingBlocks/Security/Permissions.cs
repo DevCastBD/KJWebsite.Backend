@@ -34,6 +34,8 @@ public static class Permissions
     public const string FinanceLedgerAdjust = "finance.ledger.adjust";
     /// <summary>Close an accounting period, after which it takes no postings.</summary>
     public const string FinancePeriodClose = "finance.period.close";
+    /// <summary>Run the pending-payment resolver and import gateway payouts, which post fees and settlement to the ledger.</summary>
+    public const string FinanceReconcile = "finance.reconcile";
     public const string AuditView = "audit.view";
     public const string CtaManage = "cta.manage";
     public const string MediaView = "media.view";
@@ -85,6 +87,7 @@ public static class PermissionCatalog
         new("finance", Permissions.FinanceDonationReverse, "Reverse a confirmed donation with a correcting entry"),
         new("finance", Permissions.FinanceLedgerAdjust, "Post manual ledger adjustments, reverse postings and manage accounts"),
         new("finance", Permissions.FinancePeriodClose, "Close an accounting period"),
+        new("finance", Permissions.FinanceReconcile, "Resolve stale payments and import gateway payouts"),
         new("settings", Permissions.SettingsView, "View site settings"),
         new("settings", Permissions.SettingsManage, "Change site settings and maintenance mode"),
         new("dashboard", Permissions.DashboardView, "See the back-office dashboard and global search"),
