@@ -1,3 +1,4 @@
+using FinanceService.Banking;
 using FinanceService.Budgets;
 using FinanceService.Campaigns;
 using FinanceService.Data;
@@ -81,6 +82,12 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<FiscalYearCloseEntity>()
     .Audit<BudgetEntity>()
     .Audit<BudgetAlertEntity>()
+    .Audit<BankAccountEntity>(nameof(BankAccountEntity.NumberProtected))
+    .Audit<BankStatementEntity>()
+    .Audit<BankLineEntity>()
+    .Audit<BankLineLinkEntity>()
+    .Audit<BankMatchEventEntity>()
+    .Audit<BankRevealEntity>()
     .Audit<PayoutEntity>()
     .Audit<PayoutLineEntity>()
     .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
@@ -110,6 +117,8 @@ builder.Services.AddScoped<DonorData>();
 builder.Services.Configure<ExpenseOptions>(builder.Configuration.GetSection(ExpenseOptions.SectionName));
 builder.Services.AddScoped<ExpenseService>();
 builder.Services.Configure<BudgetOptions>(builder.Configuration.GetSection(BudgetOptions.SectionName));
+builder.Services.Configure<BankingOptions>(builder.Configuration.GetSection(BankingOptions.SectionName));
+builder.Services.AddScoped<BankingService>();
 builder.Services.AddScoped<BudgetMath>();
 builder.Services.AddScoped<BudgetAlertService>();
 builder.Services.Configure<CampaignOptions>(builder.Configuration.GetSection(CampaignOptions.SectionName));
@@ -183,6 +192,7 @@ app.MapDonors();
 app.MapCampaigns();
 app.MapExpenses();
 app.MapBudgets();
+app.MapBanking();
 app.MapLedger();
 app.MapWebhooks();
 app.MapReconciliation();
