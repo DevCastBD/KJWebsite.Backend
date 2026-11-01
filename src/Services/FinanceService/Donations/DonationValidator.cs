@@ -18,7 +18,8 @@ public sealed record ValidDonation(
     bool Anonymous,
     string? Dedication,
     string Language,
-    string? Gateway);
+    string? Gateway,
+    bool CommunicationConsent);
 
 public static partial class DonationValidator
 {
@@ -130,6 +131,6 @@ public static partial class DonationValidator
         }
 
         var fee = request.CoverFees ? amount.Value.GrossUp(rule.FeeRate) - amount.Value : Money.Zero(amount.Value.Currency);
-        return (new ValidDonation(amount.Value, fee, interval, designationType, designationId, name!, email!, phone, request.Anonymous, dedication, language, gateway), invalid);
+        return (new ValidDonation(amount.Value, fee, interval, designationType, designationId, name!, email!, phone, request.Anonymous, dedication, language, gateway, request.CommunicationConsent), invalid);
     }
 }

@@ -3823,6 +3823,162 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/finance/donors:
+    get:
+      tags:
+        - "Donors"
+      summary: "Donors with lifetime giving and segments"
+      description: "Only non-anonymous gifts with an email build a donor: an anonymous gift leaves no attributable record. Giving is derived from valid receipts, so it always matches the books. Filters: segment (recurring, major, new, lapsed), asOf (yyyy-MM-dd; segments are re-run as of that date), q (name or email)."
+      operationId: "ListDonors"
+      parameters:
+        -
+          name: "segment"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "asOf"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donors/{id}":
+    get:
+      tags:
+        - "Donors"
+      summary: "One donor with contact, consent and its history, and every gift"
+      operationId: "GetDonor"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "asOf"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donors/{id}/donations":
+    get:
+      tags:
+        - "Donors"
+      summary: "A donor\u0027s confirmed, unreversed gifts, newest first"
+      operationId: "ListDonorDonations"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donors/{id}/consent":
+    post:
+      tags:
+        - "Donors"
+      summary: "Record a donor granting or withdrawing consent for one purpose"
+      description: "Purposes: thanks, updates, appeals. Source is \u0060admin\u0060 (default) or \u0060donor_request\u0060 (the donor asked us to); the donation form\u0027s own consent is recorded automatically and cannot be set here. Append-only; the latest entry per purpose is the donor\u0027s current consent. Requires \u0060finance.donor.manage\u0060."
+      operationId: "ChangeDonorConsent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/donors/messages:
+    post:
+      tags:
+        - "Donors"
+      summary: "Queue an appeal or update to a segment, through the consent gate"
+      description: "Template \u0060donor.appeal\u0060 needs each donor\u0027s \u0060appeals\u0060 consent and \u0060donor.update\u0060 their \u0060updates\u0060 consent; donors without it are suppressed (and the suppression is recorded), never written to. Requires \u0060finance.donor.manage\u0060."
+      operationId: "QueueDonorMessages"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DonorMessageRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/donors/export:
+    get:
+      tags:
+        - "Donors"
+      summary: "Export a segment as CSV"
+      description: "The same donors and the same rules as the list, for the same \u0060asOf\u0060 date, so an export can be reproduced. \u0060consent=appeals\u0060 (or thanks, updates) keeps only donors who granted that purpose. Cells that could run as spreadsheet formulas are neutralised. Every export is logged with who, what and how many. Requires \u0060finance.donor.export\u0060."
+      operationId: "ExportDonors"
+      parameters:
+        -
+          name: "segment"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "asOf"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "consent"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/finance/donors/reconciliation:
+    get:
+      tags:
+        - "Donors"
+      summary: "Compare each donor\u0027s giving with the ledger"
+      description: "For every donor and currency: the sum of valid receipts against the net donation income the ledger holds for the same donations (reversals netted). \u0060reconciled\u0060 is true when every difference is zero. Anonymous gifts are in neither side."
+      operationId: "ReconcileDonors"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/finance/ledger:
     get:
       tags:
@@ -4873,6 +5029,8 @@ tags:
   -
     name: "Statements"
   -
+    name: "Donors"
+  -
     name: "Ledger"
   -
     name: "Reconciliation"
@@ -5681,6 +5839,23 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/AdjustmentLineRequest"
+    ConsentRequest:
+      required:
+        - "purpose"
+        - "granted"
+        - "source"
+      type: "object"
+      properties:
+        purpose:
+          type:
+            - "null"
+            - "string"
+        granted:
+          type: "boolean"
+        source:
+          type:
+            - "null"
+            - "string"
     DesignationRequest:
       required:
         - "type"
@@ -5745,6 +5920,28 @@ components:
             - "null"
             - "string"
         gateway:
+          type:
+            - "null"
+            - "string"
+        communicationConsent:
+          type: "boolean"
+          default: false
+    DonorMessageRequest:
+      required:
+        - "template"
+        - "segment"
+        - "asOf"
+      type: "object"
+      properties:
+        template:
+          type:
+            - "null"
+            - "string"
+        segment:
+          type:
+            - "null"
+            - "string"
+        asOf:
           type:
             - "null"
             - "string"
@@ -5836,6 +6033,9 @@ components:
               type: "null"
             -
               $ref: "#/components/schemas/ValuationRequest"
+        communicationConsent:
+          type: "boolean"
+          default: false
     PayoutImport:
       required:
         - "gateway"

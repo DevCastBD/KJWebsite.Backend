@@ -15,7 +15,8 @@ public sealed record DonationRequest(
     string? Dedication,
     bool CoverFees,
     string? Language,
-    string? Gateway = null);
+    string? Gateway = null,
+    bool CommunicationConsent = false);
 
 /// <summary>
 /// What the donor gets back. `Fee` and `Total` are present only when the donor covers the fee; `Amount` is always the designated gift.

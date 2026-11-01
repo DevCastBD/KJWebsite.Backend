@@ -32,7 +32,7 @@ public static class DonationPostings
 /// sets a donation to confirmed. It is safe to call again for the same donation, however often and however concurrently: the second call finds the
 /// first one's work and changes nothing, so a webhook replayed ten times leaves one confirmed event and one posting.
 /// </summary>
-public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledger, FinanceService.Receipts.ReceiptService receipts, TimeProvider clock)
+public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledger, FinanceService.Receipts.ReceiptService receipts, FinanceService.Donors.DonorService donors, TimeProvider clock)
 {
     /// <summary>Success carries true when this call confirmed the donation, false when it already was.</summary>
     public async Task<Result<bool>> ConfirmAsync(
@@ -85,7 +85,13 @@ public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledg
         alsoStage?.Invoke(db);
 
         // The receipt is issued in the same commit, so a confirmed donation always has exactly one.
-        await receipts.StageIssueAsync(donation, method, cancellationToken);
+        var receipt = await receipts.StageIssueAsync(donation, method, cancellationToken);
+        if (receipt is not null)
+        {
+            // The donor record, consent from the form and the thank-you (if consented) are saved with it.
+            await donors.StageAsync(donation, receipt, cancellationToken);
+        }
+
         try
         {
             await db.SaveChangesAsync(cancellationToken);

@@ -86,6 +86,7 @@ public static class PublicDonationEndpoints
                 DonorEmailProtected = email,
                 DonorPhoneProtected = phone,
                 Language = donation.Language,
+                CommunicationConsent = donation.CommunicationConsent,
                 RecurringPlanId = planId,
                 CreatedAt = now,
                 ReceivedOn = today
