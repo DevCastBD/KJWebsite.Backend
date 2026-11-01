@@ -40,7 +40,8 @@ public sealed record DonationStatusView(
     string Amount,
     string Currency,
     bool Anonymous,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Gateway = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? Gateway = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string? ReceiptUrl = null);
 
 public sealed record CurrencyPresets(string Code, string[] Presets, string Min, string Max);
 

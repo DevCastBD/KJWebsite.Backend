@@ -267,3 +267,9 @@
 - 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations BRANCH @dadecc5: Feature/issue-63-offline-donations stacked on Feature/issue-61-stripe-paypal (user confirmed)
 - 2026-10-31T09:56Z [claude] 058-issue-63-offline-donations PHASE PLAN→CONSTRUCT @dadecc5: plan approved (user)
 - 2026-10-31T12:10Z [claude] 058-issue-63-offline-donations DONE @548ffbf: offline recording, maker-checker, proofs, in-kind; 635+46 tests green incl PG; committed locally, not pushed
+- 2026-10-31T13:11Z [claude] 059-issue-64-receipts CREATED @357517e: stacked on #63 branch
+- 2026-10-31T13:11Z [claude] 059-issue-64-receipts SIDE-EFFECT @357517e: assigned #64 to FHShubho (user asked)
+- 2026-10-31T13:11Z [claude] 059-issue-64-receipts DECISION @357517e: per-fiscal-year gapless series with hash chain; statements per donor/year with outbox (user)
+- 2026-10-31T13:11Z [claude] 059-issue-64-receipts BRANCH @357517e: Feature/issue-64-receipts stacked on Feature/issue-63-offline-donations (user confirmed)
+- 2026-10-31T13:11Z [claude] 059-issue-64-receipts PHASE PLAN→CONSTRUCT @357517e: plan approved (user)
+- 2026-10-31T13:20Z [claude] 059-issue-64-receipts DONE @b2cf221: receipts, chain, PDF, void/reissue, statements; 653+46 tests green incl PG concurrency; committed locally, not pushed

@@ -1,6 +1,7 @@
 using FinanceService.Data;
 using FinanceService.Data.Entities;
 using FinanceService.Payments;
+using FinanceService.Receipts;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Idempotency;
 using Microsoft.EntityFrameworkCore;
@@ -108,7 +109,7 @@ public static class PublicDonationEndpoints
         .WithTags("Donations")
         .AllowAnonymous();
 
-        app.MapGet($"{Route}/{{reference}}/status", async (HttpContext context, string reference, FinanceDbContext db) =>
+        app.MapGet($"{Route}/{{reference}}/status", async (HttpContext context, string reference, FinanceDbContext db, IOptions<PaymentOptions> payments) =>
         {
             context.Response.Headers.CacheControl = "no-store";
             if (!DonationReference.LooksValid(reference))
@@ -126,7 +127,8 @@ public static class PublicDonationEndpoints
                     d.IsAnonymous,
                     Latest = db.DonationEvents.Where(e => e.DonationId == d.Id).OrderByDescending(e => e.Id).Select(e => e.Status).FirstOrDefault(),
                     Reversed = db.Donations.Any(r => r.ReversesDonationId == d.Id),
-                    Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault()
+                    Gateway = db.PaymentAttempts.Where(a => a.DonationId == d.Id && a.Status == PaymentAttemptStatuses.Created).OrderByDescending(a => a.Id).Select(a => a.Gateway).FirstOrDefault(),
+                    HasReceipt = db.Receipts.Any(r => r.DonationId == d.Id && !db.ReceiptVoids.Any(v => v.ReceiptId == r.Id))
                 })
                 .FirstOrDefaultAsync();
             if (row is null)
@@ -136,11 +138,35 @@ public static class PublicDonationEndpoints
 
             // A reversed gift is no longer money we hold, so the donor's page shows it as cancelled.
             var status = row.Reversed ? DonationStatuses.Cancelled : row.Latest ?? DonationStatuses.Pending;
-            return Results.Ok(new DonationStatusView(row.Reference, status, Format(row.Amount), row.Currency, row.IsAnonymous, row.Gateway));
+            return Results.Ok(new DonationStatusView(row.Reference, status, Format(row.Amount), row.Currency, row.IsAnonymous, row.Gateway,
+                row.HasReceipt ? $"{payments.Value.PublicApiBaseUrl.TrimEnd('/')}{Route}/{row.Reference}/receipt.pdf" : null));
         })
         .WithName("GetDonationStatus")
         .WithSummary("The outcome of one donation, by its public reference")
         .WithDescription("Never cached. Returns the reference, status, designated amount, currency, the gateway used (when one was) and the anonymous flag, and nothing about the donor.")
+        .WithTags("Donations")
+        .AllowAnonymous();
+
+        app.MapGet($"{Route}/{{reference}}/receipt.pdf", async (HttpContext context, string reference, FinanceDbContext db, ReceiptService receipts) =>
+        {
+            context.Response.Headers.CacheControl = "private, no-store";
+            var receipt = DonationReference.LooksValid(reference)
+                ? await (from r in db.Receipts.AsNoTracking()
+                         join d in db.Donations.AsNoTracking() on r.DonationId equals d.Id
+                         where d.Reference == reference && d.Kind != DonationKinds.Reversal && !db.ReceiptVoids.Any(v => v.ReceiptId == r.Id)
+                         select r).FirstOrDefaultAsync()
+                : null;
+            if (receipt is null)
+            {
+                return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Receipt not found.");
+            }
+
+            context.Response.Headers.ContentDisposition = $"inline; filename=\"{receipt.Number}.pdf\"";
+            return Results.File(ReceiptPdf.Render((await receipts.DocumentForAsync(receipt, context.RequestAborted))!), "application/pdf");
+        })
+        .WithName("GetDonationReceiptPdf")
+        .WithSummary("The donor's receipt as a bilingual PDF")
+        .WithDescription("Available once the donation is confirmed, and gone (404) if it is reversed. The unguessable reference is the access key, as for the status page. Never cached.")
         .WithTags("Donations")
         .AllowAnonymous();
 

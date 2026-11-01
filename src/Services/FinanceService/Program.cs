@@ -4,6 +4,7 @@ using FinanceService.Donations;
 using FinanceService.Ledger;
 using FinanceService.Offline;
 using FinanceService.Payments;
+using FinanceService.Receipts;
 using FinanceService.Reconciliation;
 using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Idempotency;
@@ -60,6 +61,10 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<OfflineRecordEntity>()
     .Audit<OfflineDecisionEntity>()
     .Audit<OfflineProofEntity>()
+    .Audit<ReceiptEntity>(nameof(ReceiptEntity.DonorNameProtected), nameof(ReceiptEntity.DonorEmailProtected), nameof(ReceiptEntity.DonorKey))
+    .Audit<ReceiptVoidEntity>()
+    .Audit<ReceiptReissueEntity>()
+    .Audit<StatementSendEntity>()
     .Audit<PayoutEntity>()
     .Audit<PayoutLineEntity>()
     .Audit<RecurringPlanEntity>(nameof(RecurringPlanEntity.DonorNameProtected), nameof(RecurringPlanEntity.DonorEmailProtected), nameof(RecurringPlanEntity.DonorPhoneProtected), nameof(RecurringPlanEntity.Dedication)));
@@ -79,6 +84,9 @@ builder.Configuration.GetSection(LedgerOptions.SectionName).Get<LedgerOptions>()
 builder.Services.Configure<ProofOptions>(builder.Configuration.GetSection(ProofOptions.SectionName));
 builder.Services.AddSingleton<IProofStore, LocalDiskProofStore>();
 builder.Services.AddScoped<OfflineDonationService>();
+builder.Services.Configure<ReceiptOptions>(builder.Configuration.GetSection(ReceiptOptions.SectionName));
+builder.Services.AddSingleton<DonorKeyHasher>();
+builder.Services.AddScoped<ReceiptService>();
 builder.Services.AddScoped<LedgerService>();
 builder.Services.AddScoped<DonationConfirmation>();
 builder.Services.Configure<PaymentOptions>(builder.Configuration.GetSection(PaymentOptions.SectionName));
@@ -142,6 +150,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "FinanceSe
 app.MapPublicDonations();
 app.MapAdminDonations();
 app.MapOffline();
+app.MapReceipts();
 app.MapLedger();
 app.MapWebhooks();
 app.MapReconciliation();

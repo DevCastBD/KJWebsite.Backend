@@ -32,49 +32,71 @@ public static class DonationPostings
 /// sets a donation to confirmed. It is safe to call again for the same donation, however often and however concurrently: the second call finds the
 /// first one's work and changes nothing, so a webhook replayed ten times leaves one confirmed event and one posting.
 /// </summary>
-public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledger, TimeProvider clock)
+public sealed class DonationConfirmation(FinanceDbContext db, LedgerService ledger, FinanceService.Receipts.ReceiptService receipts, TimeProvider clock)
 {
     /// <summary>Success carries true when this call confirmed the donation, false when it already was.</summary>
     public async Task<Result<bool>> ConfirmAsync(
         string donationId, string method, string? note, DateOnly? postedOn = null, Action<FinanceDbContext>? alsoStage = null, CancellationToken cancellationToken = default)
     {
+        // Two confirmations racing for the same receipt number: the loser's whole commit fails, and it tries again with the next number (or finds the donation done).
+        const int attempts = 20;
+        for (var attempt = 1; ; attempt++)
+        {
+            var (result, retry) = await TryConfirmAsync(donationId, method, note, postedOn, alsoStage, cancellationToken);
+            if (!retry || attempt == attempts)
+            {
+                return retry ? Result.Failure<bool>("CONFLICT", "The confirmation could not be saved; please try again.") : result;
+            }
+
+            // A short, uneven pause so racing confirmations do not collide on the same number again in lockstep.
+            await Task.Delay(Random.Shared.Next(2, 25), cancellationToken);
+        }
+    }
+
+    private async Task<(Result<bool> Result, bool Retry)> TryConfirmAsync(
+        string donationId, string method, string? note, DateOnly? postedOn, Action<FinanceDbContext>? alsoStage, CancellationToken cancellationToken)
+    {
         var donation = await db.Donations.AsNoTracking().FirstOrDefaultAsync(d => d.Id == donationId, cancellationToken);
         if (donation is null)
         {
-            return Result.Failure<bool>("NOT_FOUND", "Donation not found.");
+            return (Result.Failure<bool>("NOT_FOUND", "Donation not found."), false);
         }
 
         if (donation.Kind == DonationKinds.Reversal || await db.Donations.AnyAsync(r => r.ReversesDonationId == donationId, cancellationToken))
         {
-            return Result.Failure<bool>("NOT_CONFIRMABLE", "A reversal, or a donation that has been reversed, cannot be confirmed.");
+            return (Result.Failure<bool>("NOT_CONFIRMABLE", "A reversal, or a donation that has been reversed, cannot be confirmed."), false);
         }
 
         var latest = await db.DonationEvents.Where(e => e.DonationId == donationId).OrderByDescending(e => e.Id).Select(e => e.Status).FirstOrDefaultAsync(cancellationToken);
         if (latest == DonationStatuses.Confirmed)
         {
-            return Result.Success(false);
+            return (Result.Success(false), false);
         }
 
         var staged = await ledger.StageAsync(DonationPostings.ForConfirmation(donation, method, postedOn ?? ledger.Today), actor: null, cancellationToken);
         if (!staged.IsSuccess)
         {
-            return Result.Failure<bool>(staged.Error!.Code, staged.Error.Message);
+            return (Result.Failure<bool>(staged.Error!.Code, staged.Error.Message), false);
         }
 
         db.DonationEvents.Add(new DonationEventEntity { DonationId = donationId, Status = DonationStatuses.Confirmed, Note = note, At = clock.GetUtcNow() });
 
         // Anything that must stand or fall with the confirmation (an approval record, say) is saved in the same commit.
         alsoStage?.Invoke(db);
+
+        // The receipt is issued in the same commit, so a confirmed donation always has exactly one.
+        await receipts.StageIssueAsync(donation, method, cancellationToken);
         try
         {
             await db.SaveChangesAsync(cancellationToken);
-            return Result.Success(true);
+            return (Result.Success(true), false);
         }
         catch (DbUpdateException)
         {
-            // A concurrent confirmation won the unique index on the donation's posting; its event is the one that counts.
+            // Either a concurrent confirmation of this donation won the posting's unique index (its event counts), or another donation took our receipt number (try again).
             db.ChangeTracker.Clear();
-            return Result.Success(false);
+            var nowConfirmed = await db.DonationEvents.Where(e => e.DonationId == donationId).OrderByDescending(e => e.Id).Select(e => e.Status).FirstOrDefaultAsync(cancellationToken) == DonationStatuses.Confirmed;
+            return nowConfirmed ? (Result.Success(false), false) : (Result.Success(false), true);
         }
     }
 
