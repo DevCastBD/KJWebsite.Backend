@@ -1,5 +1,7 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-11-09] docs/MASTER_PLAN.md: BE-102 to BE-109 (sponsorship) have no rows yet; openapi.v1.yaml has no sponsorship endpoints (found: 067-issue-210)
+- [2026-11-09] codebase-map.md: recorded at 166 tracked files, now 639; refresh it (found: 067-issue-210)
 - [2026-10-31] tests/Membership* — NotContain("82"/"017") assertions match timestamp digits, rare flakes (found: 055-issue-69-ledger)
 - [2026-10-31] finance/ledger — align seeded chart + fiscal year with auditor after #112; reopen + four-eyes in #72 (found: 055-issue-69-ledger)
 - [2026-10-31] finance/gateways — run SSLCommerz/bKash/Nagad adapters against live sandboxes once credentials exist (found: 054-issue-60-payment-gateways)

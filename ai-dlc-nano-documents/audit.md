@@ -314,3 +314,14 @@
 - 2026-11-01T14:00Z [claude] 066-issue-72-controls DONE @200c277: control requests (adjustment, reversal, refund, reopen), four-eyes, refund reconciliation, audit coverage; 913+46 tests green incl PG (one unrelated membership timestamp flake in repeated full runs); committed locally, not pushed
 - 2026-11-01T14:20Z [claude] run SIDE-EFFECT: posted status comments on issues #59,#60,#61,#62,#63,#64,#65,#66,#67,#68,#69,#70,#71,#72 (user asked); branches still unpushed, no PRs
 - 2026-11-01T14:40Z [claude] run SIDE-EFFECT: pushed 14 Feature/issue-* branches and opened stacked PRs #194-#207 (user asked); each PR bases on the previous branch, first on develop
+
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity CREATED @598597b: from issue #210; backend sponsorship work starts with Identity
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity SIDE-EFFECT @598597b: assigned tahmidsparrow, project status In progress (INTAKE claim)
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity DECISION @598597b: D7 one account for member and donor; Admin keys by one-time backfill (user confirmed)
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity DECISION @598597b: API enforces must-change (403 PASSWORD_CHANGE_REQUIRED); platform password policy (user confirmed)
+- 2026-11-09T00:00Z [agent] run SIDE-EFFECT @598597b: edited backend issues #208, #209, #210 so decisions are current; commented on #209 (user asked)
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity PAUSED @598597b: docs gaps are fixed first (user asked); resumes at plan drafting
+- 2026-11-09T00:00Z [agent] 068-sponsorship-plan-docs CREATED @598597b: plan rows, SPONSORSHIP.md and map refresh; plan awaiting approval
+- 2026-11-09T00:00Z [agent] 068-sponsorship-plan-docs BRANCH @598597b: docs/BE-102-sponsorship-plan off develop (user confirmed); issue #218 created and claimed
+- 2026-11-09T00:00Z [agent] 068-sponsorship-plan-docs PHASE PLAN→CONSTRUCT @598597b: plan approved
+- 2026-11-09T00:00Z [agent] 068-sponsorship-plan-docs PHASE CONSTRUCT→WRAP-UP @598597b: plan rows BE-102 to BE-110, docs/SPONSORSHIP.md, map and size line refreshed
