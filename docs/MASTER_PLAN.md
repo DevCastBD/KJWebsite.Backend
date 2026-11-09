@@ -151,6 +151,15 @@ Hashed passwords (Identity) · JWT + hashed rotating refresh · permission-based
 | BE-054 – BE-062 | #59, #60, #62, #61, #63, #64, #65, #66, #67 | Donation domain, BD gateways, webhooks, Stripe/PayPal, offline donations, receipts, donor CRM, campaigns, expenses |
 | BE-063 | #112 | D · Fiscal calendar and accounting standard |
 | BE-064 – BE-068 | #68 → #72 | Budgets, ledger, banking reconciliation, financial reports, financial controls |
+| BE-102 | #209 | D · Sponsorship decisions: record DECIDED and OPEN rows, added Identity rules, and unresolved launch policies. |
+| BE-103 | #210 | Identity donor role, keys, staff-set password: support shared member/donor accounts, permission backfill, enforced password change and non-enumerating disabled sign-in. |
+| BE-104 | #211 | Donor CRM profile and login: implement profile management, provisioning, account states, filters, paging and ETag concurrency. |
+| BE-105 | #212 | Donor self-service: resolve donors from tokens, enforce account state, serve permitted current and frozen student views, and exclude reversed gifts. |
+| BE-106 | #213 | Students, consent form, photos: implement bilingual stories, project references, append-only consent, private signed forms, photo lifecycle, donor preview and audit reads. |
+| BE-107 | #214 | Links, unlink types, frozen copy: enforce one active donor, support ended and mistaken removal, preserve audit evidence, and send consent-gated link notices. |
+| BE-108 | #215 | Student designation on gifts: validate active links on the received date, support filtering and reversals, and enforce student-name visibility. |
+| BE-109 | #216 | Privacy test suite: cover projections, consent, frozen copies, mistaken-link revocation, forms, roles, passwords, concurrency, designation dates, reversals and pagination. |
+| BE-110 | #218 | Sponsorship documentation: publish docs/SPONSORSHIP.md and align MASTER_PLAN.md with the decisions, contract and frontend dependencies. |
 
 ### P5 — Events, programmes and volunteer operations
 
@@ -189,6 +198,7 @@ Epics #115–#123 hold the per-phase checklists in the same order.
 | BE-006 `/content/bootstrap` (+ BE-009 persistence) | `apiContent` | renders committed snapshots |
 | CTA endpoint + CORS (+ BE-030 idempotency) | `apiCta` | delivers forms by `mailto`/Formspree |
 | BE-014 – BE-018 auth | `auth`, later `admin` | hides login and admin |
+| BE-102 – BE-109 sponsorship (epic #208, `docs/SPONSORSHIP.md`) | `sponsorship` | builds against MSW; students, donor links and the donor area stay hidden |
 | P2+ modules | the matching flags | builds against MSW; entry points hidden |
 
 Rules: agree the OpenAPI change first; deploy the endpoint before the frontend enables its flag in production; never require a frontend change to keep a published page rendering.
