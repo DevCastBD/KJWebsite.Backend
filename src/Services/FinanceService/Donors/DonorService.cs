@@ -65,7 +65,7 @@ public sealed class DonorMessenger(FinanceDbContext db, IDonorProtector protecto
 }
 
 /// <summary>Keeps the donor record in step with confirmed gifts, in the same commit as the confirmation.</summary>
-public sealed class DonorService(FinanceDbContext db, IDonorProtector protector, DonorMessenger messenger, TimeProvider clock)
+public sealed class DonorService(FinanceDbContext db, IDonorProtector protector, DonorMessenger messenger, FinanceService.Receipts.DonorKeyHasher keys, TimeProvider clock)
 {
     /// <summary>
     /// Creates or refreshes the donor for a confirmed gift. An anonymous gift, or one with no email to recognise the donor by, creates and touches nothing. Consent is only ever
@@ -87,6 +87,7 @@ public sealed class DonorService(FinanceDbContext db, IDonorProtector protector,
             {
                 Id = PublicDonationEndpoints.NewId("dnr"),
                 DonorKey = receipt.DonorKey,
+                EmailKey = keys.ForEmail(protector.Unprotect(donation.DonorEmailProtected)),
                 NameProtected = donation.DonorNameProtected,
                 EmailProtected = donation.DonorEmailProtected,
                 PhoneProtected = donation.DonorPhoneProtected,
@@ -102,6 +103,7 @@ public sealed class DonorService(FinanceDbContext db, IDonorProtector protector,
             donor.EmailProtected = donation.DonorEmailProtected;
             donor.PhoneProtected = donation.DonorPhoneProtected ?? donor.PhoneProtected;
             donor.Language = donation.Language;
+            donor.Version++;
             firstGift = !await db.Receipts.AnyAsync(r => r.DonorKey == receipt.DonorKey && !r.IsAnonymous && r.DonationId != donation.Id
                 && !db.ReceiptVoids.Any(v => v.ReceiptId == r.Id), cancellationToken);
         }

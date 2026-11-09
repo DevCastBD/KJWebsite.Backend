@@ -438,6 +438,16 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.Language).HasMaxLength(2).IsRequired();
             // One donor per person: two gifts confirmed together cannot both create the record.
             entity.HasIndex(x => x.DonorKey).IsUnique();
+            entity.Property(x => x.EmailKey).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.EmailKey).IsUnique();
+            entity.Property(x => x.Type).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Organisation).HasMaxLength(200);
+            entity.Property(x => x.Country).HasMaxLength(2);
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.AccountSubject).HasMaxLength(64);
+            entity.HasIndex(x => x.AccountSubject).IsUnique();
+            entity.Property(x => x.AccountStatus).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Version).IsConcurrencyToken();
         });
 
         modelBuilder.Entity<DonorConsentEntity>(entity =>

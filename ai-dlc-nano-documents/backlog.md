@@ -1,5 +1,9 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-11-09] finance/migration: DonorProfile migration SQL and its KJ_TEST_POSTGRES test never run against a database (found: 069-issue-211)
+- [2026-11-09] auth/email: a donor with a sign-in cannot change email; needs an Identity email-change endpoint (found: 069-issue-211)
+- [2026-11-09] finance/donors: list and write responses rebuild all donors from all receipts; revisit at scale (found: 069-issue-211)
+- [2026-11-09] finance/donors: linkedStudents and the has-active-links filter wait for #214 (found: 069-issue-211)
 - [2026-11-09] auth/postgres: DonorIdentity migration SQL and its KJ_TEST_POSTGRES test never run against a database (found: 067-issue-210)
 - [2026-11-09] auth/shared-account: staff cannot disable only the Donor role of a member+donor account; decide in #211 (found: 067-issue-210)
 - [2026-11-09] auth/dev-seed: disabled admin@site.org now answers 403 ACCOUNT_DISABLED with admin123 outside Development (found: 067-issue-210)

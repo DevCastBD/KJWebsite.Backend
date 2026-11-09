@@ -1,4 +1,4 @@
-<!-- phase: WRAP-UP | branch: Feature/issue-210-donor-identity | tasks: 9/9
+<!-- phase: DONE | branch: Feature/issue-210-donor-identity | tasks: 9/9
      base: fb3b8b0 | updated: 2026-11-09
      next: user approval to commit, push, open PR -->
 # Plan: BE-103 donor identity (#210)

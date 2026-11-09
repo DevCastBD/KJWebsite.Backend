@@ -23,11 +23,16 @@ public sealed class DonorView
 
     public DonorRow Row()
     {
+        if (Totals.Count == 0)
+        {
+            return new DonorRow(Entity.Id, Name, Email, "0.00", "BDT", 0, string.Empty, Segments, [], Entity.Type, Entity.Status, Entity.AccountStatus);
+        }
+
         // The frontend shows one figure: the currency this donor has given the most in (ties go to the first alphabetically).
         var main = Totals.OrderByDescending(t => (t.Cash + Money.Of(t.InKind.Amount, t.Cash.Currency)).Amount).ThenBy(t => t.Currency, StringComparer.Ordinal).First();
         return new DonorRow(Entity.Id, Name, Email, (main.Cash.Amount + main.InKind.Amount).ToString("0.00", CultureInfo.InvariantCulture), main.Currency, Gifts.Count,
             Gifts.Max(g => g.Fact.ReceivedOn).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Segments,
-            [.. Totals.Select(t => new DonorTotalView(t.Currency, t.Cash.ToDecimalString(), t.InKind.ToDecimalString()))]);
+            [.. Totals.Select(t => new DonorTotalView(t.Currency, t.Cash.ToDecimalString(), t.InKind.ToDecimalString()))], Entity.Type, Entity.Status, Entity.AccountStatus);
     }
 
     public IReadOnlyList<DonorGiftView> GiftViews() =>
@@ -52,12 +57,14 @@ public sealed class DonorData(FinanceDbContext db, IDonorProtector protector, Do
                            select new { r.DonorKey, r.ReceivedOn, r.Currency, r.Amount, r.IsInKind, d.RecurringPlanId, r.Number, DonationId = d.Id, d.Reference, r.Method, r.DesignationType, r.DesignationId, Offline = db.OfflineRecords.Any(o => o.DonationId == d.Id) })
             .ToListAsync(cancellationToken);
         var byKey = gifts.Where(g => g.ReceivedOn <= asOf).ToLookup(g => g.DonorKey);
+        var everGave = gifts.Select(g => g.DonorKey).ToHashSet(StringComparer.Ordinal);
 
         var views = new List<DonorView>();
         foreach (var donor in donors)
         {
             var mine = byKey[donor.DonorKey].Select(g => new DonorGift(new GiftFact(g.ReceivedOn, g.Currency, g.Amount, g.IsInKind, g.RecurringPlanId is not null), g.DonationId, g.Reference, g.Number, g.Method, g.DesignationType, g.DesignationId, g.Offline)).ToList();
-            if (mine.Count == 0)
+            // A donor with no gift at all (made by staff before a first gift) is listed; one whose gifts all fall after the date is not yet.
+            if (mine.Count == 0 && everGave.Contains(donor.DonorKey))
             {
                 continue;
             }
@@ -77,12 +84,21 @@ public sealed class DonorData(FinanceDbContext db, IDonorProtector protector, Do
         return views;
     }
 
-    public async Task<DonorDetail> DetailAsync(DonorView donor, CancellationToken cancellationToken)
+    /// <summary>One donor as the back office sees them, built from the books like the list. A donor with no gift yet gets an empty picture.</summary>
+    public async Task<DonorView> ViewOfAsync(DonorEntity donor, CancellationToken cancellationToken) =>
+        (await LoadAsync(Today, cancellationToken)).FirstOrDefault(v => v.Entity.Id == donor.Id)
+        ?? new DonorView { Entity = donor, Name = protector.Unprotect(donor.NameProtected), Email = protector.Unprotect(donor.EmailProtected), Gifts = [], Segments = [], Totals = [] };
+
+    public async Task<DonorDetail> DetailAsync(DonorView donor, DonorAccountState? live, CancellationToken cancellationToken)
     {
         var history = (await db.DonorConsents.AsNoTracking().Where(c => c.DonorId == donor.Entity.Id).ToListAsync(cancellationToken)).OrderBy(c => c.Id)
             .Select(c => new ConsentEventView(c.Purpose, c.Granted, c.Source, c.RecordedBy, c.At)).ToList();
         return new DonorDetail(donor.Row(), donor.Entity.PhoneProtected is null ? null : protector.Unprotect(donor.Entity.PhoneProtected),
-            donor.Gifts.Min(g => g.Fact.ReceivedOn).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), await DonorEndpoints.ConsentOf(db, donor.Entity.Id, messenger), history, donor.GiftViews());
+            donor.Gifts.Count == 0 ? string.Empty : donor.Gifts.Min(g => g.Fact.ReceivedOn).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            await DonorEndpoints.ConsentOf(db, donor.Entity.Id, messenger), history, donor.GiftViews(),
+            new DonorProfile(donor.Entity.Type, donor.Entity.Organisation, donor.Entity.AddressProtected is null ? null : protector.Unprotect(donor.Entity.AddressProtected), donor.Entity.Country,
+                donor.Entity.NotesProtected is null ? null : protector.Unprotect(donor.Entity.NotesProtected), donor.Entity.Language, donor.Entity.Status, donor.Entity.AccountStatus,
+                donor.Entity.AccountShared, live?.MustChangePassword, donor.Entity.CreatedAt));
     }
 
     /// <summary>Per donor and currency: valid receipts against the net donation income in the ledger for the same donations.</summary>

@@ -332,3 +332,13 @@
 - 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity PHASE PLAN→CONSTRUCT @fb3b8b0: plan approved
 - 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity REVISED @fb3b8b0: backfill moves to a SQL migration per the existing convention; marker claim dropped
 - 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity PHASE CONSTRUCT→WRAP-UP @fb3b8b0: 9/9 tasks, 919 integration plus 46 unit tests green, OpenAPI current, docs updated
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity SIDE-EFFECT @3e12107: pushed Feature/issue-210-donor-identity and opened the PR for #210 (user approved)
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity DONE @1fbf422: PR #220 merged by user
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm CREATED @1fbf422: from issue #211; builds on #210 Identity
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm SIDE-EFFECT @1fbf422: assigned tahmidsparrow, project status In progress (INTAKE claim)
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm DECISION @1fbf422: stable donor key plus current-email lookup hash; inactive shared account left alone; live account state; links with #214 (user confirmed)
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm PHASE CLARIFY→PLAN @1fbf422: plan drafted, awaiting approval and branch confirm
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm BRANCH @1fbf422: Feature/issue-211-donor-crm off develop (user confirmed)
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm PHASE PLAN→CONSTRUCT @1fbf422: plan approved
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm REVISED @1fbf422: email change refused with 409 EMAIL_HAS_ACCOUNT when a sign-in exists (Identity owns that email)
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm PHASE CONSTRUCT→WRAP-UP @1fbf422: 8/8 tasks, 948 integration plus 46 unit tests green, OpenAPI current, docs updated

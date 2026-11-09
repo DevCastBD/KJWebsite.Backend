@@ -15,7 +15,7 @@ namespace FinanceService.Donors;
 public sealed record DonorTotalView(string Currency, string Cash, string InKind);
 
 /// <summary>A donor as the back office lists them. `Total` and `Currency` give the main currency (the largest total) for the frontend; `Totals` has every currency.</summary>
-public sealed record DonorRow(string Id, string Name, string Email, string Total, string Currency, int Count, string LastGiftOn, IReadOnlyList<string> Segments, IReadOnlyList<DonorTotalView> Totals);
+public sealed record DonorRow(string Id, string Name, string Email, string Total, string Currency, int Count, string LastGiftOn, IReadOnlyList<string> Segments, IReadOnlyList<DonorTotalView> Totals, string Type, string Status, string AccountStatus);
 
 public sealed record ConsentState(bool Granted, string? Source, DateTimeOffset? At);
 
@@ -23,7 +23,10 @@ public sealed record DonorGiftView(string Id, string Reference, string Date, str
 
 public sealed record ConsentEventView(string Purpose, bool Granted, string Source, string? RecordedBy, DateTimeOffset At);
 
-public sealed record DonorDetail(DonorRow Donor, string? Phone, string FirstGiftOn, IReadOnlyDictionary<string, ConsentState> Consent, IReadOnlyList<ConsentEventView> ConsentHistory, IReadOnlyList<DonorGiftView> Gifts);
+/// <summary>The profile fields beyond what the list shows. `MustChangePassword` is read from Identity just now and is null when Identity could not answer or the donor has no account.</summary>
+public sealed record DonorProfile(string Type, string? Organisation, string? Address, string? Country, string? Notes, string Language, string Status, string AccountStatus, bool AccountShared, bool? MustChangePassword, DateTimeOffset CreatedAt);
+
+public sealed record DonorDetail(DonorRow Donor, string? Phone, string FirstGiftOn, IReadOnlyDictionary<string, ConsentState> Consent, IReadOnlyList<ConsentEventView> ConsentHistory, IReadOnlyList<DonorGiftView> Gifts, DonorProfile Profile);
 
 public sealed record ConsentRequest(string? Purpose, bool Granted, string? Source);
 
@@ -43,7 +46,7 @@ public static class DonorEndpoints
 
     public static void MapDonors(this IEndpointRouteBuilder app)
     {
-        app.MapGet(Route, async (HttpContext context, DonorData data, string? segment, string? asOf, string? q, int? limit, int? offset) =>
+        app.MapGet(Route, async (HttpContext context, DonorData data, string? segment, string? asOf, string? q, string? status, string? accountStatus, bool? hasAccount, int? limit, int? offset) =>
         {
             if (!TryScope(context, segment, asOf, data.Today, out var date, out var error))
             {
@@ -51,6 +54,14 @@ public static class DonorEndpoints
             }
 
             var donors = (await data.LoadAsync(date, context.RequestAborted)).Where(d => string.IsNullOrEmpty(segment) || d.Segments.Contains(segment));
+            if ((status is not null && !DonorStatuses.All.Contains(status)) || (accountStatus is not null && !AccountStatuses.All.Contains(accountStatus)))
+            {
+                return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid fields: status (active or inactive) or accountStatus (none, active or disabled).");
+            }
+
+            donors = donors.Where(d => (status is null || d.Entity.Status == status)
+                && (accountStatus is null || d.Entity.AccountStatus == accountStatus)
+                && (hasAccount is null || (d.Entity.AccountSubject is not null) == hasAccount));
             if (!string.IsNullOrWhiteSpace(q))
             {
                 donors = donors.Where(d => d.Name.Contains(q, StringComparison.OrdinalIgnoreCase) || d.Email.Contains(q, StringComparison.OrdinalIgnoreCase));
@@ -67,7 +78,7 @@ public static class DonorEndpoints
         .WithTags("Donors")
         .RequirePermission(Permissions.FinanceView);
 
-        app.MapGet($"{Route}/{{id}}", async (HttpContext context, string id, DonorData data, string? asOf) =>
+        app.MapGet($"{Route}/{{id}}", async (HttpContext context, string id, DonorData data, IAuthDonorClient auth, string? asOf) =>
         {
             if (!TryScope(context, null, asOf, data.Today, out var date, out var error))
             {
@@ -80,7 +91,9 @@ public static class DonorEndpoints
                 return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Donor not found.");
             }
 
-            return Results.Ok(await data.DetailAsync(donor, context.RequestAborted));
+            var live = donor.Entity.AccountSubject is null ? null : await auth.GetAsync(donor.Entity.AccountSubject, DonorProfileEndpoints.Bearer(context), context.RequestAborted);
+            context.Response.Headers.ETag = DonorProfileEndpoints.ETagOf(donor.Entity);
+            return Results.Ok(await data.DetailAsync(donor, live, context.RequestAborted));
         })
         .WithName("GetDonor")
         .WithSummary("One donor with contact, consent and its history, and every gift")
