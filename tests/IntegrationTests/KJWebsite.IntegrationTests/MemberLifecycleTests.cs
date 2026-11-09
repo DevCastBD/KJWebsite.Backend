@@ -184,7 +184,8 @@ public sealed class MemberLifecycleTests : IDisposable
 
         (await Status(_admin!, m.Id, "terminated", reason: Reason)).StatusCode.Should().Be(HttpStatusCode.OK);
 
-        (await TryLogin("login@example.org")).Should().Be(HttpStatusCode.Unauthorized);
+        // The right password on a switched-off account is told so (403 ACCOUNT_DISABLED); a wrong one stays a plain 401.
+        (await TryLogin("login@example.org")).Should().Be(HttpStatusCode.Forbidden);
         (await Get(m.Token, "/api/v1/auth/sessions", _authClient)).StatusCode.Should().Be(HttpStatusCode.Unauthorized, "the old session is gone too");
         (await Status(_admin!, m.Id, "active")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await TryLogin("login@example.org")).Should().Be(HttpStatusCode.OK);

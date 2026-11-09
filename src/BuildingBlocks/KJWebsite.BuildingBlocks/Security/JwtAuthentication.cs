@@ -17,6 +17,8 @@ public static class KjClaims
     public const string Role = "role";
     public const string Permission = "permissions";
     public const string SessionId = "sid";
+    /// <summary>Present, with the value <c>true</c>, while the holder must still replace the initial password staff chose.</summary>
+    public const string PasswordChangeRequired = "pwd_change";
 }
 
 /// <summary>

@@ -14,6 +14,12 @@ public sealed class AuthUserEntity : IdentityUser
     /// <summary>Set when the account was created by approving a membership application (its id): makes provisioning idempotent.</summary>
     public string? ProvisionedFor { get; set; }
 
+    /// <summary>
+    /// Set while the account still has the initial password staff chose for it (donors, #209 D6). The access token then carries
+    /// <c>pwd_change</c> and every endpoint except change-password, logout and `/auth/me` refuses it until the holder chooses their own.
+    /// </summary>
+    public bool MustChangePassword { get; set; }
+
     public MemberProfileEntity? Profile { get; set; }
 }
 

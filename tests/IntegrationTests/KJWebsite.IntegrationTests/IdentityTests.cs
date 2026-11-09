@@ -149,7 +149,8 @@ public sealed class IdentityTests : IDisposable
         using var productionClient = production.CreateClient();
         using var response = await productionClient.PostAsJsonAsync("/api/v1/auth/login", new { email = "admin@site.org", password = "admin123" });
 
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        // Switched off, and told so only because the password was right (#209): sign-in is refused either way.
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     public void Dispose()

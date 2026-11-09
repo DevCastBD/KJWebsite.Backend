@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace KJWebsite.BuildingBlocks.Security;
 
@@ -15,11 +16,20 @@ public static class PermissionAuthorization
         services.AddAuthorizationBuilder()
             .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAssertion(_ => false).Build());
 
+        services.AddSingleton<IAuthorizationHandler, PasswordChangeGateHandler>();
+        services.Replace(ServiceDescriptor.Singleton<IAuthorizationMiddlewareResultHandler, PasswordChangeResultHandler>());
+
         services.AddOptions<AuthorizationOptions>().Configure(options =>
         {
+            // Every policy except KjPolicies.AuthenticatedAllowingPasswordChange refuses a caller who must still change the initial password.
+            options.DefaultPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().AddRequirements(new PasswordChangeGateRequirement()).Build();
+            options.AddPolicy(KjPolicies.AuthenticatedAllowingPasswordChange, policy => policy.RequireAuthenticatedUser());
             foreach (var permission in Permissions.All)
             {
-                options.AddPolicy(permission, policy => policy.RequireAuthenticatedUser().RequireClaim(KjClaims.Permission, permission));
+                options.AddPolicy(permission, policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireClaim(KjClaims.Permission, permission)
+                    .AddRequirements(new PasswordChangeGateRequirement()));
             }
         });
         return services;

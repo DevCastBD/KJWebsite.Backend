@@ -102,12 +102,13 @@ public static class TestTokens
         return rsa.ExportSubjectPublicKeyInfoPem();
     }
 
-    public static string Issue(string[] permissions, string? signingPem = null, TimeSpan? lifetime = null, string subject = "usr_test")
+    public static string Issue(string[] permissions, string? signingPem = null, TimeSpan? lifetime = null, string subject = "usr_test", IEnumerable<System.Security.Claims.Claim>? extraClaims = null)
     {
         using var rsa = System.Security.Cryptography.RSA.Create();
         rsa.ImportFromPem(signingPem ?? TestJwtKeys.Primary);
         var claims = new List<System.Security.Claims.Claim> { new("sub", subject), new("sid", "ses_test") };
         claims.AddRange(permissions.Select(p => new System.Security.Claims.Claim("permissions", p)));
+        claims.AddRange(extraClaims ?? []);
         var now = DateTime.UtcNow;
         return new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler().CreateToken(new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor
         {

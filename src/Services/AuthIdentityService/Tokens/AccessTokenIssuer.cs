@@ -20,6 +20,11 @@ public sealed class AccessTokenIssuer(AuthSigningKey key, KjJwtSettings settings
             new(KjClaims.SessionId, sessionId),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
         };
+        if (user.MustChangePassword)
+        {
+            claims.Add(new Claim(KjClaims.PasswordChangeRequired, "true"));
+        }
+
         claims.AddRange(roles.Select(role => new Claim(KjClaims.Role, role)));
         claims.AddRange(permissions.Distinct(StringComparer.Ordinal).Select(permission => new Claim(KjClaims.Permission, permission)));
 
