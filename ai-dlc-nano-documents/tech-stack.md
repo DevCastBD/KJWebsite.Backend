@@ -4,7 +4,7 @@
 - Package manager: .NET CLI; root tool manifest includes `dotnet-ef` 10.0.12
 - Test: xUnit unit tests under `tests/UnitTests`; run `dotnet test KJWebsite.Backend.slnx`
 - Lint/format: root `.editorconfig`; verify with `dotnet format KJWebsite.Backend.slnx --verify-no-changes --no-restore`
-- Size tier: standard · 166 tracked files · recorded 2026-09-20
+- Size tier: standard · 639 tracked files (132 ai-dlc work items, 89 legacy snapshots) · recorded 2026-11-09
 - Code-intelligence MCP: none
 - Conventions:
   - Root `Directory.Build.props` owns the active solution's framework, nullable, warning, and analyzer settings; `Directory.Packages.props` owns package versions.

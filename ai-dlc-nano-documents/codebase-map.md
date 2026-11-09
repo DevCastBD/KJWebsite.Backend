@@ -1,11 +1,11 @@
 # Codebase Map
-<!-- verified: 2026-10-31 @ efa2bc6 · tier: standard · coverage: overview-only -->
+<!-- verified: 2026-11-09 @ 598597b · tier: standard · coverage: overview-only -->
 
 ## Do not read in full
 | File / path | Size | Why | Instead |
 |---|---:|---|---|
 | `legacy/**/*.sql` | 8–11 KB | legacy MySQL dumps: test data, but include password hashes | read `legacy/README.md` instead |
-| `docs/MASTER_PLAN.md` | 57 KB | 806-line planning document | read a section below with `sed -n` |
+| `docs/MASTER_PLAN.md` | 15 KB | 206-line plan; the plan wins over any issue | read a section below with `sed -n` |
 | `openapi.v1.yaml` | generated | generated aggregate API contract | regenerate with `dotnet run --project tools/OpenApiExporter` |
 
 ## Areas
@@ -23,6 +23,8 @@
   purpose: ASP.NET Core Identity accounts, RS256 JWT + hashed rotating refresh tokens (`Tokens/`), sessions, password reset; entry: `Program.cs`; migrations: `Migrations/`; docs: `docs/AUTH_TOKENS.md`
 - shared (`src/BuildingBlocks/**`)
   purpose: Result, paging, language resolution, RFC 9457/legacy-compatible errors, and endpoint-filter base
+- sponsorship (planned, epic #208; not built yet)
+  purpose: students, guardian consent, photos and donor-student links in a new Sponsorship module, plus a donor role in auth, donor profiles and logins in finance and read-only `/api/v1/donors/me`; decisions and API contract: `docs/SPONSORSHIP.md` (source of truth with issue #209); first step: #210 in `src/Services/AuthIdentityService/`
 - tests (`tests/UnitTests/**`, `tests/IntegrationTests/**`)
   purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests run against SQLite by default (no Docker); Postgres-specific tests (migration/collation, SQLite transfer) gate on `KJ_TEST_POSTGRES` via `[RequiresPostgresFact]`
 - contract and plans (`openapi.v1.yaml`, `PROJECT_CONTEXT.md`, `docs/**`)
@@ -35,7 +37,7 @@
   purpose: read-only 2019 ASP.NET Identity snapshots; mine domain fields/statuses only; never build or run; guide: `legacy/README.md`
 
 ## Entry points
-- `KJWebsite.Backend.slnx` — solution containing the four services and building blocks.
+- `KJWebsite.Backend.slnx`: solution containing the six services (gateway, auth, content, CTA, membership, finance) and building blocks.
 - `src/Services/*/Program.cs` — service startup, endpoints, OpenAPI/Scalar and health routes.
 
 ## Cross-cutting
@@ -47,8 +49,8 @@
 - Root `.editorconfig`, `Directory.Build.props`, and `Directory.Packages.props` govern the active solution; legacy snapshots are excluded.
 
 ## Long documents
-- `docs/MASTER_PLAN.md` (784 lines) — read with `sed -n`, never whole.
-  §1 Current state 44–97 · §4 Engineering standards 315–369 · §5 Phase plan 370–674 · §7 Security 691–713 · §8 Operations 714–730
+- `docs/MASTER_PLAN.md` (206 lines): read with `sed -n`.
+  §1 Where we are 17 · §2 Ground rules 34 · §3 Architecture 42 · §4 Security baseline 72 · §5 Execution order 76 (P4 donations and finance, incl. sponsorship BE-102 to BE-110, at 146) · §6 Frontend alignment 193 · §7 Risks 206
 
 ## Gotchas
 - Endpoints are deny-by-default: declare `.AllowAnonymous()` or `.RequirePermission(Permissions.X)` (BuildingBlocks `Security/`); a test audits every endpoint. Permissions/roles live in `KjRoles.Seed`.

@@ -1,11 +1,12 @@
 # AI-DLC Nano State
-- Active work item: none  (milestone 5 run complete: #59,#60,#69,#62,#61,#63,#64,#65,#66,#67,#68,#70,#71,#72 done)
-- Phase: —
-- Branch: Feature/issue-72-controls
-- Base SHA: 200c277
-- Next step: none queued; skipped decision issues #111, #112 and epic #119 remain
+- Active work item: work-items/068-sponsorship-plan-docs
+- Phase: WRAP-UP
+- Branch: docs/BE-102-sponsorship-plan
+- Base SHA: 598597b
+- Next step: user approval to commit, push and open the PR for #218; then resume 067 (#210) at plan drafting
 - Paused work items:
+  - work-items/067-issue-210-donor-identity (CLARIFY, four decisions recorded, base 598597b)
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)
-- Uncommitted code: no
-- Last updated: 2026-11-01 by claude
+- Uncommitted code: yes (docs)
+- Last updated: 2026-11-09T00:00Z by agent
