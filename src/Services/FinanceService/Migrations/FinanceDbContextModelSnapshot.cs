@@ -779,10 +779,34 @@ namespace FinanceService.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<bool>("AccountShared")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("AccountStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("AccountSubject")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AddressProtected")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DonorKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EmailKey")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
@@ -800,12 +824,39 @@ namespace FinanceService.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("NotesProtected")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Organisation")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("PhoneProtected")
                         .HasColumnType("text");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("AccountSubject")
+                        .IsUnique();
+
                     b.HasIndex("DonorKey")
+                        .IsUnique();
+
+                    b.HasIndex("EmailKey")
                         .IsUnique();
 
                     b.ToTable("donors", "finance");

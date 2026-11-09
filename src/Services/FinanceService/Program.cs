@@ -72,7 +72,7 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<ReceiptVoidEntity>()
     .Audit<ReceiptReissueEntity>()
     .Audit<StatementSendEntity>()
-    .Audit<DonorEntity>(nameof(DonorEntity.NameProtected), nameof(DonorEntity.EmailProtected), nameof(DonorEntity.PhoneProtected), nameof(DonorEntity.DonorKey))
+    .Audit<DonorEntity>(nameof(DonorEntity.NameProtected), nameof(DonorEntity.EmailProtected), nameof(DonorEntity.PhoneProtected), nameof(DonorEntity.AddressProtected), nameof(DonorEntity.NotesProtected), nameof(DonorEntity.DonorKey), nameof(DonorEntity.EmailKey))
     .Audit<DonorConsentEntity>()
     .Audit<DonorExportEntity>()
     .Audit<CampaignEntity>()
@@ -124,6 +124,12 @@ builder.Services.Configure<DonorOptions>(builder.Configuration.GetSection(DonorO
 builder.Services.AddScoped<DonorMessenger>();
 builder.Services.AddScoped<DonorService>();
 builder.Services.AddScoped<DonorData>();
+builder.Services.AddHttpClient(AuthDonorClient.ClientName, (services, client) =>
+{
+    client.BaseAddress = new Uri(services.GetRequiredService<IConfiguration>()["Services:Auth:Url"] ?? "http://localhost:7003/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<IAuthDonorClient, AuthDonorClient>();
 builder.Services.Configure<ExpenseOptions>(builder.Configuration.GetSection(ExpenseOptions.SectionName));
 builder.Services.AddScoped<ExpenseService>();
 builder.Services.Configure<BudgetOptions>(builder.Configuration.GetSection(BudgetOptions.SectionName));
@@ -204,6 +210,7 @@ app.MapAdminDonations();
 app.MapOffline();
 app.MapReceipts();
 app.MapDonors();
+app.MapDonorProfiles();
 app.MapCampaigns();
 app.MapExpenses();
 app.MapBudgets();

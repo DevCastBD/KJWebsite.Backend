@@ -288,6 +288,9 @@ public class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.Fina
 
     public CapturingLoggerProvider Logs { get; } = new();
 
+    /// <summary>Where Finance's calls to Identity go; set before the first client is created. Default: a real network call.</summary>
+    public HttpMessageHandler? AuthHandler { get; set; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
@@ -303,6 +306,7 @@ public class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.Fina
                 services.AddHttpClient(name).ConfigurePrimaryHttpMessageHandler(() => GatewayHandler ?? new HttpClientHandler());
             }
 
+            services.AddHttpClient("auth").ConfigurePrimaryHttpMessageHandler(() => AuthHandler ?? new HttpClientHandler());
             services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(Logs);
             ConfigureTestServices?.Invoke(services);
         });

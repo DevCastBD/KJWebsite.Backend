@@ -4,6 +4,7 @@ using System.Text.Json;
 using FinanceService.Data;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
@@ -24,7 +25,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(14);
+                db.Database.GetAppliedMigrations().Should().HaveCount(15);
             }
 
             await TestCampaigns.SeedAsync(factory.Services, "flood-relief", currency: "USD");
@@ -433,6 +434,48 @@ public sealed class FinancePostgresTests
             {
                 Directory.Delete(proofs, recursive: true);
             }
+        }
+    }
+
+    [RequiresPostgresFact]
+    public async Task DonorProfileMigrationKeepsExistingDonorsAndGivesThemALookupKeyAndSensibleDefaults()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("finance_donor_profile_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            var options = new DbContextOptionsBuilder<FinanceDbContext>()
+                .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "finance"))
+                .Options;
+            await using var db = new FinanceDbContext(options);
+            var migrator = db.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>();
+            await migrator.MigrateAsync("20261101065111_Controls");
+            await Exec(connectionString, """
+                INSERT INTO finance.donors ("Id","DonorKey","NameProtected","EmailProtected","Language","CreatedAt")
+                VALUES ('dnr_old1','key-one','n1','e1','en',now()), ('dnr_old2','key-two','n2','e2','bn',now());
+                """);
+
+            await migrator.MigrateAsync();
+
+            await using var connection = new NpgsqlConnection(connectionString);
+            await connection.OpenAsync();
+            await using var command = new NpgsqlCommand("""
+                SELECT count(*) FROM finance.donors
+                WHERE "EmailKey" = "DonorKey" AND "Status" = 'active' AND "Type" = 'individual' AND "AccountStatus" = 'none' AND "Version" = 1 AND "AccountShared" = false AND "AccountSubject" IS NULL;
+                """, connection);
+            Convert.ToInt64(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture).Should().Be(2);
+
+            // The unique index on the lookup key is in place: a second donor on an existing email key is refused.
+            await using var duplicate = new NpgsqlCommand("""
+                INSERT INTO finance.donors ("Id","DonorKey","EmailKey","NameProtected","EmailProtected","Language","CreatedAt","Status","Type","AccountStatus","Version","AccountShared")
+                VALUES ('dnr_new','key-three','key-one','n3','e3','en',now(),'active','individual','none',1,false);
+                """, connection);
+            var failure = await duplicate.Invoking(c => c.ExecuteNonQueryAsync()).Should().ThrowAsync<PostgresException>();
+            failure.Which.SqlState.Should().Be("23505");
+        }
+        finally
+        {
+            await TestPostgres.DropDatabaseAsync(databaseName);
         }
     }
 

@@ -52,6 +52,31 @@ public sealed class DonorKeyHasher
     }
 
     public string Hash(string value) => Convert.ToHexString(HMACSHA256.HashData(_key, Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+
+    /// <summary>The lookup hash of an email address: matches a gift to the donor whose CURRENT email it is.</summary>
+    public string ForEmail(string email) => Hash($"email:{email.Trim().ToLowerInvariant()}");
+
+    /// <summary>
+    /// The donor key a new receipt carries. A donor whose email was corrected keeps the key they were created with, so a gift from their current
+    /// address joins them. A gift from an address nobody holds starts a donor on the hash of that address, unless an earlier donor already holds that
+    /// key (their email changed since), in which case it gets a key of its own. A gift with no email stands alone.
+    /// </summary>
+    public async Task<string> ResolveAsync(FinanceService.Data.FinanceDbContext db, string email, string donationId, CancellationToken cancellationToken)
+    {
+        if (email.Length == 0)
+        {
+            return Hash($"donation:{donationId}");
+        }
+
+        var emailKey = ForEmail(email);
+        var stable = await db.Donors.AsNoTracking().Where(d => d.EmailKey == emailKey).Select(d => d.DonorKey).FirstOrDefaultAsync(cancellationToken);
+        if (stable is not null)
+        {
+            return stable;
+        }
+
+        return await db.Donors.AsNoTracking().AnyAsync(d => d.DonorKey == emailKey, cancellationToken) ? Hash($"donor:{donationId}") : emailKey;
+    }
 }
 
 public sealed record ChainCheck(string Series, int Count, bool Valid, IReadOnlyList<string> Problems);
@@ -93,7 +118,7 @@ public sealed class ReceiptService(FinanceDbContext db, IDonorProtector protecto
             DonorNameProtected = donation.DonorNameProtected,
             DonorEmailProtected = donation.DonorEmailProtected,
             // A donor with no email cannot be recognised across gifts, so each such gift stands alone.
-            DonorKey = keys.Hash(email.Length == 0 ? $"donation:{donation.Id}" : $"email:{email.ToLowerInvariant()}"),
+            DonorKey = await keys.ResolveAsync(db, email, donation.Id, cancellationToken),
             Amount = donation.Amount,
             FeeAmount = donation.FeeAmount,
             Currency = donation.Currency,

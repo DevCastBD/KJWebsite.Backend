@@ -128,6 +128,30 @@ public static class DonorProvisioningEndpoints
         .WithTags(AdminTag)
         .RequirePermission(Permissions.FinanceDonorProvision);
 
+        // What the donor detail in Finance shows: read now, so it cannot go stale when the donor changes their own password.
+        app.MapGet("/api/v1/admin/auth/donors/{userId}", async (HttpContext context, string userId, UserManager<AuthUserEntity> users) =>
+        {
+            var user = await users.FindByIdAsync(userId);
+            if (user is null || !await users.IsInRoleAsync(user, KjRoles.Donor))
+            {
+                return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Donor account not found.");
+            }
+
+            return Results.Ok(new
+            {
+                userId = user.Id,
+                status = user.Status,
+                mustChangePassword = user.MustChangePassword,
+                roles = await users.GetRolesAsync(user),
+                shared = !user.IsDonorProvisioned()
+            });
+        })
+        .WithName("GetDonorAccount")
+        .WithSummary("The state of a donor's sign-in account")
+        .WithDescription("Status, whether the holder must still choose a new password, the roles, and whether the account is shared with a member. 404 for an account without the Donor role.")
+        .WithTags(AdminTag)
+        .RequirePermission(Permissions.FinanceView);
+
         // For a donor who lost access: staff choose a new initial password, which must be changed at the next sign-in.
         app.MapPut("/api/v1/admin/auth/donors/{userId}/password", async (HttpContext context, string userId, DonorPasswordRequest payload, UserManager<AuthUserEntity> users, RefreshTokenService sessions) =>
         {
