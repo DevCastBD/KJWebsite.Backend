@@ -325,3 +325,10 @@
 - 2026-11-09T00:00Z [agent] 068-sponsorship-plan-docs BRANCH @598597b: docs/BE-102-sponsorship-plan off develop (user confirmed); issue #218 created and claimed
 - 2026-11-09T00:00Z [agent] 068-sponsorship-plan-docs PHASE PLAN→CONSTRUCT @598597b: plan approved
 - 2026-11-09T00:00Z [agent] 068-sponsorship-plan-docs PHASE CONSTRUCT→WRAP-UP @598597b: plan rows BE-102 to BE-110, docs/SPONSORSHIP.md, map and size line refreshed
+- 2026-11-09T00:00Z [agent] 068-sponsorship-plan-docs DONE @fb3b8b0: PR #219 merged by user
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity RESUMED @fb3b8b0: active again at CLARIFY, plan next
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity PHASE CLARIFY→PLAN @fb3b8b0: plan drafted, awaiting approval and branch confirm
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity BRANCH @fb3b8b0: Feature/issue-210-donor-identity off develop (user confirmed)
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity PHASE PLAN→CONSTRUCT @fb3b8b0: plan approved
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity REVISED @fb3b8b0: backfill moves to a SQL migration per the existing convention; marker claim dropped
+- 2026-11-09T00:00Z [agent] 067-issue-210-donor-identity PHASE CONSTRUCT→WRAP-UP @fb3b8b0: 9/9 tasks, 919 integration plus 46 unit tests green, OpenAPI current, docs updated

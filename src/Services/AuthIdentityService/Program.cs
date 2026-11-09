@@ -196,11 +196,20 @@ app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest paylo
 {
     var email = payload.Email?.Trim() ?? string.Empty;
     var user = string.IsNullOrEmpty(email) ? null : await users.FindByEmailAsync(email);
-    if (user is null || user.Status != "active")
+    if (user is null)
     {
         // Spend the same hashing time as a real check so response timing does not reveal which emails exist.
         users.PasswordHasher.VerifyHashedPassword(new AuthUserEntity(), TimingDummyHash.Value, payload.Password ?? string.Empty);
         return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid credentials.");
+    }
+
+    if (user.Status != "active")
+    {
+        // A switched-off account is told so only after the right password, so nobody can use this to find which emails have accounts.
+        // A wrong guess gets the generic answer, and neither counts toward a lockout nor shows the state.
+        return await users.CheckPasswordAsync(user, payload.Password ?? string.Empty)
+            ? ApiError.Create(context, StatusCodes.Status403Forbidden, "ACCOUNT_DISABLED", "This account has been switched off.")
+            : ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Invalid credentials.");
     }
 
     if (await users.IsLockedOutAsync(user))
@@ -365,6 +374,8 @@ app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db
         id = user.Id,
         email = user.Email,
         role = await RoleOf(users, user),
+        roles = await users.GetRolesAsync(user),
+        mustChangePassword = user.MustChangePassword,
         profile = new
         {
             profile.FirstName,
@@ -393,7 +404,7 @@ app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db
 .WithSummary("Get the authenticated user's profile")
 .WithDescription("Returns the full profile of the currently authenticated user. Requires `Authorization: Bearer <access_token>` obtained from the login endpoint.")
 .WithTags("Auth")
-.RequireAuthorization();
+.RequireAuthorization(KjPolicies.AuthenticatedAllowingPasswordChange);
 
 app.MapGet("/.well-known/jwks.json", (AuthSigningKey signingKey) => Results.Json(signingKey.ToJwks()))
     .WithName("Jwks")
@@ -445,7 +456,72 @@ app.MapPost("/api/v1/auth/logout-all", async (ClaimsPrincipal principal, Refresh
 .WithSummary("End every session of the signed-in user")
 .WithDescription("Revokes all refresh tokens for the user, on every device. Returns 204.")
 .WithTags("Auth")
-.RequireAuthorization();
+.RequireAuthorization(KjPolicies.AuthenticatedAllowingPasswordChange);
+
+app.MapPost("/api/v1/auth/change-password", async (HttpContext context, ClaimsPrincipal principal, ChangePasswordRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager, RefreshTokenService sessions, AccessTokenIssuer issuer) =>
+{
+    var invalid = new List<string>();
+    if (string.IsNullOrEmpty(payload.CurrentPassword))
+    {
+        invalid.Add("currentPassword");
+    }
+
+    if (string.IsNullOrEmpty(payload.NewPassword))
+    {
+        invalid.Add("newPassword");
+    }
+
+    if (invalid.Count > 0)
+    {
+        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Invalid fields: {string.Join(", ", invalid)}.");
+    }
+
+    var user = await users.FindByIdAsync(principal.FindFirstValue(KjClaims.Subject) ?? string.Empty);
+    if (user is null || user.Status != "active")
+    {
+        return ApiError.Create(context, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Authentication is required.");
+    }
+
+    // A stolen access token must not become a way to guess the password: wrong guesses count toward the same lockout as sign-in.
+    if (await users.IsLockedOutAsync(user))
+    {
+        return ApiError.Create(context, StatusCodes.Status423Locked, "ACCOUNT_LOCKED", "Too many failed attempts. Try again later.");
+    }
+
+    if (!await users.CheckPasswordAsync(user, payload.CurrentPassword!))
+    {
+        await users.AccessFailedAsync(user);
+        return await users.IsLockedOutAsync(user)
+            ? ApiError.Create(context, StatusCodes.Status423Locked, "ACCOUNT_LOCKED", "Too many failed attempts. Try again later.")
+            : ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid fields: currentPassword.");
+    }
+
+    if (string.Equals(payload.CurrentPassword, payload.NewPassword, StringComparison.Ordinal))
+    {
+        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid fields: newPassword. Choose a password different from the current one.");
+    }
+
+    var changed = await users.ChangePasswordAsync(user, payload.CurrentPassword!, payload.NewPassword!);
+    if (!changed.Succeeded)
+    {
+        return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Invalid fields: newPassword. {string.Join(" ", changed.Errors.Select(e => e.Description))}");
+    }
+
+    await users.ResetAccessFailedCountAsync(user);
+    user.MustChangePassword = false;
+    await users.UpdateAsync(user);
+
+    // Every earlier session ends (a copy of the old password may be out there) and this one continues on a fresh token pair, which no longer carries the flag.
+    await sessions.RevokeAllAsync(user.Id);
+    var (refresh, row) = sessions.StartSession(user.Id, context.Request.Headers.UserAgent.ToString());
+    await db.SaveChangesAsync();
+    return await TokenResponse(users, roleManager, issuer, user, row.FamilyId, refresh);
+})
+.WithName("ChangePassword")
+.WithSummary("Change the signed-in user's password")
+.WithDescription("Needs the current password. Clears the must-change flag, ends every session and returns a fresh token pair. Allowed while the flag is set: it is how the flag is cleared. Wrong current passwords count toward the sign-in lockout (423).")
+.WithTags("Auth")
+.RequireAuthorization(KjPolicies.AuthenticatedAllowingPasswordChange);
 
 static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager, AccessTokenIssuer issuer, AuthUserEntity user, string sessionId, string refreshToken)
 {
@@ -466,7 +542,8 @@ static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, Role
         refresh_token = refreshToken,
         expires_in = 900,
         token_type = "Bearer",
-        user = new { id = user.Id, email = user.Email, role = roles.FirstOrDefault() ?? "Member" }
+        mustChangePassword = user.MustChangePassword,
+        user = new { id = user.Id, email = user.Email, role = roles.FirstOrDefault() ?? "Member", roles, mustChangePassword = user.MustChangePassword }
     });
 }
 
@@ -475,6 +552,7 @@ static async Task<string> RoleOf(UserManager<AuthUserEntity> users, AuthUserEnti
 
 app.MapAdminAuth();
 app.MapMemberProvisioning();
+app.MapDonorProvisioning();
 app.MapMemberSelf();
 app.MapAuditLog<AuthDbContext>("/api/v1/admin/auth/audit", "Auth");
 

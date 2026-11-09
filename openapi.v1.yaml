@@ -5701,6 +5701,22 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/auth/change-password:
+    post:
+      tags:
+        - "Auth"
+      summary: "Change the signed-in user\u0027s password"
+      description: "Needs the current password. Clears the must-change flag, ends every session and returns a fresh token pair. Allowed while the flag is set: it is how the flag is cleared. Wrong current passwords count toward the sign-in lockout (423)."
+      operationId: "ChangePassword"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/auth/permissions:
     get:
       tags:
@@ -5897,6 +5913,68 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/MemberAccountStatusRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/auth/donors:
+    post:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Create the sign-in account for a donor"
+      description: "Creates an email-confirmed Donor account with the initial password staff choose (the platform password rules apply) and the must-change flag set. Never returns the password. Idempotent per \u0060donorId\u0060. When the email already belongs to a member account the Donor role is added to it and nothing else changes; any other existing account gives 409 EMAIL_TAKEN."
+      operationId: "ProvisionDonor"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProvisionDonorRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/auth/donors/{userId}/password":
+    put:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Set a new initial password for a donor"
+      description: "Sets the must-change flag again, clears a lockout and ends every session. Only accounts made for a donor: an account shared with a member returns 409 ACCOUNT_SHARED."
+      operationId: "SetDonorPassword"
+      parameters:
+        -
+          name: "userId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DonorPasswordRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/auth/donors/{userId}/status":
+    put:
+      tags:
+        - "Admin \u2014 Roles and users"
+      summary: "Disable or re-enable a donor\u0027s login"
+      description: "Disabling blocks sign-in and refresh at once and ends every session. Only accounts made for a donor: an account shared with a member returns 409 ACCOUNT_SHARED, because membership staff own that decision."
+      operationId: "SetDonorAccountStatus"
+      parameters:
+        -
+          name: "userId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DonorAccountStatusRequest"
         required: true
       responses:
         "200":
@@ -7573,6 +7651,20 @@ components:
           type:
             - "null"
             - "string"
+    ChangePasswordRequest:
+      required:
+        - "currentPassword"
+        - "newPassword"
+      type: "object"
+      properties:
+        currentPassword:
+          type:
+            - "null"
+            - "string"
+        newPassword:
+          type:
+            - "null"
+            - "string"
     ConfirmEmailRequest:
       required:
         - "userId"
@@ -7599,6 +7691,24 @@ components:
             - "array"
           items:
             type: "string"
+    DonorAccountStatusRequest:
+      required:
+        - "status"
+      type: "object"
+      properties:
+        status:
+          type:
+            - "null"
+            - "string"
+    DonorPasswordRequest:
+      required:
+        - "password"
+      type: "object"
+      properties:
+        password:
+          type:
+            - "null"
+            - "string"
     ForgotPasswordRequest:
       required:
         - "email"
@@ -7732,6 +7842,25 @@ components:
       type: "object"
       properties:
         status:
+          type:
+            - "null"
+            - "string"
+    ProvisionDonorRequest:
+      required:
+        - "donorId"
+        - "email"
+        - "password"
+      type: "object"
+      properties:
+        donorId:
+          type:
+            - "null"
+            - "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        password:
           type:
             - "null"
             - "string"

@@ -120,7 +120,7 @@ public static class MemberProvisioningEndpoints
         app.MapPost("/api/v1/admin/auth/members/{userId}/erase", async (HttpContext context, string userId, AuthDbContext db, UserManager<AuthUserEntity> users, AuthIdentityService.Tokens.RefreshTokenService sessions) =>
         {
             var user = await db.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.Id == userId);
-            if (user is null || user.ProvisionedFor is null)
+            if (user is null || user.ProvisionedFor is null || user.IsDonorProvisioned())
             {
                 return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Member account not found.");
             }
@@ -173,7 +173,7 @@ public static class MemberProvisioningEndpoints
             }
 
             var user = await users.FindByIdAsync(userId);
-            if (user is null || user.ProvisionedFor is null)
+            if (user is null || user.ProvisionedFor is null || user.IsDonorProvisioned())
             {
                 // Only accounts made by approving an application can be switched here: staff accounts are managed through roles and users.
                 return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Member account not found.");

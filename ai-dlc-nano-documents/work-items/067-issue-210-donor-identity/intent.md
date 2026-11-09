@@ -14,3 +14,6 @@
 ## Out of scope
 - Finance side of provisioning (#211), donor self-service (#212), students (#213), links (#214).
 ## Follow-ups
+- Shared member and donor account: the donor password and status endpoints refuse it (409 ACCOUNT_SHARED); no way yet to switch off only the donor role
+- Disabled dev seed account with its known password now answers 403 ACCOUNT_DISABLED in production (was 401); consider a generic answer for it
+- DonorIdentity migration and its gated test were not run (no local Postgres)

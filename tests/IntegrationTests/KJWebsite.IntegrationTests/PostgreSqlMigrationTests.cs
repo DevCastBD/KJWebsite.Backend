@@ -22,7 +22,7 @@ public sealed class PostgreSqlMigrationTests
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
-        db.Database.GetAppliedMigrations().Should().HaveCount(7).And.Contain(m => m.Contains("AddAuditLog"));
+        db.Database.GetAppliedMigrations().Should().HaveCount(8).And.Contain(m => m.Contains("AddAuditLog")).And.Contain(m => m.Contains("DonorIdentity"));
         db.Database.GetPendingMigrations().Should().BeEmpty();
         (await TableExists(connectionString, "auth", "users")).Should().BeTrue();
         (await TableExists(connectionString, "auth", "member_profiles")).Should().BeTrue();
@@ -61,6 +61,43 @@ public sealed class PostgreSqlMigrationTests
             (await Scalar(connectionString, "SELECT count(*) FROM auth.role_claims rc JOIN auth.roles r ON r.\"Id\"=rc.\"RoleId\" WHERE r.\"Name\"='SuperAdmin'")).Should().Be(15);
             (await Scalar(connectionString, "SELECT count(*) FROM auth.role_claims rc JOIN auth.roles r ON r.\"Id\"=rc.\"RoleId\" WHERE r.\"Name\"='Admin' AND rc.\"ClaimValue\"='roles.manage'")).Should().Be(0);
             (await Scalar(connectionString, "SELECT count(*) FROM auth.user_roles ur JOIN auth.roles r ON r.\"Id\"=ur.\"RoleId\" WHERE (ur.\"UserId\"='usr_a' AND r.\"Name\"='Admin') OR (ur.\"UserId\"='usr_b' AND r.\"Name\"='Member')")).Should().Be(2);
+        }
+        finally
+        {
+            await TestPostgres.DropDatabaseAsync(databaseName);
+        }
+    }
+
+    [RequiresPostgresFact]
+    public async Task DonorIdentityMigrationAddsTheFlagAndGivesAnExistingAdminTheFourSponsorshipKeysOnce()
+    {
+        var databaseName = await TestPostgres.CreateUniqueDatabaseAsync("auth_donor_identity_test");
+        var connectionString = TestPostgres.ConnectionStringFor(databaseName);
+        try
+        {
+            var options = new DbContextOptionsBuilder<AuthDbContext>()
+                .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "auth"))
+                .Options;
+            await using var db = new AuthDbContext(options);
+            var migrator = db.GetService<IMigrator>();
+            await migrator.MigrateAsync("20261030211341_AuditActorRedaction");
+            const string adminClaim = "SELECT count(*) FROM auth.role_claims rc JOIN auth.roles r ON r.\"Id\"=rc.\"RoleId\" WHERE r.\"Name\"='Admin' AND rc.\"ClaimType\"='permissions' AND rc.\"ClaimValue\"=";
+            (await Scalar(connectionString, adminClaim + "'sponsorship.view'")).Should().Be(0);
+
+            await migrator.MigrateAsync();
+
+            foreach (var key in new[] { "finance.donor.provision", "sponsorship.view", "sponsorship.student.manage", "sponsorship.link.manage" })
+            {
+                (await Scalar(connectionString, adminClaim + $"'{key}'")).Should().Be(1, key);
+            }
+
+            (await Scalar(connectionString, adminClaim + "'sponsorship.link.void'")).Should().Be(0, "only SuperAdmin may void a link");
+            (await Scalar(connectionString, "SELECT count(*) FROM information_schema.columns WHERE table_schema='auth' AND table_name='users' AND column_name='MustChangePassword' AND is_nullable='NO'")).Should().Be(1);
+
+            // The migration ran once: a key an administrator removes afterwards is not given back by a later run.
+            await Execute(connectionString, "DELETE FROM auth.role_claims WHERE \"ClaimValue\"='sponsorship.view' AND \"RoleId\" IN (SELECT \"Id\" FROM auth.roles WHERE \"Name\"='Admin')");
+            await migrator.MigrateAsync();
+            (await Scalar(connectionString, adminClaim + "'sponsorship.view'")).Should().Be(0);
         }
         finally
         {

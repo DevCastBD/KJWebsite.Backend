@@ -39,18 +39,19 @@ Issues #210 to #216 hold the acceptance criteria.
 
 ### Identity
 
-- `POST /api/v1/admin/auth/donors`, permission `finance.donor.provision`: provision a donor login with a write-only initial password and `mustChangePassword` for a new account; return `400 VALIDATION_ERROR` for invalid input; publish the success status and exact payload.
-- `POST /api/v1/admin/auth/donors`, permission `finance.donor.provision`: when email belongs to a member, add the donor role to that account, preserving its password and sessions and leaving the must-change flag unset.
-- `PUT /api/v1/admin/auth/donors/{userId}/password`, permission `finance.donor.provision`: staff set a new initial password for a donor who has lost access; it sets `mustChangePassword` again and revokes every refresh token.
-- `PUT /api/v1/admin/auth/donors/{userId}/status`, permission `finance.donor.provision`: disable or re-enable the account; disabling revokes every refresh token.
-- `POST /api/v1/auth/change-password`, any signed-in account: accept current and new passwords, enforce existing policy and a different new password, then clear `mustChangePassword`; document success and failure statuses.
-- The `POST /api/v1/auth/login` response and `GET /api/v1/auth/me`: report `mustChangePassword` and roles `member` and `donor`; profiles do not report roles.
-- While `mustChangePassword` is set, allow only change-password, logout and `/auth/me`; every other authenticated API operation returns `403 PASSWORD_CHANGE_REQUIRED`.
-- Sign-in returns `403 ACCOUNT_DISABLED` only after correct credentials; wrong email or password receives the same generic authentication failure.
-- Apply the existing minimum 10-character password policy, rate limits and lockout of 5 failures for 15 minutes; never return, log or audit passwords.
-- Publish account-status and token-revocation behavior; enforce disabled/inactive access checks on every donor request with `403`.
-- Publish the five permission keys and D9 mapping, including the widened `finance.donor.manage` scope; donor role membership must not cause `403` on shared portal calls.
-- Backfill the four non-void sponsorship permissions into existing Admin roles once, recording completion; keep `sponsorship.link.void` exclusive to SuperAdmin.
+Built in BE-103 (#210). Error bodies carry the code at `error.code`.
+
+- `POST /api/v1/admin/auth/donors`, permission `finance.donor.provision`. Body `{ donorId, email, password }`. Creates an email-confirmed `Donor` account with the staff-chosen initial password and `mustChangePassword` set: `201 { userId, created: true, linkedToMember: false, mustChangePassword: true }`. The password is never returned. Idempotent per `donorId`: a repeat returns `200` with the same `userId` and does not touch the password. `400 VALIDATION_ERROR` for a missing donor id, a bad email, or a password that fails the policy.
+- The same endpoint when the email belongs to a `Member` account: the `Donor` role is added, and the password, sessions and flag are untouched: `200 { created: false, linkedToMember: true }`. Any other existing account returns `409 EMAIL_TAKEN`.
+- `PUT /api/v1/admin/auth/donors/{userId}/password`, permission `finance.donor.provision`. Body `{ password }`. Sets a new initial password for a donor who lost access, sets `mustChangePassword` again, clears a lockout and ends every session: `200 { userId, mustChangePassword: true }`. `400 VALIDATION_ERROR`, `404 NOT_FOUND`.
+- `PUT /api/v1/admin/auth/donors/{userId}/status`, permission `finance.donor.provision`. Body `{ status: "active" | "disabled" }`. Disabling ends every session: `200 { userId, status }`. `400 VALIDATION_ERROR`, `404 NOT_FOUND`.
+- Both `PUT` endpoints refuse an account that is not donor-only (a member who is also a donor, or any other account) with `409 ACCOUNT_SHARED`: membership staff own that decision. The member status and erase endpoints skip donor-created accounts (`404`).
+- `POST /api/v1/auth/change-password`, any signed-in account, allowed while `mustChangePassword` is set. Body `{ currentPassword, newPassword }`. The new password must differ and meet the policy. Success clears the flag, ends every session and returns the same body as sign-in (a fresh token pair without the `pwd_change` claim). `400 VALIDATION_ERROR` (field named in the message), `401`, `423 ACCOUNT_LOCKED`: wrong current passwords count toward the sign-in lockout.
+- The `POST /api/v1/auth/login` response and `GET /api/v1/auth/me` report `mustChangePassword` and `roles` (a list; the single `role` field stays). Profiles do not report roles.
+- While `mustChangePassword` is set the access token carries `pwd_change: true`, and every endpoint of every service except change-password, `POST /api/v1/auth/logout-all` and `GET /api/v1/auth/me` returns `403 PASSWORD_CHANGE_REQUIRED`. A token issued before the change keeps the claim until it expires (15 minutes), but its session has ended.
+- Sign-in returns `403 ACCOUNT_DISABLED` only after the correct password; a wrong password or an unknown email always returns the same `401`. A wrong guess at a disabled account does not count toward the lockout.
+- Password policy is the platform's (minimum 10 characters, lockout after 5 failures for 15 minutes). Passwords are never returned, logged or audited.
+- Permission keys: `finance.donor.provision`, `sponsorship.view`, `sponsorship.student.manage`, `sponsorship.link.manage`, `sponsorship.link.void`. Admin holds all but `sponsorship.link.void`; only SuperAdmin holds it. The migration `DonorIdentity` gives an already-seeded Admin role the four non-void keys once; a fresh database gets them from the seed. The `Donor` role holds no permission.
 
 ### Finance donors
 

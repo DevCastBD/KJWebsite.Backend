@@ -46,6 +46,8 @@ public static class Permissions
     public const string FinanceReceiptManage = "finance.receipt.manage";
     /// <summary>Change a donor's consent and queue messages to donors (always through the consent gate).</summary>
     public const string FinanceDonorManage = "finance.donor.manage";
+    /// <summary>Give a donor a sign-in account, set a new initial password for it, and disable or re-enable it. The account holder can read a child's record, so it is held by administrators.</summary>
+    public const string FinanceDonorProvision = "finance.donor.provision";
     /// <summary>Take a CSV export of donor personal data: held back from day-to-day officers, and every export is logged.</summary>
     public const string FinanceDonorExport = "finance.donor.export";
     /// <summary>Create and edit fundraising campaigns, their goals and their open/closed state.</summary>
@@ -60,6 +62,14 @@ public static class Permissions
     public const string FinanceReportGenerate = "finance.report.generate";
     /// <summary>Approve or reject another person's request for an adjustment, posting reversal, refund or reopen. Never your own.</summary>
     public const string FinanceControlApprove = "finance.control.approve";
+    /// <summary>Read student records, their consent, photos and donor links in the back office (student sponsorship).</summary>
+    public const string SponsorshipView = "sponsorship.view";
+    /// <summary>Create and edit students, record guardian consent and manage the photo and the signed form.</summary>
+    public const string SponsorshipStudentManage = "sponsorship.student.manage";
+    /// <summary>Link a donor to a student and end a sponsorship.</summary>
+    public const string SponsorshipLinkManage = "sponsorship.link.manage";
+    /// <summary>Remove a link made by mistake: the donor loses all access and keeps nothing. Held by SuperAdmin only.</summary>
+    public const string SponsorshipLinkVoid = "sponsorship.link.void";
     public const string AuditView = "audit.view";
     public const string CtaManage = "cta.manage";
     public const string MediaView = "media.view";
@@ -118,12 +128,17 @@ public static class PermissionCatalog
         new("finance", Permissions.FinanceReceiptManage, "Re-issue receipts and queue annual donor statements"),
         new("finance", Permissions.FinanceDonorManage, "Change donor communication consent and queue donor messages"),
         new("finance", Permissions.FinanceDonorExport, "Export donor data as CSV"),
+        new("finance", Permissions.FinanceDonorProvision, "Give a donor a sign-in account, set a new initial password and disable or re-enable it"),
         new("finance", Permissions.FinanceCampaignManage, "Create and edit fundraising campaigns"),
         new("finance", Permissions.FinanceBudgetManage, "Create and edit budget lines for an open fiscal year"),
         new("finance", Permissions.FinanceBankManage, "Register and edit bank accounts and their statement mapping"),
         new("finance", Permissions.FinanceControlApprove, "Approve or reject another person's request for an adjustment, reversal, refund or reopen"),
         new("finance", Permissions.FinanceReportGenerate, "Generate and store the monthly financial report pack"),
         new("finance", Permissions.FinanceBankReveal, "Read a bank account's full number (every read is logged)"),
+        new("sponsorship", Permissions.SponsorshipView, "View students, guardian consent, photos and donor links"),
+        new("sponsorship", Permissions.SponsorshipStudentManage, "Create and edit students, record guardian consent, manage photos and signed forms"),
+        new("sponsorship", Permissions.SponsorshipLinkManage, "Link donors to students and end a sponsorship"),
+        new("sponsorship", Permissions.SponsorshipLinkVoid, "Remove a link made by mistake (SuperAdmin only)"),
         new("settings", Permissions.SettingsView, "View site settings"),
         new("settings", Permissions.SettingsManage, "Change site settings and maintenance mode"),
         new("dashboard", Permissions.DashboardView, "See the back-office dashboard and global search"),
@@ -143,17 +158,20 @@ public static class KjRoles
     public const string MembershipOfficer = "MembershipOfficer";
     public const string Member = "Member";
     public const string Volunteer = "Volunteer";
+    /// <summary>A sponsor who signs in to read their own profile and linked students. It holds no back-office permission.</summary>
+    public const string Donor = "Donor";
 
     public static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> Seed = new Dictionary<string, IReadOnlyList<string>>
     {
         [SuperAdmin] = Permissions.All,
-        [Admin] = [.. Permissions.All.Where(p => p != Permissions.RolesManage)],
+        [Admin] = [.. Permissions.All.Where(p => p != Permissions.RolesManage && p != Permissions.SponsorshipLinkVoid)],
         [Moderator] = [Permissions.ContentView, Permissions.ContentUpdate, Permissions.CtaView, Permissions.CtaManage, Permissions.DashboardView],
         [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceExpensePay, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceReceiptManage, Permissions.FinanceDonorManage, Permissions.FinanceCampaignManage, Permissions.FinanceBudgetManage, Permissions.FinanceReconcile, Permissions.FinanceBankManage, Permissions.FinanceReportGenerate, Permissions.FinanceLedgerAdjust, Permissions.FinanceDonationReverse, Permissions.FinancePeriodClose, Permissions.FinanceControlApprove],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate, Permissions.MediaView, Permissions.MediaUpload, Permissions.DashboardView],
         [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],
         [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MembershipLifecycle, Permissions.MemberProfileView, Permissions.UsersView],
         [Member] = [Permissions.MemberProfileEdit],
-        [Volunteer] = []
+        [Volunteer] = [],
+        [Donor] = []
     };
 }
