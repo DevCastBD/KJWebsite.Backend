@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: work-items/067-issue-210-donor-identity
+- Active work item: work-items/069-issue-211-donor-crm
 - Phase: WRAP-UP
-- Branch: Feature/issue-210-donor-identity
-- Base SHA: fb3b8b0
-- Next step: user approval to commit, push and open the PR for #210
+- Branch: Feature/issue-211-donor-crm
+- Base SHA: 1fbf422
+- Next step: user approval to commit, push and open the PR for #211
 - Paused work items:
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)
