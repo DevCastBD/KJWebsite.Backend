@@ -1,5 +1,10 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-11-09] auth/postgres: DonorIdentity migration SQL and its KJ_TEST_POSTGRES test never run against a database (found: 067-issue-210)
+- [2026-11-09] auth/shared-account: staff cannot disable only the Donor role of a member+donor account; decide in #211 (found: 067-issue-210)
+- [2026-11-09] auth/dev-seed: disabled admin@site.org now answers 403 ACCOUNT_DISABLED with admin123 outside Development (found: 067-issue-210)
+- [2026-11-09] build/windows: .editorconfig wants LF but a Windows checkout is CRLF, so dotnet format whitespace flags every file (found: 067-issue-210)
+- [2026-11-09] build/dev: a running ApiGateway locks bin so full builds and OpenApiExporter fail; needs a separate output path (found: 067-issue-210)
 - [2026-11-09] docs/MASTER_PLAN.md: BE-102 to BE-109 (sponsorship) have no rows yet; openapi.v1.yaml has no sponsorship endpoints (found: 067-issue-210)
 - [2026-11-09] codebase-map.md: recorded at 166 tracked files, now 639; refresh it (found: 067-issue-210)
 - [2026-10-31] tests/Membership* — NotContain("82"/"017") assertions match timestamp digits, rare flakes (found: 055-issue-69-ledger)

@@ -1,12 +1,11 @@
 # AI-DLC Nano State
-- Active work item: work-items/068-sponsorship-plan-docs
+- Active work item: work-items/067-issue-210-donor-identity
 - Phase: WRAP-UP
-- Branch: docs/BE-102-sponsorship-plan
-- Base SHA: 598597b
-- Next step: user approval to commit, push and open the PR for #218; then resume 067 (#210) at plan drafting
+- Branch: Feature/issue-210-donor-identity
+- Base SHA: fb3b8b0
+- Next step: user approval to commit, push and open the PR for #210
 - Paused work items:
-  - work-items/067-issue-210-donor-identity (CLARIFY, four decisions recorded, base 598597b)
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)
-- Uncommitted code: yes (docs)
+- Uncommitted code: yes
 - Last updated: 2026-11-09T00:00Z by agent

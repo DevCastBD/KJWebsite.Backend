@@ -1,4 +1,4 @@
-<!-- phase: WRAP-UP | branch: docs/BE-102-sponsorship-plan | tasks: 4/4
+<!-- phase: DONE | branch: docs/BE-102-sponsorship-plan | tasks: 4/4
      base: 598597b | updated: 2026-11-09
      next: user approval to commit, push, open PR -->
 # Plan: sponsorship plan and contract in the backend docs
