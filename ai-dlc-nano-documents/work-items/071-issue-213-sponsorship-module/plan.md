@@ -1,6 +1,6 @@
-<!-- phase: WRAP-UP | branch: Feature/issue-213-sponsorship-module | tasks: 9/9
+<!-- phase: DONE | branch: Feature/issue-213-sponsorship-module | tasks: 9/9
      base: 699a9bb | updated: 2026-11-12
-     next: commit, push, open the PR (approved by the user for this ticket); never merge -->
+     next: none; PR #223 awaiting human review and merge -->
 # Plan: Sponsorship module (BE-106, #213)
 ## Tasks
 - [x] SponsorshipService project, entities, DbContext (schema sponsorship), Program, solution and gateway wiring
