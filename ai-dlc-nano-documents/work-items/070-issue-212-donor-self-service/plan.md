@@ -1,4 +1,4 @@
-<!-- phase: WRAP-UP | branch: Feature/issue-212-donor-self-service | tasks: 9/9
+<!-- phase: DONE | branch: Feature/issue-212-donor-self-service | tasks: 9/9
      base: dd95b6f | updated: 2026-11-11
      next: user approves commit, push and PR (Closes #212) -->
 # Plan: BE-105 donor self-service (#212)

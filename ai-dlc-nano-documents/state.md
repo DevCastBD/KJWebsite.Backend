@@ -1,12 +1,13 @@
 # AI-DLC Nano State
-- Active work item: work-items/070-issue-212-donor-self-service
-- Phase: WRAP-UP
+- Active work item: none
+- Phase: —
 - Branch: Feature/issue-212-donor-self-service
 - Base SHA: dd95b6f
-- Next step: user approves commit, push and PR for #212
+- Next step: PR #222 open for #212, awaiting human review; next ticket #213
 - Paused work items:
+  - work-items/070-issue-212-donor-self-service (DONE, PR #222 open)
   - work-items/069-issue-211-donor-crm (DONE, PR #221 merged)
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
   - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)
-- Uncommitted code: yes
+- Uncommitted code: no
 - Last updated: 2026-11-11T00:00Z by agent
