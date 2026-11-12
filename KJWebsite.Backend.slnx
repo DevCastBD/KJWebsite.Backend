@@ -9,6 +9,7 @@
     <Project Path="src/Services/ContentService/ContentService.csproj" />
     <Project Path="src/Services/FinanceService/FinanceService.csproj" />
     <Project Path="src/Services/MembershipService/MembershipService.csproj" />
+    <Project Path="src/Services/SponsorshipService/SponsorshipService.csproj" />
     <Project Path="src/Services/CtaSubmissionService/CtaSubmissionService.csproj" />
   </Folder>
   <Folder Name="/tools/">
