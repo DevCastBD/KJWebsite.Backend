@@ -24,6 +24,10 @@ public static class PermissionAuthorization
             // Every policy except KjPolicies.AuthenticatedAllowingPasswordChange refuses a caller who must still change the initial password.
             options.DefaultPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().AddRequirements(new PasswordChangeGateRequirement()).Build();
             options.AddPolicy(KjPolicies.AuthenticatedAllowingPasswordChange, policy => policy.RequireAuthenticatedUser());
+            options.AddPolicy(KjPolicies.DonorSelf, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireClaim(KjClaims.Role, KjRoles.Donor)
+                .AddRequirements(new PasswordChangeGateRequirement()));
             foreach (var permission in Permissions.All)
             {
                 options.AddPolicy(permission, policy => policy
@@ -34,6 +38,9 @@ public static class PermissionAuthorization
         });
         return services;
     }
+
+    /// <summary>Requires the caller to hold the Donor role. Only the Donor role: a back-office or member token is refused with 403.</summary>
+    public static TBuilder RequireDonorSelf<TBuilder>(this TBuilder builder) where TBuilder : IEndpointConventionBuilder => builder.RequireAuthorization(KjPolicies.DonorSelf);
 
     /// <summary>Requires the caller's access token to carry the permission claim.</summary>
     public static TBuilder RequirePermission<TBuilder>(this TBuilder builder, string permission) where TBuilder : IEndpointConventionBuilder

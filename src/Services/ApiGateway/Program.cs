@@ -37,6 +37,8 @@ builder.Services.AddReverseProxy().LoadFromMemory(
     new RouteConfig { RouteId = "membership", ClusterId = "membership", Match = new RouteMatch { Path = "/api/v1/membership/{**catch-all}" } },
     new RouteConfig { RouteId = "donations", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donations/{**catch-all}" } },
     new RouteConfig { RouteId = "donations-root", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donations" } },
+    new RouteConfig { RouteId = "donor-self", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donors/me" } },
+    new RouteConfig { RouteId = "donor-self-donations", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donors/me/donations" } },
     new RouteConfig { RouteId = "campaigns", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/campaigns/{**catch-all}" } },
     new RouteConfig { RouteId = "finance-report-downloads", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/finance/report-downloads/{**catch-all}" } },
     new RouteConfig { RouteId = "admin-finance", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/admin/finance/{**catch-all}" } },
