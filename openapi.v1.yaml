@@ -5685,6 +5685,349 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/sponsorship/projects:
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Projects a programme can point to"
+      description: "Project slugs and names from the Content service, in \u0060lang\u0060 (en or bn, default en). 503 PROJECTS_UNAVAILABLE when Content cannot be reached."
+      operationId: "ListSponsorshipProjects"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/sponsorship/students:
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "The staff list of students"
+      description: "Newest first. \u0060q\u0060 matches the full name, the preferred name or the id. Filters: \u0060programme\u0060 (project slug), \u0060status\u0060, \u0060sponsored\u0060 (no student is sponsored until #214). \u0060limit\u0060 1 to 100 (default 20), \u0060offset\u0060."
+      operationId: "ListStudents"
+      parameters:
+        -
+          name: "q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "programme"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "sponsored"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Add a student"
+      description: "Name, preferredName, dateOfBirth (yyyy-MM-dd), school, class, programme (an existing project slug), district and guardianName are required. Optional: gender (male, female, other), address, guardianPhone (\u002B and 7 to 15 digits), storyEn, storyBn, status (active, inactive, graduated). 400 VALIDATION_ERROR lists every missing or invalid field; 503 PROJECTS_UNAVAILABLE when Content cannot confirm the programme. Returns the ETag."
+      operationId: "CreateStudent"
+      parameters:
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/students/{id}":
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Every field staff keep for a student"
+      description: "Includes the guardian contact details, the current consent and its history, and the link history (empty until #214). Returns the ETag. Each read is written to the audit log with who made it."
+      operationId: "GetStudent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    patch:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Change a student"
+      description: "\u0060If-Match\u0060 with the student ETag is required: 428 without it, 412 when the student changed since. Fields left out stay as they are; optional text sent as an empty string is cleared. Returns the new ETag."
+      operationId: "UpdateStudent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/students/{id}/consents":
+    post:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Record the guardian consent or its withdrawal"
+      description: "Body \u0060{ granted, note? }\u0060. One consent covers the photo and the story. Every call appends a dated, attributed row; nothing is rewritten. Granting is refused with 409 CONSENT_FORM_REQUIRED until the signed form is uploaded; repeating the current state is 409 CONSENT_UNCHANGED. A withdrawal removes the photo and story from the donor view at once. Returns 201 and the new ETag."
+      operationId: "RecordStudentConsent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StudentConsentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/students/{id}/donor-view":
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Exactly what a linked donor would receive"
+      description: "The donor-visible fields only: preferredName, class, school, programme, district, status, and hasPhoto and story while consent is granted. \u0060lang\u0060 (en or bn, default en) picks the story, falling back to the other language."
+      operationId: "GetStudentDonorView"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/students/{id}/photo":
+    put:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Store the student photo"
+      description: "Multipart form field \u0060photo\u0060: JPEG or PNG, up to 2 MB. Location and other embedded metadata are removed before it is stored. 409 CONSENT_REQUIRED without recorded consent, 413 over the limit, 415 for another type or a file that is not a valid image. Replaces any earlier photo."
+      operationId: "PutStudentPhoto"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "The student photo, for staff"
+      description: "Requires a staff token with sponsorship.view; 401 without a token and 403 for any other token, a donor included. Served with \u0060Cache-Control: private, no-store\u0060."
+      operationId: "GetStudentPhoto"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Delete the student photo"
+      description: "204 on success, 404 when there is no photo. The file is removed from the private store."
+      operationId: "DeleteStudentPhoto"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/students/{id}/consent-form":
+    put:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Store the guardian-signed consent form"
+      description: "Multipart form field \u0060form\u0060: PDF, JPEG or PNG, up to 5 MB, kept in the private store (image metadata is removed). 413 over the limit, 415 for another type. Consent can be recorded only after this."
+      operationId: "PutStudentConsentForm"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "The signed consent form, for staff"
+      description: "Requires a staff token with sponsorship.view; 401 without a token and 403 for any other token, a donor included. Never reachable by a donor or the public."
+      operationId: "GetStudentConsentForm"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/sponsorship/audit:
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Query the Sponsorship audit log"
+      description: "Newest first. Filters: \u0060actor\u0060 (id or email), \u0060entity\u0060, \u0060entityId\u0060, \u0060action\u0060 (create/update/delete), \u0060requestId\u0060, \u0060from\u0060, \u0060to\u0060. Page with \u0060cursor\u0060 = the \u0060nextCursor\u0060 of the previous page. Requires \u0060audit.view\u0060; before/after hold personal data."
+      operationId: "ListSponsorshipAuditLog"
+      parameters:
+        -
+          name: "actor"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entity"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entityId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "action"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "requestId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "cursor"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int64"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/audit/{id}":
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Get one Sponsorship audit event"
+      operationId: "GetSponsorshipAuditEvent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/auth/register:
     post:
       tags:
@@ -6359,6 +6702,8 @@ tags:
     name: "Ledger"
   -
     name: "Reconciliation"
+  -
+    name: "Admin: Sponsorship"
   -
     name: "Auth"
   -
@@ -7908,6 +8253,94 @@ components:
             - "null"
             - "string"
         itemDescription:
+          type:
+            - "null"
+            - "string"
+    StudentConsentRequest:
+      required:
+        - "granted"
+        - "note"
+      type: "object"
+      properties:
+        granted:
+          type:
+            - "null"
+            - "boolean"
+        note:
+          type:
+            - "null"
+            - "string"
+    StudentRequest:
+      required:
+        - "name"
+        - "preferredName"
+        - "dateOfBirth"
+        - "gender"
+        - "school"
+        - "class"
+        - "programme"
+        - "district"
+        - "address"
+        - "guardianName"
+        - "guardianPhone"
+        - "storyEn"
+        - "storyBn"
+        - "status"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        preferredName:
+          type:
+            - "null"
+            - "string"
+        dateOfBirth:
+          type:
+            - "null"
+            - "string"
+        gender:
+          type:
+            - "null"
+            - "string"
+        school:
+          type:
+            - "null"
+            - "string"
+        class:
+          type:
+            - "null"
+            - "string"
+        programme:
+          type:
+            - "null"
+            - "string"
+        district:
+          type:
+            - "null"
+            - "string"
+        address:
+          type:
+            - "null"
+            - "string"
+        guardianName:
+          type:
+            - "null"
+            - "string"
+        guardianPhone:
+          type:
+            - "null"
+            - "string"
+        storyEn:
+          type:
+            - "null"
+            - "string"
+        storyBn:
+          type:
+            - "null"
+            - "string"
+        status:
           type:
             - "null"
             - "string"

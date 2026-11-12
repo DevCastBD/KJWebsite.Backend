@@ -9,6 +9,7 @@ var ctaServiceUrl = builder.Configuration["Services:Cta:Url"] ?? "http://localho
 var authServiceUrl = builder.Configuration["Services:Auth:Url"] ?? "http://localhost:7003/";
 var membershipServiceUrl = builder.Configuration["Services:Membership:Url"] ?? "http://localhost:7004/";
 var financeServiceUrl = builder.Configuration["Services:Finance:Url"] ?? "http://localhost:7005/";
+var sponsorshipServiceUrl = builder.Configuration["Services:Sponsorship:Url"] ?? "http://localhost:7006/";
 
 builder.Services.Configure<ApiGateway.CorsOptions>(builder.Configuration.GetSection(ApiGateway.CorsOptions.SectionName));
 builder.Services.AddCors();
@@ -42,6 +43,7 @@ builder.Services.AddReverseProxy().LoadFromMemory(
     new RouteConfig { RouteId = "campaigns", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/campaigns/{**catch-all}" } },
     new RouteConfig { RouteId = "finance-report-downloads", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/finance/report-downloads/{**catch-all}" } },
     new RouteConfig { RouteId = "admin-finance", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/admin/finance/{**catch-all}" } },
+    new RouteConfig { RouteId = "admin-sponsorship", ClusterId = "sponsorship", Match = new RouteMatch { Path = "/api/v1/admin/sponsorship/{**catch-all}" } },
     new RouteConfig { RouteId = "admin-content", ClusterId = "content", Match = new RouteMatch { Path = "/api/v1/admin/content/{**catch-all}" } },
     new RouteConfig { RouteId = "sitemap", ClusterId = "content", Match = new RouteMatch { Path = "/sitemap.xml" } },
     new RouteConfig { RouteId = "feed-rss", ClusterId = "content", Match = new RouteMatch { Path = "/feed.rss" } },
@@ -87,6 +89,14 @@ builder.Services.AddReverseProxy().LoadFromMemory(
         Destinations = new Dictionary<string, DestinationConfig>
         {
             ["finance"] = new() { Address = financeServiceUrl }
+        }
+    },
+    new ClusterConfig
+    {
+        ClusterId = "sponsorship",
+        Destinations = new Dictionary<string, DestinationConfig>
+        {
+            ["sponsorship"] = new() { Address = sponsorshipServiceUrl }
         }
     }
 ]);

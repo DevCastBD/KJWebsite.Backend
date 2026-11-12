@@ -23,8 +23,8 @@
   purpose: ASP.NET Core Identity accounts, RS256 JWT + hashed rotating refresh tokens (`Tokens/`), sessions, password reset; entry: `Program.cs`; migrations: `Migrations/`; docs: `docs/AUTH_TOKENS.md`
 - shared (`src/BuildingBlocks/**`)
   purpose: Result, paging, language resolution, RFC 9457/legacy-compatible errors, and endpoint-filter base
-- sponsorship (planned, epic #208; not built yet)
-  purpose: students, guardian consent, photos and donor-student links in a new Sponsorship module, plus a donor role in auth, donor profiles and logins in finance and read-only `/api/v1/donors/me`; decisions and API contract: `docs/SPONSORSHIP.md` (source of truth with issue #209); first step: #210 in `src/Services/AuthIdentityService/`
+- sponsorship (`src/Services/SponsorshipService/**`)
+  purpose: student sponsorship back office (port 7006, schema `sponsorship`): students with encrypted personal fields, append-only guardian consent, private photo and signed form, donor-view allow-list (`Students/StudentData.cs` `DonorProjection`), module audit; links, donor endpoints and designation follow in #214 to #216; entry: `Program.cs`, `Students/`; docs: `docs/SPONSORSHIP.md`
 - tests (`tests/UnitTests/**`, `tests/IntegrationTests/**`)
   purpose: xUnit unit tests for BuildingBlocks; WebApplicationFactory smoke tests run against SQLite by default (no Docker); Postgres-specific tests (migration/collation, SQLite transfer) gate on `KJ_TEST_POSTGRES` via `[RequiresPostgresFact]`
 - contract and plans (`openapi.v1.yaml`, `PROJECT_CONTEXT.md`, `docs/**`)
