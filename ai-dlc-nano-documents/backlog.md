@@ -1,5 +1,8 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-11-11] donors/self: a shared member+donor sign-in disabled via membership is not seen by Finance; D16 holds only for Finance-set state (found: 070)
+- [2026-11-11] donors/self: project designations show the project id; titles live in Content; student name joins with #214 (found: 070)
+- [2026-11-11] tests: 4 tests find the repo root from the assembly and fail with --artifacts-path outside the repo (found: 070)
 - [2026-11-09] finance/migration: DonorProfile migration SQL and its KJ_TEST_POSTGRES test never run against a database (found: 069-issue-211)
 - [2026-11-09] auth/email: a donor with a sign-in cannot change email; needs an Identity email-change endpoint (found: 069-issue-211)
 - [2026-11-09] finance/donors: list and write responses rebuild all donors from all receipts; revisit at scale (found: 069-issue-211)

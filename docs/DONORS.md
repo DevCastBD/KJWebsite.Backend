@@ -24,6 +24,21 @@ Staff gift lists for a donor keep reversed gifts with their status; donor endpoi
 - **Identity lookup**: `GET /api/v1/admin/auth/donors/{userId}` (`finance.view`) returns status, `mustChangePassword`, roles and `shared`; an account without the Donor role returns `404`.
 - **Audit and links**: changes are audited with before and after values, excluding name, email, phone, address, notes and both keys. `linkedStudents` and the has-active-links filter arrive with #214; the Sponsorship module does not exist yet.
 
+## Donor self-service (BE-105, #212)
+
+- **Endpoints:** `GET /api/v1/donors/me` and `GET /api/v1/donors/me/donations` are read-only, served by Finance and routed by the gateway.
+- **Access:** Policy `kj.donor` requires the `Donor` role claim. The role holds no permission key. Other roles, including back-office and member tokens, receive `403`; no token receives `401`. Accounts awaiting an initial password change receive `403 PASSWORD_CHANGE_REQUIRED`.
+- **Ownership:** The token subject matches the donor's account subject. Neither endpoint accepts a donor id; donor ids in query parameters or request bodies are never read. A `Donor` token without a donor row receives `404 NOT_A_DONOR`.
+- **State:** Every request checks donor and account state, including before the access token expires. Inactive donors receive `403 DONOR_INACTIVE`; disabled accounts receive `403 ACCOUNT_DISABLED`. Finance cannot see a shared member sign-in disabled through membership; it holds only the account state it last set.
+- **Profile:** Returns `name`, `type`, `organisation`, `email`, `phone`, `address`, `country`, `language` and `since` (the donor record's creation date). Missing optional values are empty strings. Never returns notes, staff status, account state, keys or version.
+- **Donations:** Returns `{ items, total, limit, offset, totals }`. Items contain only the donor's own gifts from valid, non-anonymous receipts, matched by the donor's stable key. Gifts from receipts voided by a reversal are excluded. Order is newest first by receipt date, then receipt number.
+- **Item fields:** `id` (donation id), `reference`, `date`, `amount` (two decimals), `currency`, `designation`, `designationType`, `designationId`, `status` (`confirmed`), `inKind` and `receiptNumber`. `designation` is the campaign title in the donor's language when set, otherwise `General` for general giving, otherwise the designation id. No receipt download link is returned. Student names will join the designation through sponsorship links (#214); no student designation exists yet.
+- **Paging and filters:** `limit` is `1` to `100` (default `20`); `offset` is `0` or more. Optional `year` filters the receipt date's calendar year, from `1970` to `9999`. Out-of-range values return `400 VALIDATION_ERROR`.
+- **Totals:** `totals` contains `{ currency, cash, inKind }` entries over all gifts matching the filter, independent of paging. Currencies are never added together.
+- **Methods:** `POST`, `PUT`, `PATCH` and `DELETE` on both paths return `405 METHOD_NOT_ALLOWED` with `Allow: GET` and change nothing.
+- **Caching:** Every response, including refusals, carries `Cache-Control: private, no-store` and `Vary: Authorization`.
+- **Out of scope:** `/donors/me/statements`, `/recurring`, `/students` and photos, and receipt download.
+
 ## Segments (reproducible)
 Pure functions of a donor's gifts, an `asOf` date and configuration (`Finance:Donors`): nothing reads "now" or a stored flag, so any segment can be re-run for any past date. Gifts after `asOf` do not exist yet.
 - **new**: first gift within `NewWithinDays` (90) of `asOf`

@@ -12,6 +12,12 @@ public static class KjPolicies
     /// everything else goes through the permission policies and the default policy, which all carry <see cref="PasswordChangeGateRequirement"/>.
     /// </summary>
     public const string AuthenticatedAllowingPasswordChange = "kj.authenticated";
+
+    /// <summary>
+    /// A signed-in holder of the Donor role, for the read-only self-service under <c>/api/v1/donors/me</c> (#212). The Donor role holds no
+    /// permission key, so access is the role itself; ownership is the endpoint's job (the donor is found from the token's subject).
+    /// </summary>
+    public const string DonorSelf = "kj.donor";
 }
 
 /// <summary>

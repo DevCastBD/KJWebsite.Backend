@@ -4100,6 +4100,54 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/donors/me:
+    get:
+      tags:
+        - "Donor portal"
+      summary: "The donor\u0027s own profile"
+      description: "Donor-visible fields only: never notes, staff status, account state or keys. The donor is found from the token; no id is accepted. 403 for any role but Donor, for an inactive donor and for a disabled account."
+      operationId: "GetMyDonorProfile"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/donors/me/donations:
+    get:
+      tags:
+        - "Donor portal"
+      summary: "The donor\u0027s own gifts"
+      description: "From valid receipts, newest first; reversed and anonymous gifts are absent. \u0060limit\u0060 1 to 100 (default 20), \u0060offset\u0060, optional calendar \u0060year\u0060. \u0060totals\u0060 are per currency over the whole filtered set."
+      operationId: "ListMyDonations"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "year"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/campaigns/{slug}/progress":
     get:
       tags:
@@ -6293,6 +6341,8 @@ tags:
     name: "Statements"
   -
     name: "Donors"
+  -
+    name: "Donor portal"
   -
     name: "Campaigns"
   -

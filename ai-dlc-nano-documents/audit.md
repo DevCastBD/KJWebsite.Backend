@@ -342,3 +342,14 @@
 - 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm PHASE PLAN→CONSTRUCT @1fbf422: plan approved
 - 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm REVISED @1fbf422: email change refused with 409 EMAIL_HAS_ACCOUNT when a sign-in exists (Identity owns that email)
 - 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm PHASE CONSTRUCT→WRAP-UP @1fbf422: 8/8 tasks, 948 integration plus 46 unit tests green, OpenAPI current, docs updated
+- 2026-11-09T00:00Z [agent] 069-issue-211-donor-crm SIDE-EFFECT @3622826: pushed Feature/issue-211-donor-crm and opened the PR for #211 (user approved)
+- 2026-11-11T00:00Z [agent] 069-issue-211-donor-crm REVISED @dd95b6f: PR #221 was merged by the user; close-out note carried onto the #212 branch
+- 2026-11-11T00:00Z [agent] 070-issue-212-donor-self-service CREATED @dd95b6f: backend issue #212 BE-105, read-only donor self-service
+- 2026-11-11T00:00Z [agent] 070-issue-212-donor-self-service SIDE-EFFECT @dd95b6f: #212 assigned tahmidsparrow, board status In progress (verified)
+- 2026-11-11T00:00Z [agent] 070-issue-212-donor-self-service DECISION @dd95b6f: Donor role policy, NOT_A_DONOR/DONOR_INACTIVE/ACCOUNT_DISABLED, calendar year, totals, label, no receiptUrl
+- 2026-11-11T00:00Z [agent] 070-issue-212-donor-self-service PHASE CLARIFY→PLAN @dd95b6f: plan drafted, awaiting approval and branch confirm
+- 2026-11-11T00:00Z [agent] 070-issue-212-donor-self-service BRANCH @dd95b6f: Feature/issue-212-donor-self-service off develop (user confirmed)
+- 2026-11-11T00:00Z [agent] 070-issue-212-donor-self-service PHASE PLAN→CONSTRUCT @dd95b6f: plan approved
+- 2026-11-11T00:00Z [agent] 070-issue-212-donor-self-service PHASE CONSTRUCT→WRAP-UP @dd95b6f: 9/9 done, 18 new tests pass, openapi and docs updated, awaiting commit approval
+- 2026-11-12T00:00Z [agent] 070-issue-212-donor-self-service SIDE-EFFECT @27e2891: pushed branch, opened PR #222 for #212 (user approved)
+- 2026-11-12T00:00Z [agent] 070-issue-212-donor-self-service DONE @27e2891: PR #222 open awaiting human review

@@ -195,6 +195,7 @@ if (app.Environment.IsDevelopment())
     }).AllowAnonymous();
 }
 
+app.UseDonorSelfHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseKjIdempotency();
@@ -211,6 +212,7 @@ app.MapOffline();
 app.MapReceipts();
 app.MapDonors();
 app.MapDonorProfiles();
+app.MapDonorSelf();
 app.MapCampaigns();
 app.MapExpenses();
 app.MapBudgets();
