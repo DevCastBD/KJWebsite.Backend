@@ -67,25 +67,35 @@ Built in BE-103 (#210). Error bodies carry the code at `error.code`.
 - `GET /api/v1/admin/auth/donors/{userId}` (`finance.view`): returns status, `mustChangePassword`, roles and `shared`; returns `404` for an account without the Donor role.
 - The GET, PATCH and both PUT routes answer `200`.
 - Staff gift lists keep reversed gifts with their status; donor endpoints (#212) omit them. Donor changes are audited with before and after values, excluding name, email, phone, address, notes and both keys.
-- `linkedStudents` and the has-active-links filter arrive with issue 214; they are not built yet, and the Sponsorship module does not exist yet.
+- `linkedStudents` and the has-active-links filter arrive with issue 214; they are not built yet. The Sponsorship module exists from #213 (students and consent only).
 
 ### Sponsorship students and consent
 
-- `GET /api/v1/admin/sponsorship/students`, permission `sponsorship.view`: return the paged staff student list; document success status and paging defaults.
-- `POST /api/v1/admin/sponsorship/students`, permission `sponsorship.student.manage`: create a student; return `400 VALIDATION_ERROR` for invalid fields; document success status.
-- `GET /api/v1/admin/sponsorship/students/{id}`, permission `sponsorship.view`: return the staff record, current consent and `ETag`; document success and missing-record statuses.
-- `PATCH /api/v1/admin/sponsorship/students/{id}`, permission `sponsorship.student.manage`: require `If-Match`; return `400 VALIDATION_ERROR`, `428` or `412` as applicable and a new ETag on success.
-- Student schemas use `class`, `storyEn`, `storyBn` and a programme project reference; document the reference field and project display name representation.
-- Projects selection endpoint, exact method/path and permission to publish: provide existing project IDs and names for programme selection; document statuses.
-- `POST /api/v1/admin/sponsorship/students/{id}/consents`, permission `sponsorship.student.manage`: append consent records; one consent covers photo and story; require the uploaded signed form before consent can be affirmed.
-- Consent records determine current consent; document withdrawal recording, including whether it creates its own dated, actor-attributed row, and all response statuses.
-- `PUT /api/v1/admin/sponsorship/students/{id}/consent-form`, permission `sponsorship.student.manage`: accept the guardian-signed form as PDF, JPEG or PNG up to 5 MB, store it privately and document validation and status codes.
-- `GET /api/v1/admin/sponsorship/students/{id}/consent-form`, permission `sponsorship.view`: allow staff only; document success and access-failure statuses; never expose the form to donors or public users.
-- `PUT /api/v1/admin/sponsorship/students/{id}/photo`, permission `sponsorship.student.manage`: accept multipart field `photo`, JPEG/PNG up to 2 MB; strip location metadata; return `409` without consent, `415` for unsupported format and `413` above the limit.
-- `GET /api/v1/admin/sponsorship/students/{id}/photo`, permission `sponsorship.view`: require a bearer token and serve the private photo; document success and missing-photo statuses.
-- `DELETE /api/v1/admin/sponsorship/students/{id}/photo`, permission `sponsorship.student.manage`: delete the current photo; document success and missing-photo statuses.
-- `GET /api/v1/admin/sponsorship/students/{id}/donor-view`, permission `sponsorship.view`: return the backend donor-visible projection; document statuses and response fields.
-- `GET /api/v1/admin/sponsorship/audit`, permission `audit.view`: provide the module audit feed for the required pre-launch staff screen; document filters, paging and statuses.
+- **BUILT (BE-106, #213)**: Staff can now create and manage students, record guardian consent, store a private photo and signed form, and preview the donor view. The new `SponsorshipService` uses port `7006`, schema `sponsorship`, and gateway route `/api/v1/admin/sponsorship/**`. Decision D10 default is applied. Children's data is not in Finance.
+- All routes below use `/api/v1/admin/sponsorship`. Every response has `Cache-Control: private, no-store`. No route accepts a donor token. No token returns `401`; a token without the required permission key returns `403`.
+- `GET /projects` requires `sponsorship.view`. It returns `{ items: [{ id, name }] }` from Content projects. `lang` accepts `en` or `bn`, default `en`. Unreachable Content returns `503 PROJECTS_UNAVAILABLE`.
+- `GET /students` requires `sponsorship.view`. It returns `{ items, total, limit, offset }`, newest first. `limit` is `1..100`, default `20`. Items contain `id`, `name`, `preferredName`, `class`, `school`, `programme { id, name }`, `district`, `status`, `sponsored`, `hasPhoto`, and `consentGranted`.
+- Student filters are `q`, `programme`, `status`, and `sponsored`. `q` matches full name, preferred name, or ID without case sensitivity. `programme` is a project slug. `status` accepts `active`, `inactive`, or `graduated`. `sponsored` accepts `true` or `false`. No student is sponsored until #214, so `true` returns an empty page. Bad values return `400 VALIDATION_ERROR`.
+- `POST /students` requires `sponsorship.student.manage` and supports `Idempotency-Key`. Required fields are `name` (max 200), `preferredName` (max 100), `dateOfBirth`, `school` (max 200), `class` (max 50), `programme` (existing project slug), `district` (max 100), and `guardianName` (max 200). `dateOfBirth` uses `yyyy-MM-dd`, is not in the future, and is within 30 years.
+- Optional creation fields are `gender` (`male`, `female`, `other`), `address` (max 500), `guardianPhone` (`+` followed by 7 to 15 digits), `storyEn` and `storyBn` (max 4000 each), and `status` (default `active`).
+- Creation returns `201` with the full record and an `ETag`. `400 VALIDATION_ERROR` lists every missing or invalid field with message `"Invalid fields: a, b."`. Unknown projects are reported on `programme`. If Content cannot confirm the project, it returns `503 PROJECTS_UNAVAILABLE` and saves nothing.
+- Student IDs are opaque, such as `stu_` followed by 32 hex characters. Name, date of birth, address, and guardian details are encrypted at rest. These values never enter the audit log.
+- `GET /students/{id}` requires `sponsorship.view`. It returns every field, plus `hasPhoto`, `hasConsentForm`, `consentFormName`, `consent { granted, recordedAt, actorId }`, `consents`, `links`, `createdAt`, and `updatedAt`. It includes an `ETag`; a missing student returns `404 NOT_FOUND`. `links` stays empty until #214.
+- `consents` contains history, newest first. Each row has `id`, `granted`, `hasForm`, `recordedAt`, `actorId`, and `note`. Each student detail read creates a `read` audit event with the actor, applying decision D12 default for guardian contact details.
+- `PATCH /students/{id}` requires `sponsorship.student.manage`. It accepts the same body fields, all optional. Omitted fields stay unchanged; `""` clears optional text. A changed `programme` is checked again. Missing `If-Match` returns `428 PRECONDITION_REQUIRED`; a stale value returns `412 PRECONDITION_FAILED`. Success returns `200` with the record and new `ETag`.
+- Any record, consent, photo, or form change raises the version. There is no student delete endpoint. Students are never removed through the API; erasure follows D13.
+- `POST /students/{id}/consents` requires `sponsorship.student.manage` and supports `Idempotency-Key`. The body is `{ granted: true|false, note? }`. One consent covers photo and story. Each successful call appends a dated row with the actor. Rows are never changed or removed.
+- Granting consent requires an uploaded signed form, otherwise `409 CONSENT_FORM_REQUIRED`. Repeating the current state returns `409 CONSENT_UNCHANGED`. Success returns `201 { consent, row }` and the new `ETag`.
+- Withdrawing consent removes photo and story from the donor view at once. Both consent rows remain, and the photo file stays in the staff store. Frozen copies in #214 are unaffected.
+- `PUT /students/{id}/consent-form` requires `sponsorship.student.manage`. Multipart field `form` accepts PDF, JPEG, or PNG up to 5 MB. Content is checked against its type; images lose location metadata. Errors are `413 PAYLOAD_TOO_LARGE` and `415 UNSUPPORTED_MEDIA_TYPE`. Success returns `200 { fileName, contentType, bytes }`.
+- Replaced consent forms remain in the private store because consent rows reference them. `GET /students/{id}/consent-form` requires `sponsorship.view` and returns the file, or `404 NOT_FOUND` if absent. No token returns `401`; a donor token returns `403`.
+- `PUT /students/{id}/photo` requires `sponsorship.student.manage`. Multipart field `photo` accepts JPEG or PNG up to 2 MB. EXIF, XMP, IPTC, comments, and PNG text chunks are removed. It replaces the earlier photo and deletes its file.
+- Photo upload returns `409 CONSENT_REQUIRED` without recorded consent, `413 PAYLOAD_TOO_LARGE` for excess size, or `415 UNSUPPORTED_MEDIA_TYPE` for another type, a wrong signature, or an invalid image. Success returns `200 { hasPhoto, contentType, bytes }`.
+- `GET /students/{id}/photo` requires a staff token with `sponsorship.view`. It returns the file, or `404 NOT_FOUND` if absent. `DELETE /students/{id}/photo` requires `sponsorship.student.manage`, removes the file, and returns `204`, or `404` if absent.
+- `GET /students/{id}/donor-view` requires `sponsorship.view`. Optional `lang` accepts `en` or `bn`. It uses exactly the D2 donor allow-list: `id`, `preferredName`, `class`, `school`, `programme { id, name }`, `district`, `status`, `hasPhoto`, `story`, and `storyLanguage`.
+- Donor-view photo and story availability requires granted consent; `story` is `null` otherwise. The story uses the requested language, falling back to the other. `storyLanguage` identifies the language used. The donor endpoints in #214 must use this same projection.
+- `GET /audit` requires `audit.view`. It returns the module audit feed with the same shape, cursor paging, and filters as other audit endpoints. Student and consent changes include before and after values. Encrypted fields, stories, file keys, and file names are excluded.
+- Files live in the private store configured by `Sponsorship:FilesPath`. They are never served without a staff token with `sponsorship.view`.
 
 ### Links
 

@@ -1,5 +1,9 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-11-12] sponsorship/students: list search decrypts names in memory; add a search hash if the list grows (found: 071)
+- [2026-11-12] sponsorship/files: photos and forms on local disk, no virus scan until #41 (found: 071)
+- [2026-11-12] sponsorship/consents: append-only enforced in code only, no database trigger (found: 071)
+- [2026-11-12] sponsorship: Postgres migration and a KJ_TEST_POSTGRES test not run (found: 071)
 - [2026-11-11] donors/self: a shared member+donor sign-in disabled via membership is not seen by Finance; D16 holds only for Finance-set state (found: 070)
 - [2026-11-11] donors/self: project designations show the project id; titles live in Content; student name joins with #214 (found: 070)
 - [2026-11-11] tests: 4 tests find the repo root from the assembly and fail with --artifacts-path outside the repo (found: 070)

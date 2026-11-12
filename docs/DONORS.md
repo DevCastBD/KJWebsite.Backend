@@ -22,7 +22,7 @@ Staff gift lists for a donor keep reversed gifts with their status; donor endpoi
 - **Manage sign-in** (`finance.donor.provision`): `PUT .../donors/{id}/login/password {password}` sets a new initial password, requires a change and ends sessions; it rejects `409 NO_ACCOUNT` and `409 ACCOUNT_SHARED`. `PUT .../donors/{id}/login/status {status: active|disabled}` disables or enables sign-in; disabling ends sessions. It rejects `409 ACCOUNT_SHARED`, `409 NO_ACCOUNT` and, when enabling for an inactive donor, `409 DONOR_INACTIVE`.
 - **Inactive donors**: setting donor status to `inactive` disables a donor-only sign-in in Identity first; failure returns `503 AUTH_UNAVAILABLE` and saves nothing. A sign-in shared with a member is left alone. Reactivating a donor does not enable sign-in.
 - **Identity lookup**: `GET /api/v1/admin/auth/donors/{userId}` (`finance.view`) returns status, `mustChangePassword`, roles and `shared`; an account without the Donor role returns `404`.
-- **Audit and links**: changes are audited with before and after values, excluding name, email, phone, address, notes and both keys. `linkedStudents` and the has-active-links filter arrive with #214; the Sponsorship module does not exist yet.
+- **Audit and links**: changes are audited with before and after values, excluding name, email, phone, address, notes and both keys. `linkedStudents` and the has-active-links filter arrive with #214; students and consent exist since #213, but donor links do not exist yet.
 
 ## Donor self-service (BE-105, #212)
 
