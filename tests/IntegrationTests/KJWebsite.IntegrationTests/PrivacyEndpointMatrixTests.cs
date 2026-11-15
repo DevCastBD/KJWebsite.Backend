@@ -40,7 +40,7 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
     ];
 
     private static WebApplicationFactoryClientOptions ClientOptions => new() { AllowAutoRedirect = false, HandleCookies = false };
-    private static bool Infrastructure(Route route) => new[] { "/health", "/openapi", "/swagger" }
+    private static bool Infrastructure(Route route) => new[] { "/health", "/openapi", "/swagger", "/scalar" }
         .Any(prefix => route.Pattern.Equals(prefix, StringComparison.OrdinalIgnoreCase) || route.Pattern.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase));
     private static bool Anonymous(Route route) => route.Endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null;
     private static Route[] Routes(Service service) => service.Services.GetRequiredService<EndpointDataSource>().Endpoints
@@ -49,6 +49,102 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
             .Select(method => new Route(service, endpoint, method)))
         .OrderBy(route => route.Pattern, StringComparer.Ordinal).ThenBy(route => route.Method, StringComparer.Ordinal).ToArray();
     private static Route[] Protected(Service service) => Routes(service).Where(route => !Infrastructure(route) && !Anonymous(route)).ToArray();
+
+    // The reviewed public surface. A protected endpoint that becomes anonymous is skipped by the matrix below, so the
+    // anonymous set itself is pinned: adding or removing an entry is a deliberate, reviewed change.
+    private static readonly string[] ReviewedAnonymous =
+    [
+        "DELETE /api/v1/donors/me (finance)",
+        "DELETE /api/v1/donors/me/donations (finance)",
+        "DELETE /api/v1/donors/me/identity (finance)",
+        "DELETE /api/v1/donors/me/students (sponsorship)",
+        "DELETE /api/v1/donors/me/students/{**rest} (sponsorship)",
+        "GET /.well-known/jwks.json (auth)",
+        "GET /api/v1/campaigns/{slug}/progress (finance)",
+        "GET /api/v1/committees (membership)",
+        "GET /api/v1/committees/{slug} (membership)",
+        "GET /api/v1/content/bootstrap (content)",
+        "GET /api/v1/content/faqs (content)",
+        "GET /api/v1/content/faqs/{slug} (content)",
+        "GET /api/v1/content/items/{type}/{slug} (content)",
+        "GET /api/v1/content/news (content)",
+        "GET /api/v1/content/news/{id} (content)",
+        "GET /api/v1/content/og/{type}/{slug} (content)",
+        "GET /api/v1/content/pages (content)",
+        "GET /api/v1/content/pages/{slug} (content)",
+        "GET /api/v1/content/partners (content)",
+        "GET /api/v1/content/partners/{slug} (content)",
+        "GET /api/v1/content/press (content)",
+        "GET /api/v1/content/press/{slug} (content)",
+        "GET /api/v1/content/preview/{token} (content)",
+        "GET /api/v1/content/projects (content)",
+        "GET /api/v1/content/projects/{id} (content)",
+        "GET /api/v1/content/redirects/resolve (content)",
+        "GET /api/v1/content/search (content)",
+        "GET /api/v1/content/settings (content)",
+        "GET /api/v1/content/tags (content)",
+        "GET /api/v1/content/team-members (content)",
+        "GET /api/v1/content/team-members/{slug} (content)",
+        "GET /api/v1/content/testimonials (content)",
+        "GET /api/v1/content/testimonials/{slug} (content)",
+        "GET /api/v1/donations/presets (finance)",
+        "GET /api/v1/donations/webhooks/{gateway} (finance)",
+        "GET /api/v1/donations/{reference}/receipt.pdf (finance)",
+        "GET /api/v1/donations/{reference}/return (finance)",
+        "GET /api/v1/donations/{reference}/status (finance)",
+        "GET /api/v1/finance/report-downloads/{id} (finance)",
+        "GET /api/v1/members/directory (membership)",
+        "GET /api/v1/members/directory/{id}/photo (membership)",
+        "GET /api/v1/membership/campaigns/current (membership)",
+        "GET /api/v1/membership/privacy (membership)",
+        "GET /feed.atom (content)",
+        "GET /feed.rss (content)",
+        "GET /sitemap.xml (content)",
+        "PATCH /api/v1/donors/me (finance)",
+        "PATCH /api/v1/donors/me/donations (finance)",
+        "PATCH /api/v1/donors/me/identity (finance)",
+        "PATCH /api/v1/donors/me/students (sponsorship)",
+        "PATCH /api/v1/donors/me/students/{**rest} (sponsorship)",
+        "POST /api/v1/auth/confirm-email (auth)",
+        "POST /api/v1/auth/forgot-password (auth)",
+        "POST /api/v1/auth/login (auth)",
+        "POST /api/v1/auth/logout (auth)",
+        "POST /api/v1/auth/refresh (auth)",
+        "POST /api/v1/auth/register (auth)",
+        "POST /api/v1/auth/resend-confirmation (auth)",
+        "POST /api/v1/auth/reset-password (auth)",
+        "POST /api/v1/cta/submissions (cta)",
+        "POST /api/v1/donations (finance)",
+        "POST /api/v1/donations/webhooks/{gateway} (finance)",
+        "POST /api/v1/donations/{reference}/return (finance)",
+        "POST /api/v1/donors/me (finance)",
+        "POST /api/v1/donors/me/donations (finance)",
+        "POST /api/v1/donors/me/identity (finance)",
+        "POST /api/v1/donors/me/students (sponsorship)",
+        "POST /api/v1/donors/me/students/{**rest} (sponsorship)",
+        "POST /api/v1/membership/applications (membership)",
+        "POST /api/v1/membership/applications/check (membership)",
+        "POST /api/v1/membership/applications/erasure-request (membership)",
+        "POST /api/v1/membership/applications/export (membership)",
+        "POST /api/v1/membership/applications/status (membership)",
+        "PUT /api/v1/donors/me (finance)",
+        "PUT /api/v1/donors/me/donations (finance)",
+        "PUT /api/v1/donors/me/identity (finance)",
+        "PUT /api/v1/donors/me/students (sponsorship)",
+        "PUT /api/v1/donors/me/students/{**rest} (sponsorship)",
+        "PUT /api/v1/membership/applications/{id}/attachments/{kind} (membership)"
+    ];
+
+    [Fact]
+    public void TheAnonymousSurfaceIsExactlyTheReviewedList()
+    {
+        var actual = Services().SelectMany(service => Routes(service).Where(route => Anonymous(route) && !Infrastructure(route)))
+            .Select(route => route.Label).OrderBy(label => label, StringComparer.Ordinal).ToArray();
+        var unexpected = actual.Except(ReviewedAnonymous).ToArray();
+        var missing = ReviewedAnonymous.Except(actual).ToArray();
+        unexpected.Should().BeEmpty("these endpoints allow anonymous access but are not in the reviewed list:{0}{1}", Environment.NewLine, string.Join(Environment.NewLine, unexpected));
+        missing.Should().BeEmpty("these reviewed anonymous endpoints are no longer anonymous or no longer exist:{0}{1}", Environment.NewLine, string.Join(Environment.NewLine, missing));
+    }
 
     [Fact]
     public void EveryEndpointExplicitlyDeclaresAuthorizationOrAnonymousAccess()
