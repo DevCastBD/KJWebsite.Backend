@@ -26,6 +26,7 @@ public static class Designations
     public const string General = "general";
     public const string Campaign = "campaign";
     public const string Project = "project";
+    public const string Student = "student";
 
     public static readonly IReadOnlyList<string> All = [General, Campaign, Project];
 }
@@ -61,6 +62,7 @@ public sealed class DonationEntity
 
     public bool IsAnonymous { get; set; }
     public string? Dedication { get; set; }
+    public string? DonorId { get; set; }
     public string DonorNameProtected { get; set; } = string.Empty;
     public string DonorEmailProtected { get; set; } = string.Empty;
     public string? DonorPhoneProtected { get; set; }

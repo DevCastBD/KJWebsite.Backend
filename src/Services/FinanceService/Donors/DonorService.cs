@@ -100,7 +100,21 @@ public sealed class DonorService(FinanceDbContext db, IDonorProtector protector,
         {
             // Contact details follow the latest gift.
             donor.NameProtected = donation.DonorNameProtected;
-            donor.EmailProtected = donation.DonorEmailProtected;
+            if (donation.DonorId is null)
+            {
+                donor.EmailProtected = donation.DonorEmailProtected;
+            }
+            else
+            {
+                var newEmail = protector.Unprotect(donation.DonorEmailProtected).Trim();
+                var emailKey = keys.ForEmail(newEmail);
+                if (newEmail.Length > 0 && emailKey != donor.EmailKey && donor.AccountSubject is null &&
+                    !await db.Donors.AnyAsync(d => d.Id != donor.Id && d.EmailKey == emailKey, cancellationToken))
+                {
+                    donor.EmailProtected = donation.DonorEmailProtected;
+                    donor.EmailKey = emailKey;
+                }
+            }
             donor.PhoneProtected = donation.DonorPhoneProtected ?? donor.PhoneProtected;
             donor.Language = donation.Language;
             donor.Version++;

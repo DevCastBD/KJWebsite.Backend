@@ -62,7 +62,10 @@ public sealed record FinanceDonationRow(
     bool Offline,
     string Designation,
     string Kind,
-    string Status);
+    string Status,
+    string? DonorId,
+    string? StudentId,
+    string? StudentName);
 
 public sealed record FinanceDonationEvent(string Status, string? Note, DateTimeOffset At);
 

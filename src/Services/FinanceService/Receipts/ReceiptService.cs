@@ -118,7 +118,8 @@ public sealed class ReceiptService(FinanceDbContext db, IDonorProtector protecto
             DonorNameProtected = donation.DonorNameProtected,
             DonorEmailProtected = donation.DonorEmailProtected,
             // A donor with no email cannot be recognised across gifts, so each such gift stands alone.
-            DonorKey = await keys.ResolveAsync(db, email, donation.Id, cancellationToken),
+            DonorKey = (donation.DonorId is null ? null : await db.Donors.Where(d => d.Id == donation.DonorId).Select(d => d.DonorKey).FirstOrDefaultAsync(cancellationToken))
+                ?? await keys.ResolveAsync(db, email, donation.Id, cancellationToken),
             Amount = donation.Amount,
             FeeAmount = donation.FeeAmount,
             Currency = donation.Currency,

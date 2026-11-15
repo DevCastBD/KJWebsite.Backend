@@ -64,7 +64,7 @@ public static class ReceiptPdf
         _ => "-"
     };
 
-    public static string DesignationLabel(string type, string? id) => type == Designations.General ? "General fund / সাধারণ তহবিল" : $"{(type == Designations.Campaign ? "Campaign / ক্যাম্পেইন" : "Project / প্রকল্প")}: {id}";
+    public static string DesignationLabel(string type, string? id) => type == Designations.Student ? "Student sponsorship / শিক্ষার্থী পৃষ্ঠপোষকতা" : type == Designations.General ? "General fund / সাধারণ তহবিল" : $"{(type == Designations.Campaign ? "Campaign / ক্যাম্পেইন" : "Project / প্রকল্প")}: {id}";
 
     public static byte[] Render(ReceiptDocument d)
     {

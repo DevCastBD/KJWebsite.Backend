@@ -18,7 +18,7 @@ namespace FinanceService.Offline;
 /// rejected and recorded again, a proof is never removed.
 /// </summary>
 public sealed partial class OfflineDonationService(
-    FinanceDbContext db, IDonorProtector protector, IProofStore proofs, DonationConfirmation confirmation, LedgerService ledger, IOptions<ProofOptions> proofOptions, TimeProvider clock)
+    FinanceDbContext db, IDonorProtector protector, IProofStore proofs, DonationConfirmation confirmation, LedgerService ledger, IOptions<ProofOptions> proofOptions, TimeProvider clock, ISponsorshipLinks sponsorship, Receipts.DonorKeyHasher keys)
 {
     [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+\z", RegexOptions.CultureInvariant)]
     private static partial Regex Email();
@@ -29,9 +29,12 @@ public sealed partial class OfflineDonationService(
     [GeneratedRegex(@"^[a-z0-9]+(?:-[a-z0-9]+)*\z", RegexOptions.CultureInvariant)]
     private static partial Regex Slug();
 
+    [GeneratedRegex(@"\Astu_[0-9a-f]{32}\z", RegexOptions.CultureInvariant)]
+    private static partial Regex StudentId();
+
     private DateOnly Today => DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
 
-    public async Task<Result<OfflineDonationCreated>> RecordAsync(OfflineDonationRequest request, string actor, CancellationToken cancellationToken)
+    public async Task<Result<OfflineDonationCreated>> RecordAsync(OfflineDonationRequest request, string actor, string bearer, CancellationToken cancellationToken)
     {
         var invalid = new List<string>();
         var today = Today;
@@ -61,7 +64,8 @@ public sealed partial class OfflineDonationService(
             var parts = request.Designation.Trim().Split(':', 2);
             designationType = parts[0];
             designationId = parts.Length > 1 ? parts[1] : null;
-            var ok = designationType == Designations.General ? designationId is null
+            var ok = designationType == Designations.Student ? parts.Length == 1
+                : designationType == Designations.General ? designationId is null
                 : Designations.All.Contains(designationType) && designationId is { Length: > 0 and <= 100 } && Slug().IsMatch(designationId);
             if (!ok)
             {
@@ -69,7 +73,23 @@ public sealed partial class OfflineDonationService(
             }
         }
 
+        if (designationType == Designations.Student)
+        {
+            designationId = request.DesignationId;
+            if (designationId is null || !StudentId().IsMatch(designationId)) invalid.Add("designationId");
+            if (request.DonorId is null) invalid.Add("donorId");
+        }
+        else if (request.DesignationId is not null) invalid.Add("designationId");
+
+        DonorEntity? donor = null;
+        if (request.DonorId is not null)
+        {
+            donor = await db.Donors.AsNoTracking().FirstOrDefaultAsync(d => d.Id == request.DonorId, cancellationToken);
+            if (donor is null) invalid.Add("donorId");
+            if (request.Anonymous) invalid.Add("anonymous");
+        }
         var name = request.DonorName?.Trim();
+        if (donor is not null && string.IsNullOrWhiteSpace(name)) name = protector.Unprotect(donor.NameProtected);
         if (name is not { Length: > 0 and <= 120 })
         {
             invalid.Add("donorName");
@@ -79,6 +99,17 @@ public sealed partial class OfflineDonationService(
         if (email is not null && (email.Length > 254 || !Email().IsMatch(email)))
         {
             invalid.Add("email");
+        }
+
+        if (donor is not null)
+        {
+            if (email is null) email = protector.Unprotect(donor.EmailProtected);
+            else
+            {
+                var emailKey = keys.ForEmail(email);
+                if (emailKey != donor.EmailKey && (donor.AccountSubject is not null ||
+                    await db.Donors.AnyAsync(d => d.Id != donor.Id && d.EmailKey == emailKey, cancellationToken))) invalid.Add("email");
+            }
         }
 
         var phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
@@ -137,6 +168,16 @@ public sealed partial class OfflineDonationService(
             invalid.Add("designation");
         }
 
+        string? studentName = null;
+        if (invalid.Count == 0 && designationType == Designations.Student)
+        {
+            var check = await sponsorship.CheckAsync(request.DonorId!, designationId!, receivedOn, bearer, cancellationToken);
+            if (check.Outcome != SponsorshipOutcome.Ok)
+                return Result.Failure<OfflineDonationCreated>("SPONSORSHIP_UNAVAILABLE", "Sponsorship could not verify the designation. Nothing was saved.");
+            if (!check.Value!.Active) invalid.Add("designationId");
+            else studentName = check.Value.StudentName;
+        }
+
         if (invalid.Count > 0)
         {
             return Result.Failure<OfflineDonationCreated>("VALIDATION_ERROR", $"Invalid fields: {string.Join(", ", invalid)}.");
@@ -153,6 +194,7 @@ public sealed partial class OfflineDonationService(
             Currency = amount.Value.Currency,
             DesignationType = designationType,
             DesignationId = designationId,
+            DonorId = request.DonorId,
             IsAnonymous = request.Anonymous,
             Dedication = dedication,
             DonorNameProtected = protector.Protect(name!),
@@ -186,7 +228,7 @@ public sealed partial class OfflineDonationService(
         var view = await ViewAsync(db, donation.Id, cancellationToken) ?? throw new InvalidOperationException("The record could not be read back.");
         return Result.Success(new OfflineDonationCreated(
             donation.Id, donation.Reference, PublicDonationEndpoints.FormatDate(receivedOn), name!, donation.IsAnonymous, PublicDonationEndpoints.Format(donation.Amount), "0.00",
-            donation.Currency, method, true, designationId is null ? designationType : $"{designationType}:{designationId}", donation.Kind, DonationStatuses.Pending, view));
+            donation.Currency, method, true, designationId is null ? designationType : $"{designationType}:{designationId}", donation.Kind, DonationStatuses.Pending, view, donation.DonorId, designationType == Designations.Student ? designationId : null, studentName));
     }
 
     public async Task<Result<ProofView>> AddProofAsync(string donationId, Stream content, string? contentType, string? fileName, string actor, CancellationToken cancellationToken)

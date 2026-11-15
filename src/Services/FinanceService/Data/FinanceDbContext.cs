@@ -151,6 +151,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.Property(x => x.DesignationType).HasMaxLength(16).IsRequired();
             entity.Property(x => x.DesignationId).HasMaxLength(100);
             entity.Property(x => x.Dedication).HasMaxLength(500);
+            entity.Property(x => x.DonorId).HasMaxLength(40);
+            entity.HasIndex(x => x.DonorId);
             entity.Property(x => x.DonorNameProtected).IsRequired();
             entity.Property(x => x.DonorEmailProtected).IsRequired();
             entity.Property(x => x.Language).HasMaxLength(2).IsRequired();

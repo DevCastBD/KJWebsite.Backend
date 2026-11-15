@@ -17,7 +17,9 @@ public sealed record OfflineDonationRequest(
     string? ReferenceNo,
     string? Note,
     ValuationRequest? Valuation,
-    bool CommunicationConsent = false);
+    bool CommunicationConsent = false,
+    string? DonorId = null,
+    string? DesignationId = null);
 
 public sealed record RejectRequest(string? Reason);
 
@@ -56,4 +58,7 @@ public sealed record OfflineDonationCreated(
     string Designation,
     string Kind,
     string Status,
-    OfflineView OfflineRecord);
+    OfflineView OfflineRecord,
+    string? DonorId,
+    string? StudentId,
+    string? StudentName);
