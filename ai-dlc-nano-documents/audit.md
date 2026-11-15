@@ -375,3 +375,12 @@
 - 2026-11-15T12:50Z [claude] 072-issue-214-student-donor-links DONE @cf5168e: built and verified, uncommitted; awaiting user on commit, push, PR
 - 2026-11-15T13:20Z [claude] 072-issue-214-student-donor-links SIDE-EFFECT @6df7562: pushed Feature/issue-214-student-donor-links (user asked to open the PR)
 - 2026-11-15T13:25Z [claude] 072-issue-214-student-donor-links SIDE-EFFECT @6df7562: opened PR #224 against develop, labels and assignee set; not merged
+- 2026-11-15T13:40Z [claude] 073-issue-215-student-designation CREATED @ee9f3c6: issue #215 student designation on donations (BE-108)
+- 2026-11-15T13:55Z [claude] 073-issue-215-student-designation SIDE-EFFECT @ee9f3c6: created #225 #226 #227 on board, replaced #215 body, commented FrontEnd#353 (user approved)
+- 2026-11-15T14:00Z [claude] 073-issue-215-student-designation DECISION @ee9f3c6: ids not email, donorId on gift, designation+designationId, finance keys, label only (user)
+- 2026-11-15T14:05Z [claude] 073-issue-215-student-designation SIDE-EFFECT @ee9f3c6: assigned tahmidsparrow, board status In progress (verified)
+- 2026-11-15T14:08Z [claude] 073-issue-215-student-designation BRANCH @93215fd: Feature/issue-215-student-designation off origin/develop, docs commit cherry-picked (user approved)
+- 2026-11-15T14:10Z [claude] 073-issue-215-student-designation PHASE PLAN→CONSTRUCT @93215fd: plan approved by user via plan mode
+- 2026-11-15T16:30Z [claude] 073-issue-215-student-designation PHASE CONSTRUCT→WRAP-UP @4c34628: full suite 1228+46 pass, format clean, openapi additive
+- 2026-11-15T18:10Z [claude] 073-issue-215-student-designation DECISION @4c34628: review found email overwrite and language bug; gifts never change the donor (user)
+- 2026-11-15T18:40Z [claude] 073-issue-215-student-designation REVISED @4c34628: review fixes in code, tests and docs; full suite 1230+46 pass; GitHub corrections await the user

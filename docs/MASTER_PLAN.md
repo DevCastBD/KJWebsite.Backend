@@ -160,6 +160,9 @@ Hashed passwords (Identity) · JWT + hashed rotating refresh · permission-based
 | BE-108 | #215 | Student designation on gifts: validate active links on the received date, support filtering and reversals, and enforce student-name visibility. |
 | BE-109 | #216 | Privacy test suite: cover projections, consent, frozen copies, mistaken-link revocation, forms, roles, passwords, concurrency, designation dates, reversals and pagination. |
 | BE-110 | #218 | Sponsorship documentation: publish docs/SPONSORSHIP.md and align MASTER_PLAN.md with the decisions, contract and frontend dependencies. |
+| BE-111 | #225 | Donor sees the designated student's name on gift history while a link or frozen copy exists. |
+| BE-112 | #226 | Attribute gifts to donors by id instead of email, including online gifts (needs a decision). |
+| BE-113 | #227 | Staff donor gift list hides reversed gifts, contrary to the documented behaviour. |
 
 ### P5 — Events, programmes and volunteer operations
 
@@ -198,7 +201,7 @@ Epics #115–#123 hold the per-phase checklists in the same order.
 | BE-006 `/content/bootstrap` (+ BE-009 persistence) | `apiContent` | renders committed snapshots |
 | CTA endpoint + CORS (+ BE-030 idempotency) | `apiCta` | delivers forms by `mailto`/Formspree |
 | BE-014 – BE-018 auth | `auth`, later `admin` | hides login and admin |
-| BE-102 – BE-109 sponsorship (epic #208, `docs/SPONSORSHIP.md`) | `sponsorship` | builds against MSW; students, donor links and the donor area stay hidden |
+| BE-102 – BE-113 sponsorship (epic #208, `docs/SPONSORSHIP.md`) | `sponsorship` | builds against MSW; students, donor links and the donor area stay hidden |
 | P2+ modules | the matching flags | builds against MSW; entry points hidden |
 
 Rules: agree the OpenAPI change first; deploy the endpoint before the frontend enables its flag in production; never require a frontend change to keep a published page rendering.
