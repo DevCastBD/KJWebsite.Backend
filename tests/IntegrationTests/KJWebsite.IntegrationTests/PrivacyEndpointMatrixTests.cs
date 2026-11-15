@@ -136,6 +136,25 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
     ];
 
     [Fact]
+    public void EveryGatewayAnonymousOperationAppearsInOpenApi()
+    {
+        using var reader = File.OpenText(Path.Combine(AppContext.BaseDirectory, "openapi.v1.yaml"));
+        var yaml = new YamlDotNet.RepresentationModel.YamlStream();
+        yaml.Load(reader);
+        var paths = (YamlDotNet.RepresentationModel.YamlMappingNode)((YamlDotNet.RepresentationModel.YamlMappingNode)yaml.Documents.Single().RootNode)["paths"];
+        var operations = paths.Children.SelectMany(path => ((YamlDotNet.RepresentationModel.YamlMappingNode)path.Value).Children
+            .Select(operation => $"{operation.Key.ToString().ToUpperInvariant()} {path.Key}")).ToHashSet(StringComparer.Ordinal);
+        // The exporter merges service descriptions and omits /health. API explorer itself omits
+        // endpoints marked ExcludeFromDescription, including the read-only donor 405 stubs.
+        var missing = Services().SelectMany(Routes)
+            .Where(route => ReviewedAnonymous.Contains(route.Label, StringComparer.Ordinal)
+                && (route.Pattern.StartsWith("/api/v1", StringComparison.Ordinal) || route.Pattern.StartsWith("/.well-known", StringComparison.Ordinal))
+                && route.Endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.IExcludeFromDescriptionMetadata>()?.ExcludeFromDescription != true)
+            .Select(route => $"{route.Method} {route.Pattern}").Where(operation => !operations.Contains(operation)).ToArray();
+        missing.Should().BeEmpty("gateway anonymous operations must be present in openapi.v1.yaml: {0}", string.Join(", ", missing));
+    }
+
+    [Fact]
     public void TheAnonymousSurfaceIsExactlyTheReviewedList()
     {
         var actual = Services().SelectMany(service => Routes(service).Where(route => Anonymous(route) && !Infrastructure(route)))
@@ -154,8 +173,6 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
         {
             var routes = Routes(service);
             routes.Should().NotBeEmpty(service.Name);
-            Console.WriteLine($"{service.Name}: {Protected(service).Length} protected, {routes.Count(Anonymous)} anonymous, {routes.Count(Infrastructure)} infrastructure");
-            foreach (var route in routes.Where(Anonymous)) Console.WriteLine($"Anonymous: {route.Label}");
             foreach (var route in Protected(service))
             {
                 if (route.Endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Count == 0
@@ -189,6 +206,7 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
     [Fact]
     public async Task PermissionAndRolePoliciesRejectUnprivilegedCallersAndWritesChangeNoRows()
     {
+        await SeedWriteAttempts();
         var low = await stack.NewUserAsync(KjRoles.Volunteer);
         var donor = await stack.NewUserAsync(KjRoles.Donor);
         var failures = new List<string>();
@@ -200,7 +218,11 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
                 using var client = service.CreateClient();
                 foreach (var route in Protected(service))
                 {
-                    if (route.Permissions.Length == 0 && !route.DonorSelf) continue;
+                    if (route.Permissions.Length == 0 && !route.DonorSelf)
+                    {
+                        if (service.Name != "auth") failures.Add($"{route.Label} has no permission policy or DonorSelf policy");
+                        continue;
+                    }
                     if (kind == "donor token" && route.DonorSelf) continue;
                     var token = service.Name == "auth" ? (kind == "donor token" ? donor.Token : low.Token)
                         : kind == "donor token" ? TestTokens.Issue([], extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)])
@@ -208,6 +230,10 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
                     await Check(client, route, token, kind, HttpStatusCode.Forbidden, failures);
                 }
             }
+            var after = await Snapshot();
+            foreach (var (table, content) in before)
+                if (after[table] != content) failures.Add($"{table} content changed after write endpoint pass for {kind}");
+            // Session-only auth calls below deliberately revoke sessions, so compare forbidden writes first.
             var auth = Services().Single(service => service.Name == "auth");
             using var identity = auth.CreateClient();
             foreach (var route in Protected(auth).Where(route => route.Permissions.Length == 0 && !route.DonorSelf)
@@ -223,35 +249,87 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
                 };
                 await Check(identity, route, kind == "donor token" ? donor.Token : low.Token, kind, expected, failures);
             }
-            var after = await Snapshot();
-            foreach (var (table, count) in before)
-                if (after[table] != count) failures.Add($"{table} changed from {count} to {after[table]} after write endpoint pass for {kind}");
         }
         failures.Should().BeEmpty(string.Join(Environment.NewLine, failures));
     }
 
-    private async Task<Dictionary<string, int>> Snapshot()
+    private async Task<Dictionary<string, string>> Snapshot()
     {
-        using var sponsorship = stack.Sponsorship.Services.CreateScope();
-        using var finance = stack.Finance.Services.CreateScope();
-        using var auth = stack.Auth.Services.CreateScope();
-        using var membership = stack.Membership.Services.CreateScope();
-        var students = sponsorship.ServiceProvider.GetRequiredService<SponsorshipDbContext>();
-        var gifts = finance.ServiceProvider.GetRequiredService<FinanceDbContext>();
-        var users = auth.ServiceProvider.GetRequiredService<AuthDbContext>();
-        var applications = membership.ServiceProvider.GetRequiredService<MembershipDbContext>();
-        return new()
+        var result = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var service in Services())
         {
-            ["sponsorship students"] = await students.Students.CountAsync(),
-            ["sponsorship links"] = await students.Links.CountAsync(),
-            ["finance donors"] = await gifts.Donors.CountAsync(),
-            ["finance donations"] = await gifts.Donations.CountAsync(),
-            ["donor logins"] = await users.UserRoles.CountAsync(role => users.Roles.Any(r => r.Id == role.RoleId && r.Name == KjRoles.Donor)),
-            ["membership applications"] = await applications.Applications.CountAsync()
-        };
+            using var scope = service.Services.CreateScope();
+            var contextType = service.Name switch
+            {
+                "auth" => typeof(AuthDbContext),
+                "content" => typeof(ContentService.Data.ContentDbContext),
+                "cta" => typeof(CtaSubmissionService.Data.CtaDbContext),
+                "membership" => typeof(MembershipDbContext),
+                "finance" => typeof(FinanceDbContext),
+                "sponsorship" => typeof(SponsorshipDbContext),
+                _ => throw new InvalidOperationException(service.Name)
+            };
+            var db = (DbContext)scope.ServiceProvider.GetRequiredService(contextType);
+            foreach (var entity in db.Model.GetEntityTypes().OrderBy(e => e.Name, StringComparer.Ordinal))
+            {
+                var task = (Task<string>)typeof(PrivacyEndpointMatrixTests).GetMethod(nameof(TableContent),
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                    .MakeGenericMethod(entity.ClrType).Invoke(null, [db, entity])!;
+                result[$"{service.Name}: {entity.Name}"] = await task;
+            }
+        }
+        return result;
     }
 
-    private static async Task Check(HttpClient client, Route route, string? token, string kind, HttpStatusCode expected, List<string> failures)
+    private static async Task<string> TableContent<T>(DbContext db, Microsoft.EntityFrameworkCore.Metadata.IEntityType entity) where T : class
+    {
+        // No columns are excluded. Tracking exposes shadow scalar properties as well as CLR properties.
+        var rows = await db.Set<T>().AsTracking().ToListAsync();
+        var properties = entity.GetProperties().OrderBy(p => p.Name, StringComparer.Ordinal).ToArray();
+        return System.Text.Json.JsonSerializer.Serialize(rows.Select(row =>
+            System.Text.Json.JsonSerializer.Serialize(properties.ToDictionary(p => p.Name, p => db.Entry(row).Property(p.Name).CurrentValue)))
+            .OrderBy(row => row, StringComparer.Ordinal));
+    }
+
+    private readonly Dictionary<string, (string Path, object Body, string? Etag)> _writeAttempts = new(StringComparer.Ordinal);
+
+    private async Task SeedWriteAttempts()
+    {
+        var staff = await stack.NewAdminAsync();
+        var donor = await PrivacyFlows.CreateDonor(stack, staff.Token);
+        var spare = await PrivacyFlows.CreateDonor(stack, staff.Token);
+        var student = await PrivacyFlows.LinkStudent(stack, staff.Token, donor.Id);
+        const string donors = "/api/v1/admin/finance/donors";
+        const string students = "/api/v1/admin/sponsorship/students";
+        async Task Add(string method, string pattern, string path, object body, bool etag = false)
+        {
+            string? tag = null;
+            if (etag)
+            {
+                using var current = await PrivacyFlows.Send(stack, HttpMethod.Get, path, staff.Token);
+                current.EnsureSuccessStatusCode();
+                tag = current.Headers.ETag!.Tag;
+            }
+            _writeAttempts[$"{method} {pattern}"] = (path, body, tag);
+        }
+        var studentBody = new { name = "Policy probe student", preferredName = "Policy preferred", dateOfBirth = "2011-02-03", school = "Policy probe school", @class = "Class 6", programme = "pathshala", district = "Dhaka", guardianName = "Policy probe guardian", status = "active" };
+        using var available = await PrivacyFlows.Send(stack, HttpMethod.Post, students, staff.Token, studentBody);
+        var availableStudent = (await PrivacyFlows.Json(available, HttpStatusCode.Created)).GetProperty("id").GetString();
+        await Add("POST", students, students, studentBody);
+        await Add("PATCH", students + "/{id}", $"{students}/{student}", new { name = "Policy changed student", storyEn = "Policy changed story" }, true);
+        await Add("POST", students + "/{id}/consents", $"{students}/{student}/consents", new { granted = false, note = "Policy probe consent note" });
+        await Add("POST", donors, donors, new { name = "Policy probe donor", email = "policy-probe@example.org", notes = "Policy probe notes" });
+        await Add("PATCH", donors + "/{id}", $"{donors}/{donor.Id}", new { name = "Policy changed donor", notes = "Policy changed notes" }, true);
+        await Add("PUT", donors + "/{id}/login/status", $"{donors}/{donor.Id}/login/status", new { status = "disabled" });
+        await Add("PUT", donors + "/{id}/login/password", $"{donors}/{donor.Id}/login/password", new { password = "PolicyProbePassword9!" });
+        const string links = "/api/v1/admin/sponsorship/donors/{donorId}/students";
+        await Add("POST", links, $"/api/v1/admin/sponsorship/donors/{spare.Id}/students", new { studentId = availableStudent, startDate = "2020-01-01" });
+        await Add("POST", links + "/{studentId}/unlink", $"/api/v1/admin/sponsorship/donors/{donor.Id}/students/{student}/unlink", new { type = "ended", endDate = DateTime.UtcNow.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), reason = "Policy probe unlink" });
+        const string donations = "/api/v1/admin/finance/donations";
+        await Add("POST", donations, donations, new { donorId = donor.Id, amount = "500.00", currency = "BDT", method = "cash", designation = "student", designationId = student });
+    }
+
+    private async Task Check(HttpClient client, Route route, string? token, string kind, HttpStatusCode expected, List<string> failures)
     {
         const string placeholder = "x";
         var path = "/" + string.Join('/', route.Endpoint.RoutePattern.PathSegments.Select(segment => string.Concat(segment.Parts.Select(part => part switch
@@ -262,9 +340,13 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
                 : parameter.ParameterPolicies.Any(p => p.Content == "guid") ? "00000000-0000-0000-0000-000000000001" : placeholder,
             _ => throw new InvalidOperationException($"Unsupported route part on {route.Label}")
         }))));
+        var attempt = _writeAttempts.GetValueOrDefault($"{route.Method} {route.Pattern}");
+        if (attempt.Path is not null) path = attempt.Path;
         using var request = new HttpRequestMessage(new HttpMethod(route.Method), path);
+        if (attempt.Etag is not null) request.Headers.TryAddWithoutValidation("If-Match", attempt.Etag);
+        request.Headers.TryAddWithoutValidation("Idempotency-Key", Guid.NewGuid().ToString("N"));
         if (token is not null) request.Headers.Authorization = new("Bearer", token);
-        if (route.Method is "POST" or "PUT" or "PATCH") request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        if (route.Method is "POST" or "PUT" or "PATCH") request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(attempt.Body ?? new { }), Encoding.UTF8, "application/json");
         try
         {
             using var response = await client.SendAsync(request);

@@ -2,7 +2,7 @@
      base: 303e05e | updated: 2026-11-16
      next: independent reviewer on the branch diff, fix findings, then ask the user before push and PR
      -->
-# Plan: Privacy test suite (BE-109, #216). Full design: C:\Users\Tahmid\.claude\plans\merry-chasing-thimble.md
+# Plan: Privacy test suite (BE-109, #216).
 ## Tasks
 - [x] A: PrivacyStack harness (gateway plus six services in memory, wired), GlobalLogSink on all factories, TestTokens.Expired, handler hooks
 - [x] A: small source fixes: no-store middleware (Finance donors and donations, Identity donors) and Identity dev email sender log redaction, with tests

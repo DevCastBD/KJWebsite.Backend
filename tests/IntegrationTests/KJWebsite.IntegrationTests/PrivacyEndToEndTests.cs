@@ -190,7 +190,7 @@ public sealed class PrivacyEndToEndTests(PrivacyStack stack) : IClassFixture<Pri
         var staff = await stack.NewSuperAdminAsync();
         var donor = await CreateDonor(stack, staff.Token);
         var student = await LinkStudent(stack, staff.Token, donor.Id);
-        foreach (var role in new[] { KjRoles.Admin, KjRoles.Moderator, KjRoles.FinanceOfficer, KjRoles.ContentEditor, KjRoles.EventManager, KjRoles.MembershipOfficer, KjRoles.Volunteer, KjRoles.Member, KjRoles.Donor })
+        foreach (var role in KjRoles.Seed.Keys.Where(role => role != KjRoles.SuperAdmin).OrderBy(role => role, StringComparer.Ordinal))
         {
             var user = await stack.NewUserAsync(role);
             var before = await BusinessRows();

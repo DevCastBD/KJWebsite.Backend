@@ -18,7 +18,7 @@ The sponsorship suite uses 18 scenario ids from T-01 to T-29; the numbering is n
 ### Access and ownership
 
 - **T-01** (`PrivacyEndpointMatrixTests`): every protected endpoint rejects missing, malformed and expired tokens with 401; Identity also rejects synthetic sessions.
-- **T-02** (`PrivacyEndpointMatrixTests`): donor tokens cannot call staff endpoints, and refused writes leave business row counts unchanged.
+- **T-02** (`PrivacyEndpointMatrixTests`): donor tokens cannot call staff endpoints, and refused writes, sent with valid bodies and real targets, leave the full row content of every service database unchanged.
 - **T-07** (`PrivacyEndpointMatrixTests`): callers without the required permission or role receive 403; session-only Identity routes have explicit expectations.
 - **T-03** (`PrivacyEndToEndTests`): another donor's student detail and photo match an unknown student's 404; query and body ids cannot change ownership.
 - **T-04** (`PrivacyEndToEndTests`): donor photos require an owned link and current consent; staff photos require the staff permission.
@@ -41,7 +41,7 @@ The sponsorship suite uses 18 scenario ids from T-01 to T-29; the numbering is n
 
 ### Public responses, caching and logs
 
-- **T-21** (`PrivacyPublicRouteTests`): every public OpenAPI operation keeps seeded private values out of bodies and headers; search probes disclose no private results.
+- **T-21** (`PrivacyPublicRouteTests`): every public OpenAPI operation, called once with placeholder ids and once with the seeded real ids where the parameter fits, keeps seeded private values (including the child's date of birth and the guardian phone) out of bodies and headers; search probes disclose no private results.
 - **T-22** (`PrivacyEndToEndTests`): private reads carry no-store headers, have no Age header and reach the service on both requests.
 - **T-23** (`PrivacyLogScanTests`): the shared log sink contains no registered private values from any factory.
 
@@ -65,7 +65,7 @@ The counting handler records gateway forwards per service. T-22 requires the cou
 Every non-infrastructure route must explicitly declare authorisation or anonymous access. Health, OpenAPI, Swagger and Scalar routes are excluded from the protected matrix.
 The anonymous set itself is pinned: `TheAnonymousSurfaceIsExactlyTheReviewedList` compares it with `ReviewedAnonymous`, so a protected endpoint that becomes anonymous (or a new anonymous one) fails until a reviewer adds it to that list on purpose.
 
-T-21 reads `openapi.v1.yaml` from the test output. A new public operation is scanned automatically, including writes with an empty JSON body.
+T-21 reads `openapi.v1.yaml` from the test output. A new public operation is scanned once `openapi.v1.yaml` is regenerated (`dotnet run --project tools/OpenApiExporter`), including writes with an empty JSON body. If a new anonymous endpoint is added to `ReviewedAnonymous` but the YAML is not regenerated, `EveryGatewayAnonymousOperationAppearsInOpenApi` fails, so the scan cannot silently skip it.
 Public means outside `/api/v1/admin/`, without a `me` path segment, and outside auth sessions, logout-all and change-password routes. This is a path rule, not OpenAPI security metadata.
 If the scan reports `METHOD /path: extend the parameter table for 'name'.`, add a safe value to `PathValues` in `PrivacyPublicRouteTests.cs` (or `QueryValues` for a query parameter). Use a valid placeholder that does not contain a registered private value; do not skip the operation.
 

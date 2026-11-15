@@ -162,6 +162,22 @@ public sealed class PrivacyHarnessTests(PrivacyStack stack) : IClassFixture<Priv
     }
 
     [Fact]
+    public async Task IdentityPersonalDataPathsAreNeverCached()
+    {
+        var user = await stack.NewUserAsync(KjRoles.Member);
+        var staff = await stack.NewAdminAsync();
+        var paths = new[] { "/api/v1/auth/me", "/api/v1/auth/me/export", $"/api/v1/admin/auth/members/{user.UserId}" };
+        foreach (var path in paths)
+        {
+            foreach (var token in new[] { user.Token, staff.Token, null })
+            {
+                using var response = await Send(stack, HttpMethod.Get, path, token);
+                Private(response);
+            }
+        }
+    }
+
+    [Fact]
     public async Task PrivateAdminResponsesCoverSuccessAndAuthorizationRefusals()
     {
         var staff = await stack.NewAdminAsync();

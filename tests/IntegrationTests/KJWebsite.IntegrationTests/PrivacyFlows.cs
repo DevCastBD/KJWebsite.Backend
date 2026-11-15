@@ -11,6 +11,8 @@ namespace KJWebsite.IntegrationTests;
 
 internal static class PrivacyFlows
 {
+    private static int _studentSeed;
+
     public static async Task UploadPhoto(PrivacyStack stack, string token, string studentId)
     {
         byte[] bytes = [0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3F, 0x00,
@@ -55,11 +57,15 @@ internal static class PrivacyFlows
     }
     public static async Task<string> LinkStudent(PrivacyStack stack, string token, string donorId)
     {
+        // A process-wide ordinal makes both values unique across fixtures without random collisions.
+        var seed = Interlocked.Increment(ref _studentSeed);
+        var birth = new DateOnly(2010, 1, 1).AddDays(seed).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var guardianPhone = stack.Seed("guardian phone", $"+88017{seed:D8}");
         using var created = await Send(stack, HttpMethod.Post, Students, token, new
         {
             name = stack.NewSeed("student"),
             preferredName = stack.NewSeed("preferred"),
-            dateOfBirth = "2012-03-04",
+            dateOfBirth = birth,
             gender = "female",
             school = stack.NewSeed("school"),
             @class = "Class 6",
@@ -67,7 +73,7 @@ internal static class PrivacyFlows
             district = "Dhaka",
             address = stack.NewSeed("address"),
             guardianName = stack.NewSeed("guardian"),
-            guardianPhone = "+8801711000000",
+            guardianPhone,
             status = "active"
         });
         var id = (await Json(created, HttpStatusCode.Created)).GetProperty("id").GetString()!;
