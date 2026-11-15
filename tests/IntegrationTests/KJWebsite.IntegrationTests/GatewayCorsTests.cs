@@ -84,6 +84,20 @@ public sealed class GatewayCorsTests : IDisposable
     }
 
     [Fact]
+    public async Task PreflightAllowsTheCorrelationHeaderTheFrontendSendsOnEveryCall()
+    {
+        using var client = _factory.CreateClient();
+        var request = Request(HttpMethod.Options, "/api/v1/content/settings", SiteOrigin);
+        request.Headers.Add("Access-Control-Request-Method", "GET");
+        request.Headers.Add("Access-Control-Request-Headers", "x-correlation-id");
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        string.Join(",", response.Headers.GetValues("Access-Control-Allow-Headers")).Should().ContainEquivalentOf("X-Correlation-ID");
+    }
+
+    [Fact]
     public async Task PreflightFromUnlistedOriginIsNotApproved()
     {
         using var client = _factory.CreateClient();
