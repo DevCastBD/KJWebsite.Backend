@@ -473,6 +473,23 @@ public sealed class FinanceDonorTests : IDisposable
     }
 
     [Fact]
+    public async Task TheExportIncludesADonorStaffCreatedBeforeAnyGiftWithEmptyDateCells()
+    {
+        await ConfirmedAsync("has-gift@example.org", "500.00", name: "Has A Gift");
+        using var created = await SendAsync(HttpMethod.Post, "/api/v1/admin/finance/donors", Manager, new { name = "No Gift Yet", email = "no-gift@example.org" });
+        created.StatusCode.Should().Be(HttpStatusCode.Created, await created.Content.ReadAsStringAsync());
+
+        using var export = await SendAsync(HttpMethod.Get, "/api/v1/admin/finance/donors/export", Exporter);
+
+        export.StatusCode.Should().Be(HttpStatusCode.OK, "a donor without gifts has no first or last gift date, which must not fail the whole export");
+        var lines = (await export.Content.ReadAsStringAsync()).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+        lines.Should().HaveCount(3, "the header and both donors");
+        lines.Single(l => l.Contains("no-gift@example.org", StringComparison.Ordinal)).Should().EndWith("\"0\",\"\",\"\",\"\",\"\",\"no\",\"no\",\"no\"", "no gifts, no totals, empty first and last gift dates, no segments, no consent");
+        lines.Single(l => l.Contains("has-gift@example.org", StringComparison.Ordinal)).Should().Contain(DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), "the donor with a gift still has real dates");
+        (await DbAsync(db => db.DonorExports.AsNoTracking().Select(e => e.Rows).SingleAsync())).Should().Be(2);
+    }
+
+    [Fact]
     public async Task ConsentHistorySuppressionsAndExportLogsAreAppendOnlyButDonorContactCanBeRefreshed()
     {
         await ConfirmedAsync("d@example.org", name: "Donor", consent: true);
