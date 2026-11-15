@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="../../../openapi.v1.yaml" Link="openapi.v1.yaml" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="YamlDotNet" PrivateAssets="all" />
     <PackageReference Include="coverlet.collector">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
