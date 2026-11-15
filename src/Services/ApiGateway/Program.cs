@@ -20,7 +20,7 @@ builder.Services.AddOpenApi(options =>
     options.AddDocumentTransformer((document, context, ct) =>
     {
         document.Info.Title = "KJWebsite API Gateway";
-        document.Info.Description = "Entry point — routes /api/v1/content/*, /api/v1/cta/*, /api/v1/membership/*, /api/v1/donations/*, /api/v1/campaigns/*, /api/v1/auth/* to their respective downstream services.";
+        document.Info.Description = "Entry point: routes /api/v1/content/*, /api/v1/cta/*, /api/v1/membership/*, /api/v1/donations/*, /api/v1/campaigns/*, /api/v1/auth/*, /api/v1/admin/sponsorship/* and /api/v1/donors/me/students/* to their respective downstream services.";
         document.Info.Version = "v1";
         return Task.CompletedTask;
     });
@@ -38,6 +38,8 @@ builder.Services.AddReverseProxy().LoadFromMemory(
     new RouteConfig { RouteId = "membership", ClusterId = "membership", Match = new RouteMatch { Path = "/api/v1/membership/{**catch-all}" } },
     new RouteConfig { RouteId = "donations", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donations/{**catch-all}" } },
     new RouteConfig { RouteId = "donations-root", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donations" } },
+    new RouteConfig { RouteId = "donor-students-root", ClusterId = "sponsorship", Match = new RouteMatch { Path = "/api/v1/donors/me/students" } },
+    new RouteConfig { RouteId = "donor-students", ClusterId = "sponsorship", Match = new RouteMatch { Path = "/api/v1/donors/me/students/{**catch-all}" } },
     new RouteConfig { RouteId = "donor-self", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donors/me" } },
     new RouteConfig { RouteId = "donor-self-donations", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/donors/me/donations" } },
     new RouteConfig { RouteId = "campaigns", ClusterId = "finance", Match = new RouteMatch { Path = "/api/v1/campaigns/{**catch-all}" } },

@@ -32,6 +32,11 @@ public static class StudentFileEndpoints
                 return StudentEndpoints.NotFound(context);
             }
 
+            if (student.PhotoKey is not null && await db.FrozenCopies.AnyAsync(f => f.PhotoKey == student.PhotoKey, context.RequestAborted))
+            {
+                return ApiError.Create(context, 409, "PHOTO_FROZEN", "A former sponsor keeps a frozen copy that uses this photo.");
+            }
+
             var latest = await db.Consents.AsNoTracking().Where(c => c.StudentId == id).OrderByDescending(c => c.Id).FirstOrDefaultAsync(context.RequestAborted);
             if (latest?.Granted != true)
             {
@@ -51,7 +56,18 @@ public static class StudentFileEndpoints
             student.PhotoContentType = upload.ContentType;
             student.Version++;
             student.UpdatedAt = clock.GetUtcNow();
-            await db.SaveChangesAsync(context.RequestAborted);
+            try
+            {
+                await db.SaveChangesAsync(context.RequestAborted);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // The student changed since it was read (for example a link ended and a frozen copy now uses the current photo): nothing was
+                // replaced, so the file just stored is removed and the file that may now be referenced is left alone.
+                await store.DeleteAsync(key, CancellationToken.None);
+                return StudentChanged(context);
+            }
+
             if (previous is not null)
             {
                 await store.DeleteAsync(previous, context.RequestAborted);
@@ -94,6 +110,11 @@ public static class StudentFileEndpoints
                 return StudentEndpoints.NotFound(context);
             }
 
+            if (student.PhotoKey is not null && await db.FrozenCopies.AnyAsync(f => f.PhotoKey == student.PhotoKey, context.RequestAborted))
+            {
+                return ApiError.Create(context, 409, "PHOTO_FROZEN", "A former sponsor keeps a frozen copy that uses this photo.");
+            }
+
             if (student.PhotoKey is not { } key)
             {
                 return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "This student has no photo.");
@@ -103,7 +124,16 @@ public static class StudentFileEndpoints
             student.PhotoContentType = null;
             student.Version++;
             student.UpdatedAt = clock.GetUtcNow();
-            await db.SaveChangesAsync(context.RequestAborted);
+            try
+            {
+                await db.SaveChangesAsync(context.RequestAborted);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Same as the replace: the photo may have just been frozen by an ended link, so the file is not touched.
+                return StudentChanged(context);
+            }
+
             await store.DeleteAsync(key, context.RequestAborted);
             context.Response.Headers.ETag = StudentData.ETagOf(student);
             return Results.NoContent();
@@ -241,6 +271,9 @@ public static class StudentFileEndpoints
 
         return new Upload(bytes, contentType, file.FileName, null);
     }
+
+    private static IResult StudentChanged(HttpContext context) =>
+        ApiError.Create(context, StatusCodes.Status409Conflict, "STUDENT_CHANGED", "The student was changed at the same moment. Check the student and try again.");
 
     private static IResult TooLarge(HttpContext context, long maxBytes) =>
         ApiError.Create(context, StatusCodes.Status413PayloadTooLarge, "PAYLOAD_TOO_LARGE", $"The file is larger than {maxBytes / (1024 * 1024)} MB.");

@@ -20,12 +20,12 @@ public sealed record StudentSummary(
 
 public sealed record StudentList(IReadOnlyList<StudentSummary> Items, int Total, int Limit, int Offset);
 
-/// <summary>Every field staff keep for a student. Links are filled in by the link endpoints (#214); until then the list is empty.</summary>
+/// <summary>Every field staff keep for a student, including link history.</summary>
 public sealed record StudentDetail(
     string Id, string Name, string PreferredName, string DateOfBirth, string? Gender, string School, string Class, ProgrammeRef Programme,
     string District, string? Address, string GuardianName, string? GuardianPhone, string? StoryEn, string? StoryBn, string Status,
     bool HasPhoto, bool HasConsentForm, string? ConsentFormName, StudentConsentState Consent, IReadOnlyList<StudentConsentRow> Consents,
-    IReadOnlyList<object> Links, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+    IReadOnlyList<LinkSummary> Links, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
 /// <summary>
 /// The one allow-list of what a donor may see (D2). Photo and story appear only while guardian consent is granted; the story is the
@@ -34,3 +34,5 @@ public sealed record StudentDetail(
 public sealed record DonorStudentView(
     string Id, string PreferredName, string Class, string School, ProgrammeRef Programme, string District, string Status,
     bool HasPhoto, string? Story, string? StoryLanguage);
+
+public sealed record LinkSummary(string Id, string DonorId, DateOnly StartDate, DateOnly? EndDate, string? EndType, string NoticeStatus);

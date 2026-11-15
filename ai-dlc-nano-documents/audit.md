@@ -361,3 +361,15 @@
 - 2026-11-12T17:30Z [agent] 071-issue-213-sponsorship-module PHASE CONSTRUCT→WRAP-UP @699a9bb: full suite 1013 pass, 4 known path failures
 - 2026-11-12T18:00Z [agent] 071-issue-213-sponsorship-module SIDE-EFFECT @a1980f8: pushed branch, opened PR #223 (pre-approved by user); nothing merged
 - 2026-11-12T18:00Z [agent] 071-issue-213-sponsorship-module DONE @a1980f8: PR #223 open for review
+- 2026-11-13T10:50Z [claude] 072-issue-214-student-donor-links CREATED @cf5168e: issue #214 student-donor links (BE-107)
+- 2026-11-13T10:52Z [claude] 072-issue-214-student-donor-links SIDE-EFFECT @cf5168e: assigned tahmidsparrow, board status In progress (verified)
+- 2026-11-13T10:55Z [claude] 072-issue-214-student-donor-links DECISION @cf5168e: token forward to Finance, updates purpose, frozen photo by reference (user)
+- 2026-11-13T10:56Z [claude] 072-issue-214-student-donor-links PHASE CLARIFY→PLAN @cf5168e: plan drafted in plan mode
+- 2026-11-13T10:58Z [claude] 072-issue-214-student-donor-links BRANCH @cf5168e: Feature/issue-214-student-donor-links off #213 branch (user confirmed)
+- 2026-11-13T10:58Z [claude] 072-issue-214-student-donor-links PHASE PLAN→CONSTRUCT @cf5168e: plan approved by user via plan mode
+- 2026-11-13T12:10Z [claude] 072-issue-214-student-donor-links DECISION @cf5168e: Finance /me lacks donor id; new /donors/me/identity endpoint (user confirmed)
+- 2026-11-13T12:12Z [claude] 072-issue-214-student-donor-links REVISED @cf5168e: plan amended, Finance gets identity endpoint; Sponsorship code from Codex under review
+- 2026-11-15T09:30Z [claude] 072-issue-214-student-donor-links DECISION @cf5168e: cancel unstarted link without copy; Sponsorship:TimeZone default Asia/Dhaka (user)
+- 2026-11-15T09:32Z [claude] 072-issue-214-student-donor-links REVISED @cf5168e: reviewer found 2 concurrency defects and 9 minor; fixing, tests to Codex
+- 2026-11-15T12:40Z [claude] 072-issue-214-student-donor-links PHASE CONSTRUCT→WRAP-UP @cf5168e: full suite 1168+46 pass, review fixes done, format clean
+- 2026-11-15T12:50Z [claude] 072-issue-214-student-donor-links DONE @cf5168e: built and verified, uncommitted; awaiting user on commit, push, PR

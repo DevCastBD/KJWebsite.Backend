@@ -11,6 +11,12 @@ namespace FinanceService.Donors;
 /// <summary>What a donor may see of their own record: nothing staff keep for themselves (notes, status, keys, account state).</summary>
 public sealed record DonorMeView(string Name, string Type, string Organisation, string Email, string Phone, string Address, string Country, string Language, string Since);
 
+/// <summary>
+/// What the Sponsorship module needs to serve a donor their linked students (#214): the donor id and the donor's language. Kept off `/me`, whose
+/// fields are the donor-visible profile only; the gateway has no route to this path, so it is a service-to-service call made with the donor's own token.
+/// </summary>
+public sealed record DonorIdentityView(string Id, string Language);
+
 /// <summary>One of the donor's own gifts, from a valid receipt. `Designation` is a label for display; the student's name joins it with #214.</summary>
 public sealed record DonorMeGift(string Id, string Reference, string Date, string Amount, string Currency, string Designation, string DesignationType, string? DesignationId, string Status, bool InKind, string ReceiptNumber);
 
@@ -71,6 +77,15 @@ public static class DonorSelfEndpoints
         .WithSummary("The donor's own profile")
         .WithDescription("Donor-visible fields only: never notes, staff status, account state or keys. The donor is found from the token; no id is accepted. 403 for any role but Donor, for an inactive donor and for a disabled account.")
         .WithTags(Tag)
+        .RequireDonorSelf();
+
+        app.MapGet($"{Route}/identity", async (HttpContext context, FinanceDbContext db) =>
+            await WithDonor(context, db, donor => Task.FromResult(Results.Ok(new DonorIdentityView(donor.Id, donor.Language)))))
+        .WithName("GetMyDonorIdentity")
+        .WithSummary("The donor's own id and language, for the Sponsorship module")
+        .WithDescription("Called by the Sponsorship module with the donor's own token so it can find their linked students; the gateway does not route it. Same checks as the profile: 404 NOT_A_DONOR, 403 DONOR_INACTIVE, 403 ACCOUNT_DISABLED. No id is accepted.")
+        .WithTags(Tag)
+        .ExcludeFromDescription()
         .RequireDonorSelf();
 
         app.MapGet($"{Route}/donations", async (HttpContext context, FinanceDbContext db, int? limit, int? offset, int? year) =>
@@ -143,6 +158,8 @@ public static class DonorSelfEndpoints
         // A mapped path with no handler for a method answers through the framework's own endpoint, which the deny-by-default policy would
         // refuse with 401 or 403. These say what is true: the self-service is read-only. They read nothing and change nothing.
         app.MapMethods(Route, Writes, (HttpContext context) => ReadOnly(context))
+            .ExcludeFromDescription().AllowAnonymous();
+        app.MapMethods($"{Route}/identity", Writes, (HttpContext context) => ReadOnly(context))
             .ExcludeFromDescription().AllowAnonymous();
         app.MapMethods($"{Route}/donations", Writes, (HttpContext context) => ReadOnly(context))
             .ExcludeFromDescription().AllowAnonymous();

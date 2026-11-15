@@ -23,7 +23,7 @@ public sealed class DonorMessenger(FinanceDbContext db, IDonorProtector protecto
     public static string PurposeOf(string template) => template switch
     {
         "donor.welcome_thanks" or "donor.thank_you" => ConsentPurposes.Thanks,
-        "donor.update" => ConsentPurposes.Updates,
+        "donor.update" or "donor.student_linked" => ConsentPurposes.Updates,
         "donor.appeal" => ConsentPurposes.Appeals,
         _ => throw new ArgumentOutOfRangeException(nameof(template), $"Unknown donor message template '{template}'.")
     };

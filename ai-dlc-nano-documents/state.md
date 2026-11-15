@@ -1,14 +1,14 @@
 # AI-DLC Nano State
 - Active work item: none
 - Phase: —
-- Branch: Feature/issue-213-sponsorship-module
-- Base SHA: 699a9bb
-- Next step: PR #223 open for #213, awaiting human review; next ticket #214
+- Branch: Feature/issue-214-student-donor-links  (was stacked on the #213 branch, which has since merged)
+- Base SHA: cf5168e
+- Next step: #214 is built and verified but uncommitted; decide on commit, push and PR (not merge); next ticket #215
 - Paused work items:
-  - work-items/071-issue-213-sponsorship-module (DONE, PR #223 open)
+  - work-items/072-issue-214-student-donor-links (DONE, uncommitted, no PR yet)
+  - work-items/071-issue-213-sponsorship-module (DONE, PR #223 merged)
   - work-items/070-issue-212-donor-self-service (DONE, PR #222 merged)
   - work-items/069-issue-211-donor-crm (DONE, PR #221 merged)
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
-  - work-items/006-issue-10-docker-compose (merged #129, UNVERIFIED)
-- Uncommitted code: no
-- Last updated: 2026-11-12T17:40Z by agent
+- Uncommitted code: yes
+- Last updated: 2026-11-15T12:50Z by claude

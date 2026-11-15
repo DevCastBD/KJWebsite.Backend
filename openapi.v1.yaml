@@ -4031,6 +4031,52 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/finance/donors/{id}/link-target":
+    get:
+      tags:
+        - "Donors"
+      summary: "The donor facts the Sponsorship module needs to link a student"
+      description: "Returns the donor id, account subject, status and account status, or 404. Used by the Sponsorship module; requires \u0060sponsorship.link.manage\u0060."
+      operationId: "GetDonorLinkTarget"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/finance/donors/{id}/link-notices":
+    post:
+      tags:
+        - "Donors"
+      summary: "Queue the \u0027student linked\u0027 notice to a donor, through the consent gate"
+      description: "Body: the link id only. Queued when the donor granted \u0060updates\u0060 consent, otherwise suppressed and recorded. Idempotent by \u0060Idempotency-Key\u0060. Requires \u0060sponsorship.link.manage\u0060."
+      operationId: "QueueDonorLinkNotice"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkNoticeRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/admin/finance/donors/{id}/login":
     post:
       tags:
@@ -5685,6 +5731,135 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/sponsorship/donors/{donorId}/students":
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      operationId: "ListDonorStudentLinks"
+      parameters:
+        -
+          name: "donorId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin: Sponsorship"
+      operationId: "CreateDonorStudentLink"
+      parameters:
+        -
+          name: "donorId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "Idempotency-Key"
+          in: "header"
+          description: "Optional. A repeat with the same key and body returns the original response (header \u0060Idempotency-Replayed: true\u0060) and creates nothing new; the same key with a different body is 422; a repeat while the first is running is 409. Keys are remembered for 24 hours."
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/donors/{donorId}/students/{studentId}/unlink":
+    post:
+      tags:
+        - "Admin: Sponsorship"
+      operationId: "UnlinkDonorStudent"
+      parameters:
+        -
+          name: "donorId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "studentId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnlinkRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/donors/me/students:
+    get:
+      tags:
+        - "Donor: Students"
+      operationId: "ListMyStudents"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/donors/me/students/{studentId}":
+    get:
+      tags:
+        - "Donor: Students"
+      operationId: "GetMyStudent"
+      parameters:
+        -
+          name: "studentId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/donors/me/students/{studentId}/photo":
+    get:
+      tags:
+        - "Donor: Students"
+      operationId: "GetMyStudentPhoto"
+      parameters:
+        -
+          name: "studentId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/sponsorship/projects:
     get:
       tags:
@@ -5706,7 +5881,7 @@ paths:
       tags:
         - "Admin: Sponsorship"
       summary: "The staff list of students"
-      description: "Newest first. \u0060q\u0060 matches the full name, the preferred name or the id. Filters: \u0060programme\u0060 (project slug), \u0060status\u0060, \u0060sponsored\u0060 (no student is sponsored until #214). \u0060limit\u0060 1 to 100 (default 20), \u0060offset\u0060."
+      description: "Newest first. \u0060q\u0060 matches the full name, the preferred name or the id. Filters: \u0060programme\u0060 (project slug), \u0060status\u0060, \u0060sponsored\u0060 (has an active link). \u0060limit\u0060 1 to 100 (default 20), \u0060offset\u0060."
       operationId: "ListStudents"
       parameters:
         -
@@ -5777,7 +5952,7 @@ paths:
       tags:
         - "Admin: Sponsorship"
       summary: "Every field staff keep for a student"
-      description: "Includes the guardian contact details, the current consent and its history, and the link history (empty until #214). Returns the ETag. Each read is written to the audit log with who made it."
+      description: "Includes the guardian contact details, the current consent and its history, and the link history. Returns the ETag. Each read is written to the audit log with who made it."
       operationId: "GetStudent"
       parameters:
         -
@@ -6704,6 +6879,8 @@ tags:
     name: "Reconciliation"
   -
     name: "Admin: Sponsorship"
+  -
+    name: "Donor: Students"
   -
     name: "Auth"
   -
@@ -8020,6 +8197,15 @@ components:
           type:
             - "null"
             - "string"
+    LinkNoticeRequest:
+      required:
+        - "linkId"
+      type: "object"
+      properties:
+        linkId:
+          type:
+            - "null"
+            - "string"
     MatchRequest:
       required:
         - "lineId"
@@ -8256,6 +8442,20 @@ components:
           type:
             - "null"
             - "string"
+    CreateLinkRequest:
+      required:
+        - "studentId"
+        - "startDate"
+      type: "object"
+      properties:
+        studentId:
+          type:
+            - "null"
+            - "string"
+        startDate:
+          type:
+            - "null"
+            - "string"
     StudentConsentRequest:
       required:
         - "granted"
@@ -8341,6 +8541,25 @@ components:
             - "null"
             - "string"
         status:
+          type:
+            - "null"
+            - "string"
+    UnlinkRequest:
+      required:
+        - "type"
+        - "endDate"
+        - "reason"
+      type: "object"
+      properties:
+        type:
+          type:
+            - "null"
+            - "string"
+        endDate:
+          type:
+            - "null"
+            - "string"
+        reason:
           type:
             - "null"
             - "string"

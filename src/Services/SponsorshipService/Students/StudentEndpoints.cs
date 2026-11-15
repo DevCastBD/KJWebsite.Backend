@@ -17,6 +17,7 @@ public static class StudentEndpoints
 {
     public const string Route = "/api/v1/admin/sponsorship";
     private const string Tag = "Admin: Sponsorship";
+    private static readonly string[] InvalidFieldMessages = ["This field is missing or invalid."];
     private const int DefaultLimit = 20;
     private const int MaxLimit = 100;
 
@@ -83,10 +84,10 @@ public static class StudentEndpoints
                 query = query.Where(s => s.Status == status);
             }
 
-            // No student is linked to a donor until the link endpoints (#214) exist, so only the unsponsored filter can match.
-            if (sponsored is not null && bool.Parse(sponsored))
+            if (sponsored is not null)
             {
-                return Results.Ok(new StudentList([], 0, limit ?? DefaultLimit, offset ?? 0));
+                var wanted = bool.Parse(sponsored);
+                query = query.Where(s => db.Links.Any(l => l.StudentId == s.Id && l.EndType == null) == wanted);
             }
 
             // Ordered here, not in SQL: SQLite (the test provider) cannot order by DateTimeOffset, and a student list is small.
@@ -105,16 +106,17 @@ public static class StudentEndpoints
             var skip = offset ?? 0;
             var page = rows.Skip(skip).Take(take).ToList();
             var ids = page.Select(s => s.Id).ToList();
+            var sponsoredIds = (await db.Links.AsNoTracking().Where(l => ids.Contains(l.StudentId) && l.EndType == null).Select(l => l.StudentId).ToListAsync(context.RequestAborted)).ToHashSet();
             var current = await CurrentConsentsAsync(db, ids, context.RequestAborted);
             var programmeNames = await names.NamesAsync("en", context.RequestAborted);
             var items = page.Select(s => StudentData.Summary(
                 s, protector, new ProgrammeRef(s.ProgrammeId, programmeNames.GetValueOrDefault(s.ProgrammeId, s.ProgrammeId)),
-                current.TryGetValue(s.Id, out var consent) && consent.Granted)).ToList();
+                current.TryGetValue(s.Id, out var consent) && consent.Granted, sponsoredIds.Contains(s.Id))).ToList();
             return Results.Ok(new StudentList(items, rows.Count, take, skip));
         })
         .WithName("ListStudents")
         .WithSummary("The staff list of students")
-        .WithDescription("Newest first. `q` matches the full name, the preferred name or the id. Filters: `programme` (project slug), `status`, `sponsored` (no student is sponsored until #214). `limit` 1 to 100 (default 20), `offset`.")
+        .WithDescription("Newest first. `q` matches the full name, the preferred name or the id. Filters: `programme` (project slug), `status`, `sponsored` (has an active link). `limit` 1 to 100 (default 20), `offset`.")
         .WithTags(Tag)
         .RequirePermission(Permissions.SponsorshipView);
 
@@ -162,11 +164,11 @@ public static class StudentEndpoints
 
             var consents = await db.Consents.AsNoTracking().Where(c => c.StudentId == id).OrderByDescending(c => c.Id).ToListAsync(context.RequestAborted);
             context.Response.Headers.ETag = StudentData.ETagOf(student);
-            return Results.Ok(StudentData.Detail(student, protector, await names.RefAsync(student.ProgrammeId, "en", context.RequestAborted), consents));
+            return Results.Ok(StudentData.Detail(student, protector, await names.RefAsync(student.ProgrammeId, "en", context.RequestAborted), consents, await LinksAsync(db, id, context.RequestAborted)));
         })
         .WithName("GetStudent")
         .WithSummary("Every field staff keep for a student")
-        .WithDescription("Includes the guardian contact details, the current consent and its history, and the link history (empty until #214). Returns the ETag. Each read is written to the audit log with who made it.")
+        .WithDescription("Includes the guardian contact details, the current consent and its history, and the link history. Returns the ETag. Each read is written to the audit log with who made it.")
         .WithTags(Tag)
         .RequirePermission(Permissions.SponsorshipView);
 
@@ -210,7 +212,7 @@ public static class StudentEndpoints
 
             var consents = await db.Consents.AsNoTracking().Where(c => c.StudentId == id).OrderByDescending(c => c.Id).ToListAsync(context.RequestAborted);
             context.Response.Headers.ETag = StudentData.ETagOf(student);
-            return Results.Ok(StudentData.Detail(student, protector, await names.RefAsync(student.ProgrammeId, "en", context.RequestAborted), consents));
+            return Results.Ok(StudentData.Detail(student, protector, await names.RefAsync(student.ProgrammeId, "en", context.RequestAborted), consents, await LinksAsync(db, id, context.RequestAborted)));
         })
         .WithName("UpdateStudent")
         .WithSummary("Change a student")
@@ -293,8 +295,17 @@ public static class StudentEndpoints
 
     internal static string Actor(HttpContext context) => context.User.FindFirst(KjClaims.Subject)?.Value ?? "unknown";
 
-    internal static IResult Invalid(HttpContext context, IEnumerable<string> fields) =>
-        ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Invalid fields: {string.Join(", ", fields)}.");
+    internal static IResult Invalid(HttpContext context, IEnumerable<string> fields)
+    {
+        var invalid = fields.Distinct().ToList();
+        var result = ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", $"Invalid fields: {string.Join(", ", invalid)}.");
+        if (result is IValueHttpResult { Value: Microsoft.AspNetCore.Mvc.ProblemDetails problem })
+        {
+            problem.Extensions["errors"] = invalid.ToDictionary(field => field, _ => InvalidFieldMessages);
+        }
+
+        return result;
+    }
 
     internal static IResult NotFound(HttpContext context) => ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Student not found.");
 
@@ -331,10 +342,14 @@ public static class StudentEndpoints
     }
 
     /// <summary>The newest consent row of each student, so a list reads one query instead of one per row.</summary>
-    private static async Task<Dictionary<string, ConsentEntity>> CurrentConsentsAsync(SponsorshipDbContext db, List<string> studentIds, CancellationToken cancellationToken) =>
+    internal static async Task<Dictionary<string, ConsentEntity>> CurrentConsentsAsync(SponsorshipDbContext db, List<string> studentIds, CancellationToken cancellationToken) =>
         (await db.Consents.AsNoTracking()
             .Where(c => studentIds.Contains(c.StudentId) && !db.Consents.Any(n => n.StudentId == c.StudentId && n.Id > c.Id))
             .ToListAsync(cancellationToken)).ToDictionary(c => c.StudentId);
+
+    internal static async Task<List<LinkSummary>> LinksAsync(SponsorshipDbContext db, string id, CancellationToken ct) =>
+        await db.Links.AsNoTracking().Where(l => l.StudentId == id).OrderByDescending(l => l.StartDate).ThenBy(l => l.Id)
+            .Select(l => new LinkSummary(l.Id, l.DonorId, l.StartDate, l.EndDate, l.EndType, l.NoticeStatus)).ToListAsync(ct);
 
     /// <summary>Writes a `read` row to the audit log, in the same save as the caller's next SaveChanges.</summary>
     private static void RecordRead(SponsorshipDbContext db, HttpContext context, string studentId) => db.Set<AuditEvent>().Add(new AuditEvent

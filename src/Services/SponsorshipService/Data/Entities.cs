@@ -55,3 +55,46 @@ public sealed class ConsentEntity
     public string ActorId { get; set; } = string.Empty;
     public string? Note { get; set; }
 }
+
+public static class LinkEndTypes
+{
+    public const string Ended = "ended";
+    public const string Mistaken = "mistaken";
+}
+
+public sealed class LinkEntity
+{
+    public string Id { get; set; } = $"lnk_{Guid.NewGuid():N}";
+    public string DonorId { get; set; } = string.Empty;
+    public string? DonorSubject { get; set; }
+    public string StudentId { get; set; } = string.Empty;
+    public DateOnly StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
+    public string? EndType { get; set; }
+    public string? EndReason { get; set; }
+    public string CreatedBy { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+    public string? EndedBy { get; set; }
+    public DateTimeOffset? EndedAt { get; set; }
+    public string NoticeStatus { get; set; } = "pending";
+    public int Version { get; set; } = 1;
+}
+
+public sealed class FrozenCopyEntity
+{
+    public string LinkId { get; set; } = string.Empty;
+    public string StudentId { get; set; } = string.Empty;
+    public string PreferredName { get; set; } = string.Empty;
+    public string Class { get; set; } = string.Empty;
+    public string School { get; set; } = string.Empty;
+    public string ProgrammeId { get; set; } = string.Empty;
+    public string ProgrammeNameEn { get; set; } = string.Empty;
+    public string ProgrammeNameBn { get; set; } = string.Empty;
+    public string District { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string? StoryEn { get; set; }
+    public string? StoryBn { get; set; }
+    public string? PhotoKey { get; set; }
+    public string? PhotoContentType { get; set; }
+    public DateTimeOffset FrozenAt { get; set; }
+}
