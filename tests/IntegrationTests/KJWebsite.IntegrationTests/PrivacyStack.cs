@@ -70,7 +70,7 @@ public sealed class PrivacyStack : IAsyncLifetime
     }
     public Task<(string UserId, string Email, string Password, string Token)> NewAdminAsync() => NewUserAsync(KjRoles.Admin);
     public Task<(string UserId, string Email, string Password, string Token)> NewSuperAdminAsync() => NewUserAsync(KjRoles.SuperAdmin);
-    private async Task<(string UserId, string Email, string Password, string Token)> NewUserAsync(string role)
+    public async Task<(string UserId, string Email, string Password, string Token)> NewUserAsync(string role)
     {
         var email = Seed("staff email", $"{NewSeed("staff")}@example.org");
         var password = NewSeed("Password9");
