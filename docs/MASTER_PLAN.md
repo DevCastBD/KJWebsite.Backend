@@ -163,6 +163,7 @@ Hashed passwords (Identity) · JWT + hashed rotating refresh · permission-based
 | BE-111 | #225 | Donor sees the designated student's name on gift history while a link or frozen copy exists. |
 | BE-112 | #226 | Attribute gifts to donors by id instead of email, including online gifts (needs a decision). |
 | BE-113 | #227 | Staff donor gift list hides reversed gifts, contrary to the documented behaviour. |
+| BE-114 | #229 | A donor's unexpired token keeps working on Finance and Sponsorship for up to 15 minutes after the account is disabled directly in Identity. Disabling through Finance (`PUT /api/v1/admin/finance/donors/{id}/login/status`) updates both sides; the gateway also routes `/api/v1/admin/auth/**`. An Identity-direct disable revokes sessions (Identity answers 401), but Finance's own state stays active, so Finance donor endpoints and Sponsorship's (which ask Finance) keep answering 200 until the token expires. Options: stop routing Identity's donor admin endpoints, have donor endpoints re-check Identity per request, or service credentials (BE-093). Labels: `security`, `backend`, `phase:P4`, `priority:medium`, `area:identity`, `needs-decision`. |
 
 ### P5 — Events, programmes and volunteer operations
 
