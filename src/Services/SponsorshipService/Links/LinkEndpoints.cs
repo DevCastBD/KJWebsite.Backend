@@ -210,7 +210,7 @@ public static partial class LinkEndpoints
         return message.Contains("UX_links_active_", StringComparison.Ordinal) ||
             (message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) && message.Contains("links.StudentId", StringComparison.Ordinal));
     }
-    private static bool Date(string? value, out DateOnly date) => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
+    internal static bool Date(string? value, out DateOnly date) => DateOnly.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
     internal static string Bearer(HttpContext context) => context.Request.Headers.Authorization.ToString() is { } header && header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header[7..] : string.Empty;
     internal static IResult Unavailable(HttpContext context) => ApiError.Create(context, 503, "FINANCE_UNAVAILABLE", "Finance could not be reached.");
     private static IResult Error(HttpContext context, string code, string message) => ApiError.Create(context, 409, code, message);

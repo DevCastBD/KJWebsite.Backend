@@ -140,6 +140,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Sponsorsh
    .AllowAnonymous();
 
 app.MapLinks();
+app.MapDesignation();
 app.MapDonorStudents();
 app.MapStudents();
 app.MapStudentFiles();
