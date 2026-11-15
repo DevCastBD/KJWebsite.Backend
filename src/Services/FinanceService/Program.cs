@@ -211,6 +211,7 @@ app.MapAdminDonations();
 app.MapOffline();
 app.MapReceipts();
 app.MapDonors();
+app.MapDonorLinkTargets();
 app.MapDonorProfiles();
 app.MapDonorSelf();
 app.MapCampaigns();

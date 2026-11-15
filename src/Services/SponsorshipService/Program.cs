@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using SponsorshipService.Data;
+using SponsorshipService.Links;
 using SponsorshipService.Students;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,7 +51,9 @@ builder.Services.AddKjAuditing("sponsorship", audit => audit
         nameof(StudentEntity.NameProtected), nameof(StudentEntity.DateOfBirthProtected), nameof(StudentEntity.AddressProtected),
         nameof(StudentEntity.GuardianNameProtected), nameof(StudentEntity.GuardianPhoneProtected), nameof(StudentEntity.StoryEn),
         nameof(StudentEntity.StoryBn), nameof(StudentEntity.PhotoKey), nameof(StudentEntity.FormKey), nameof(StudentEntity.FormFileName))
-    .Audit<ConsentEntity>(nameof(ConsentEntity.FormKey), nameof(ConsentEntity.Note)));
+    .Audit<ConsentEntity>(nameof(ConsentEntity.FormKey), nameof(ConsentEntity.Note))
+    .Audit<LinkEntity>()
+    .Audit<FrozenCopyEntity>(nameof(FrozenCopyEntity.StoryEn), nameof(FrozenCopyEntity.StoryBn), nameof(FrozenCopyEntity.PhotoKey)));
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.Configure<SponsorshipOptions>(builder.Configuration.GetSection(SponsorshipOptions.SectionName));
@@ -68,12 +71,22 @@ builder.Services.AddHttpClient(ProjectCatalogue.ClientName, (services, client) =
     client.BaseAddress = new Uri(services.GetRequiredService<IConfiguration>()["Services:Content:Url"] ?? "http://localhost:7001/");
     client.Timeout = TimeSpan.FromSeconds(10);
 });
+builder.Services.AddHttpClient(FinanceDonors.ClientName, (services, client) =>
+{
+    client.BaseAddress = new Uri(services.GetRequiredService<IConfiguration>()["Services:Finance:Url"] ?? "http://localhost:7005/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddSingleton<FoundationDay>();
+builder.Services.AddSingleton<IFinanceDonors, FinanceDonors>();
 builder.Services.AddSingleton<IProjectCatalogue, ProjectCatalogue>();
 builder.Services.AddSingleton<ProgrammeNames>();
 builder.Services.AddKjJwtAuthentication();
 builder.Services.AddKjIdempotency(builder.Configuration);
 
 var app = builder.Build();
+
+// Resolve eagerly so an unknown Sponsorship:TimeZone fails startup, not the first request that needs the date.
+_ = app.Services.GetRequiredService<FoundationDay>();
 
 if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenApi:Export")))
 {
@@ -103,12 +116,13 @@ if (app.Environment.IsDevelopment())
 // Everything here is about a child: no shared cache may keep a response, a refusal included, so the headers are set as it starts.
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path.StartsWithSegments(StudentEndpoints.Route))
+    if (context.Request.Path.StartsWithSegments(StudentEndpoints.Route) || context.Request.Path.StartsWithSegments(DonorStudentEndpoints.Route))
     {
         context.Response.OnStarting(() =>
         {
             context.Response.Headers.CacheControl = "private, no-store";
             context.Response.Headers.XContentTypeOptions = "nosniff";
+            context.Response.Headers.Vary = "Authorization";
             return Task.CompletedTask;
         });
     }
@@ -125,6 +139,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Sponsorsh
    .WithTags("System")
    .AllowAnonymous();
 
+app.MapLinks();
+app.MapDonorStudents();
 app.MapStudents();
 app.MapStudentFiles();
 app.MapAuditLog<SponsorshipDbContext>($"{StudentEndpoints.Route}/audit", "Sponsorship");

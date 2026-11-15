@@ -21,6 +21,7 @@ public sealed class DonorSelfServiceTests : IDisposable
 {
     private const string Me = "/api/v1/donors/me";
     private const string Donations = "/api/v1/donors/me/donations";
+    private const string Identity = "/api/v1/donors/me/identity";
     private static readonly string Manager = TestTokens.Issue([Permissions.FinanceView, Permissions.FinanceDonorManage], subject: "usr_manager");
     private static readonly string Reverser = TestTokens.Issue([Permissions.FinanceView, Permissions.FinanceDonationReverse], subject: "usr_reverser");
 
@@ -188,7 +189,7 @@ public sealed class DonorSelfServiceTests : IDisposable
         await Gift("rahim@example.org", "100.00");
         var token = DonorToken("usr_rahim");
 
-        foreach (var path in new[] { Me, Donations })
+        foreach (var path in new[] { Me, Donations, Identity })
         {
             foreach (var method in new[] { HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch, HttpMethod.Delete })
             {
@@ -312,6 +313,65 @@ public sealed class DonorSelfServiceTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         response.Headers.CacheControl!.ToString().Should().Be("no-store, private");
+    }
+
+    // ---------------------------------------------------------------- identity (for the Sponsorship module, #214)
+
+    [Fact]
+    public async Task TheIdentityHoldsOnlyTheDonorIdAndLanguageAndIsNeverCached()
+    {
+        var id = await Donor("Rahim Uddin", "rahim@example.org", "usr_rahim");
+
+        using var response = await Get(Identity, DonorToken("usr_rahim"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        var body = await Json(response);
+        body.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo(["id", "language"]);
+        body.GetProperty("id").GetString().Should().Be(id);
+        body.GetProperty("language").GetString().Should().Be("en");
+        response.Headers.CacheControl!.ToString().Should().Be("no-store, private");
+        response.Headers.Vary.Should().Contain("Authorization");
+
+        // The profile itself still carries no id.
+        (await (await Get(Me, DonorToken("usr_rahim"))).Content.ReadAsStringAsync()).Should().NotContain(id);
+    }
+
+    [Fact]
+    public async Task TheIdentityIsRefusedToEveryoneButTheDonorAndFollowsTheSameStateChecksAsTheProfile()
+    {
+        var id = await Donor("Rahim Uddin", "rahim@example.org", "usr_rahim");
+        var token = DonorToken("usr_rahim");
+
+        (await Status(Identity, null)).Should().Be(HttpStatusCode.Unauthorized);
+        (await Status(Identity, Manager)).Should().Be(HttpStatusCode.Forbidden);
+        (await Status(Identity, TestTokens.Issue([], subject: "usr_rahim", extraClaims: Claims(KjRoles.Member)))).Should().Be(HttpStatusCode.Forbidden);
+        (await Status(Identity, DonorToken("usr_rahim", mustChange: true))).Should().Be(HttpStatusCode.Forbidden);
+
+        using var nobody = await Get(Identity, DonorToken("usr_nobody"));
+        nobody.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await ErrorCode(nobody)).Should().Be("NOT_A_DONOR");
+
+        await Edit(id, d => d.Status = DonorStatuses.Inactive);
+        using var inactive = await Get(Identity, token);
+        inactive.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await ErrorCode(inactive)).Should().Be("DONOR_INACTIVE");
+
+        await Edit(id, d => { d.Status = DonorStatuses.Active; d.AccountStatus = AccountStatuses.Disabled; });
+        using var disabled = await Get(Identity, token);
+        disabled.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await ErrorCode(disabled)).Should().Be("ACCOUNT_DISABLED");
+    }
+
+    [Fact]
+    public async Task TheIdentityNeverReadsADonorIdFromTheRequest()
+    {
+        var rahim = await Donor("Rahim Uddin", "rahim@example.org", "usr_rahim");
+        var karim = await Donor("Karim Hossain", "karim@example.org", "usr_karim");
+
+        foreach (var query in new[] { $"?donorId={karim}", $"?id={karim}", $"?email=karim@example.org" })
+        {
+            (await Json(await Get(Identity + query, DonorToken("usr_rahim")))).GetProperty("id").GetString().Should().Be(rahim, query);
+        }
     }
 
     // ---------------------------------------------------------------- helpers

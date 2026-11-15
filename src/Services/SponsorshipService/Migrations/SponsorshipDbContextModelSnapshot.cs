@@ -137,6 +137,155 @@ namespace SponsorshipService.Migrations
                     b.ToTable("consents", "sponsorship");
                 });
 
+            modelBuilder.Entity("SponsorshipService.Data.FrozenCopyEntity", b =>
+                {
+                    b.Property<string>("LinkId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Class")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("FrozenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PhotoContentType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("PhotoKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PreferredName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ProgrammeId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ProgrammeNameBn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProgrammeNameEn")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("School")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("StoryBn")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StoryEn")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("LinkId");
+
+                    b.HasIndex("PhotoKey");
+
+                    b.ToTable("frozen_copies", "sponsorship");
+                });
+
+            modelBuilder.Entity("SponsorshipService.Data.LinkEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("DonorId")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("DonorSubject")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("EndType")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EndedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NoticeStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DonorId")
+                        .HasDatabaseName("IX_links_DonorId");
+
+                    b.HasIndex("StudentId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_links_active_student")
+                        .HasFilter("\"EndType\" IS NULL");
+
+                    b.HasIndex("DonorId", "StudentId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_links_active_pair")
+                        .HasFilter("\"EndType\" IS NULL");
+
+                    b.ToTable("links", "sponsorship");
+                });
+
             modelBuilder.Entity("SponsorshipService.Data.StudentEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -241,6 +390,24 @@ namespace SponsorshipService.Migrations
                 });
 
             modelBuilder.Entity("SponsorshipService.Data.ConsentEntity", b =>
+                {
+                    b.HasOne("SponsorshipService.Data.StudentEntity", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SponsorshipService.Data.FrozenCopyEntity", b =>
+                {
+                    b.HasOne("SponsorshipService.Data.LinkEntity", null)
+                        .WithOne()
+                        .HasForeignKey("SponsorshipService.Data.FrozenCopyEntity", "LinkId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SponsorshipService.Data.LinkEntity", b =>
                 {
                     b.HasOne("SponsorshipService.Data.StudentEntity", null)
                         .WithMany()

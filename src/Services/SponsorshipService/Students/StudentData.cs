@@ -184,11 +184,11 @@ public static partial class StudentData
 
     public static string ETagOf(StudentEntity s) => $"\"{s.Version.ToString(CultureInfo.InvariantCulture)}\"";
 
-    public static StudentSummary Summary(StudentEntity s, IStudentProtector protector, ProgrammeRef programme, bool consentGranted) =>
+    public static StudentSummary Summary(StudentEntity s, IStudentProtector protector, ProgrammeRef programme, bool consentGranted, bool sponsored = false) =>
         new(s.Id, protector.Unprotect(s.NameProtected), s.PreferredName, s.ClassName, s.School, programme, s.District, s.Status,
-            Sponsored: false, HasPhoto: s.PhotoKey is not null, ConsentGranted: consentGranted);
+            Sponsored: sponsored, HasPhoto: s.PhotoKey is not null, ConsentGranted: consentGranted);
 
-    public static StudentDetail Detail(StudentEntity s, IStudentProtector protector, ProgrammeRef programme, IReadOnlyList<ConsentEntity> consents)
+    public static StudentDetail Detail(StudentEntity s, IStudentProtector protector, ProgrammeRef programme, IReadOnlyList<ConsentEntity> consents, IReadOnlyList<LinkSummary>? links = null)
     {
         var latest = consents.Count == 0 ? null : consents[0];
         return new StudentDetail(
@@ -198,7 +198,7 @@ public static partial class StudentData
             s.StoryEn, s.StoryBn, s.Status, s.PhotoKey is not null, s.FormKey is not null, s.FormFileName,
             new StudentConsentState(latest?.Granted == true, latest?.RecordedAt, latest?.ActorId),
             [.. consents.Select(c => new StudentConsentRow(c.Id, c.Granted, c.FormKey is not null, c.RecordedAt, c.ActorId, c.Note))],
-            [], s.CreatedAt, s.UpdatedAt);
+            links ?? [], s.CreatedAt, s.UpdatedAt);
     }
 }
 

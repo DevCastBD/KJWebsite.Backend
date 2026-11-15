@@ -22,7 +22,7 @@ Staff gift lists for a donor keep reversed gifts with their status; donor endpoi
 - **Manage sign-in** (`finance.donor.provision`): `PUT .../donors/{id}/login/password {password}` sets a new initial password, requires a change and ends sessions; it rejects `409 NO_ACCOUNT` and `409 ACCOUNT_SHARED`. `PUT .../donors/{id}/login/status {status: active|disabled}` disables or enables sign-in; disabling ends sessions. It rejects `409 ACCOUNT_SHARED`, `409 NO_ACCOUNT` and, when enabling for an inactive donor, `409 DONOR_INACTIVE`.
 - **Inactive donors**: setting donor status to `inactive` disables a donor-only sign-in in Identity first; failure returns `503 AUTH_UNAVAILABLE` and saves nothing. A sign-in shared with a member is left alone. Reactivating a donor does not enable sign-in.
 - **Identity lookup**: `GET /api/v1/admin/auth/donors/{userId}` (`finance.view`) returns status, `mustChangePassword`, roles and `shared`; an account without the Donor role returns `404`.
-- **Audit and links**: changes are audited with before and after values, excluding name, email, phone, address, notes and both keys. `linkedStudents` and the has-active-links filter arrive with #214; students and consent exist since #213, but donor links do not exist yet.
+- **Audit and links**: changes are audited with before and after values, excluding name, email, phone, address, notes and both keys. `linkedStudents` and the Finance has-active-links filter are not built yet; they wait on a Finance-to-Sponsorship call. Student-donor links are built in Sponsorship (#214).
 
 ## Donor self-service (BE-105, #212)
 
@@ -32,12 +32,13 @@ Staff gift lists for a donor keep reversed gifts with their status; donor endpoi
 - **State:** Every request checks donor and account state, including before the access token expires. Inactive donors receive `403 DONOR_INACTIVE`; disabled accounts receive `403 ACCOUNT_DISABLED`. Finance cannot see a shared member sign-in disabled through membership; it holds only the account state it last set.
 - **Profile:** Returns `name`, `type`, `organisation`, `email`, `phone`, `address`, `country`, `language` and `since` (the donor record's creation date). Missing optional values are empty strings. Never returns notes, staff status, account state, keys or version.
 - **Donations:** Returns `{ items, total, limit, offset, totals }`. Items contain only the donor's own gifts from valid, non-anonymous receipts, matched by the donor's stable key. Gifts from receipts voided by a reversal are excluded. Order is newest first by receipt date, then receipt number.
-- **Item fields:** `id` (donation id), `reference`, `date`, `amount` (two decimals), `currency`, `designation`, `designationType`, `designationId`, `status` (`confirmed`), `inKind` and `receiptNumber`. `designation` is the campaign title in the donor's language when set, otherwise `General` for general giving, otherwise the designation id. No receipt download link is returned. Student names will join the designation through sponsorship links (#214); no student designation exists yet.
+- **Item fields:** `id` (donation id), `reference`, `date`, `amount` (two decimals), `currency`, `designation`, `designationType`, `designationId`, `status` (`confirmed`), `inKind` and `receiptNumber`. `designation` is the campaign title in the donor's language when set, otherwise `General` for general giving, otherwise the designation id. No receipt download link is returned. Student designation and its name projection are not built yet; student-donor links are served by Sponsorship (#214).
 - **Paging and filters:** `limit` is `1` to `100` (default `20`); `offset` is `0` or more. Optional `year` filters the receipt date's calendar year, from `1970` to `9999`. Out-of-range values return `400 VALIDATION_ERROR`.
 - **Totals:** `totals` contains `{ currency, cash, inKind }` entries over all gifts matching the filter, independent of paging. Currencies are never added together.
 - **Methods:** `POST`, `PUT`, `PATCH` and `DELETE` on both paths return `405 METHOD_NOT_ALLOWED` with `Allow: GET` and change nothing.
 - **Caching:** Every response, including refusals, carries `Cache-Control: private, no-store` and `Vary: Authorization`.
-- **Out of scope:** `/donors/me/statements`, `/recurring`, `/students` and photos, and receipt download.
+- **Internal identity:** `GET /api/v1/donors/me/identity` returns `{ id, language }` with the same checks as `/me`; it is internal, not routed by the gateway or listed in `openapi.v1.yaml`, and is used by Sponsorship with the donor token.
+- **Out of scope:** `/donors/me/statements`, `/recurring` and receipt download. Sponsorship serves `/donors/me/students` and photos; see [SPONSORSHIP.md](SPONSORSHIP.md).
 
 ## Segments (reproducible)
 Pure functions of a donor's gifts, an `asOf` date and configuration (`Finance:Donors`): nothing reads "now" or a stored flag, so any segment can be re-run for any past date. Gifts after `asOf` do not exist yet.
@@ -51,6 +52,8 @@ Three purposes, **opt-in only**: `thanks` (follow-up thank-yous beyond the recei
 - Every grant and withdrawal is a new append-only row (`donor_consents`); the latest per purpose is current. Consent here is separate from newsletter consent (#80): a donation is not a subscription.
 - The donation form (public, and offline entry) may carry an optional `communicationConsent`; ticked, it grants `thanks` and `updates` (source `donation_form`) and **never `appeals`**. Staff can record a change with `POST .../donors/{id}/consent` (source `admin` or `donor_request`; `finance.donor.manage`).
 - **One gate** (`DonorMessenger`) decides every non-receipt message. If the donor's latest word for the message's purpose is not a grant, the message is **not queued** and a suppression row (`donor_suppressions`, append-only) records it, so it is provable nothing went out without consent. Receipts are transactional and are not gated.
+
+- **Student-link notices:** `GET /api/v1/admin/finance/donors/{id}/link-target` and `POST .../donors/{id}/link-notices { linkId }` require `sponsorship.link.manage`; the POST requires the `Idempotency-Key` header (`400 VALIDATION_ERROR` without it) and returns `queued|suppressed`. Template `donor.student_linked` maps to `updates` consent and holds only the link id. Bilingual templates do not exist yet; delivery waits on the email sender.
 
 ## Thank-you automation
 At confirmation, a thank-you is queued to the outbox (`donor.welcome_thanks` for the first gift, `donor.thank_you` after) only if the donor holds `thanks`; otherwise it is suppressed and recorded. Delivery waits on the email sender (BE-032/033).
