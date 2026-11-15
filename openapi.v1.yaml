@@ -3409,9 +3409,14 @@ paths:
       tags:
         - "Finance"
       summary: "Donations and their reversing entries, newest first"
-      description: "Filters: from/to (UTC dates, inclusive), method (the gateway), status (pending, confirmed, failed, cancelled, refunded), designation (\u0060general\u0060, \u0060campaign:slug\u0060, \u0060project:slug\u0060). Amounts are decimal strings; reversals are negative. Donor names are shown to finance staff even for anonymous gifts, flagged by \u0060anonymous\u0060."
+      description: "Filters: from/to (UTC dates, inclusive), method (the gateway), status (pending, confirmed, failed, cancelled, refunded), designation (\u0060general\u0060, \u0060campaign:slug\u0060, \u0060project:slug\u0060, \u0060student:stu_...\u0060), studentId (the designated student). Rows carry \u0060donorId\u0060, \u0060studentId\u0060 and \u0060studentName\u0060 (the preferred name, null if the sponsorship service cannot be reached). Amounts are decimal strings; reversals are negative. Donor names are shown to finance staff even for anonymous gifts, flagged by \u0060anonymous\u0060."
       operationId: "ListFinanceDonations"
       parameters:
+        -
+          name: "studentId"
+          in: "query"
+          schema:
+            type: "string"
         -
           name: "from"
           in: "query"
@@ -3462,7 +3467,7 @@ paths:
       tags:
         - "Offline donations"
       summary: "Record a gift that arrived offline"
-      description: "\u0060{donorName, email?, phone?, amount, currency, method, date?, designation?, anonymous?, dedication?, referenceNo?, note?, valuation?}\u0060 with \u0060method\u0060 one of bank, cash, cheque, bkash, nagad, in_kind. The donation is created \u0060pending\u0060 and posts nothing until a different user approves it. \u0060date\u0060 is when it arrived (not in the future). An in_kind gift needs \u0060valuation: {basis, itemDescription, note?}\u0060 (basis market_price, appraisal, donor_receipt, cost or other; a note is required for other), and its amount is the valuation. Requires \u0060finance.donation.record\u0060."
+      description: "\u0060{donorName, email?, phone?, amount, currency, method, date?, designation?, designationId?, donorId?, anonymous?, dedication?, referenceNo?, note?, valuation?}\u0060 with \u0060method\u0060 one of bank, cash, cheque, bkash, nagad, in_kind. The donation is created \u0060pending\u0060 and posts nothing until a different user approves it. \u0060date\u0060 is when it arrived (not in the future). An in_kind gift needs \u0060valuation: {basis, itemDescription, note?}\u0060 (basis market_price, appraisal, donor_receipt, cost or other; a note is required for other), and its amount is the valuation. A gift can be designated to a sponsored student: \u0060designation: \u0022student\u0022\u0060 with \u0060designationId: \u0022stu_...\u0022\u0060 and a \u0060donorId\u0060 (required). The donor\u0027s link to that student must have been active on the received date (checked once, here), otherwise 400 on \u0060designationId\u0060; 503 \u0060SPONSORSHIP_UNAVAILABLE\u0060 if the sponsorship service cannot be reached. With a \u0060donorId\u0060 the gift is tied to that donor by id, not by email. Requires \u0060finance.donation.record\u0060."
       operationId: "RecordOfflineDonation"
       parameters:
         -
@@ -3485,11 +3490,16 @@ paths:
       tags:
         - "Finance"
       summary: "Confirmed and pending totals per currency"
-      description: "One entry per currency, never converted. Confirmed is net of reversals (reversing entries are negative); count includes every entry."
+      description: "One entry per currency, never converted. Confirmed is net of reversals (reversing entries are negative); count includes every entry. Optional filters: designation and studentId (the designated student)."
       operationId: "GetFinanceDonationTotals"
       parameters:
         -
           name: "designation"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "studentId"
           in: "query"
           schema:
             type: "string"
@@ -5819,6 +5829,72 @@ paths:
             schema:
               $ref: "#/components/schemas/UnlinkRequest"
         required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/donors/{donorId}/students/{studentId}/designation":
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Check a student\u0027s donation designation"
+      description: "Checks whether the donor\u0027s link was active on the required calendar date, returning only the preferred name when active."
+      operationId: "GetStudentDesignation"
+      parameters:
+        -
+          name: "donorId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "studentId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "date"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/sponsorship/donors/{donorId}/designatable-students":
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "List students eligible for donation designation"
+      description: "Returns up to 200 students linked on the calendar date, defaulting to today in the foundation\u0027s time zone."
+      operationId: "ListDesignatableStudents"
+      parameters:
+        -
+          name: "donorId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "date"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/sponsorship/students/names:
+    get:
+      tags:
+        - "Admin: Sponsorship"
+      summary: "Look up student preferred names"
+      description: "Returns only IDs and preferred names for up to 100 distinct student IDs, in request order, omitting unknown IDs."
+      operationId: "GetStudentPreferredNames"
+      parameters:
+        -
+          name: "ids"
+          in: "query"
+          schema:
+            type: "string"
       responses:
         "200":
           description: "OK"
@@ -8292,6 +8368,14 @@ components:
         communicationConsent:
           type: "boolean"
           default: false
+        donorId:
+          type:
+            - "null"
+            - "string"
+        designationId:
+          type:
+            - "null"
+            - "string"
     PayoutImport:
       required:
         - "gateway"

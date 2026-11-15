@@ -73,7 +73,8 @@ public sealed class DonorService(FinanceDbContext db, IDonorProtector protector,
     /// </summary>
     public async Task StageAsync(DonationEntity donation, ReceiptEntity receipt, CancellationToken cancellationToken)
     {
-        if (donation.IsAnonymous || protector.Unprotect(donation.DonorEmailProtected).Trim().Length == 0)
+        // A gift tied to its donor by id needs no email to be recognised; an anonymous gift is never tied.
+        if (donation.IsAnonymous || (donation.DonorId is null && protector.Unprotect(donation.DonorEmailProtected).Trim().Length == 0))
         {
             return;
         }
@@ -83,6 +84,11 @@ public sealed class DonorService(FinanceDbContext db, IDonorProtector protector,
         var firstGift = true;
         if (donor is null)
         {
+            if (donation.DonorId is not null)
+            {
+                throw new InvalidOperationException($"Donation {donation.Id} is tied to donor {donation.DonorId}, whose record was not found by its key.");
+            }
+
             donor = new DonorEntity
             {
                 Id = PublicDonationEndpoints.NewId("dnr"),
@@ -98,12 +104,17 @@ public sealed class DonorService(FinanceDbContext db, IDonorProtector protector,
         }
         else
         {
-            // Contact details follow the latest gift.
-            donor.NameProtected = donation.DonorNameProtected;
-            donor.EmailProtected = donation.DonorEmailProtected;
-            donor.PhoneProtected = donation.DonorPhoneProtected ?? donor.PhoneProtected;
-            donor.Language = donation.Language;
-            donor.Version++;
+            // Contact details follow the latest gift matched by email. A gift tied to its donor by id never changes the donor record: staff correct the
+            // donor's contact details through the donor profile, so an old copy on a gift can never overwrite a newer correction.
+            if (donation.DonorId is null)
+            {
+                donor.NameProtected = donation.DonorNameProtected;
+                donor.EmailProtected = donation.DonorEmailProtected;
+                donor.PhoneProtected = donation.DonorPhoneProtected ?? donor.PhoneProtected;
+                donor.Language = donation.Language;
+                donor.Version++;
+            }
+
             firstGift = !await db.Receipts.AnyAsync(r => r.DonorKey == receipt.DonorKey && !r.IsAnonymous && r.DonationId != donation.Id
                 && !db.ReceiptVoids.Any(v => v.ReceiptId == r.Id), cancellationToken);
         }

@@ -14,13 +14,13 @@ public static class OfflineEndpoints
     {
         app.MapPost(Route, async (HttpContext context, OfflineDonationRequest payload, OfflineDonationService service) =>
         {
-            var recorded = await service.RecordAsync(payload, Actor(context), context.RequestAborted);
+            var recorded = await service.RecordAsync(payload, Actor(context), Donors.DonorProfileEndpoints.Bearer(context) ?? string.Empty, context.RequestAborted);
             return recorded.IsSuccess ? Results.Created($"{Route}/{recorded.Value!.Id}", recorded.Value) : Failure(context, recorded.Error!);
         })
         .RequireIdempotency()
         .WithName("RecordOfflineDonation")
         .WithSummary("Record a gift that arrived offline")
-        .WithDescription("`{donorName, email?, phone?, amount, currency, method, date?, designation?, anonymous?, dedication?, referenceNo?, note?, valuation?}` with `method` one of bank, cash, cheque, bkash, nagad, in_kind. The donation is created `pending` and posts nothing until a different user approves it. `date` is when it arrived (not in the future). An in_kind gift needs `valuation: {basis, itemDescription, note?}` (basis market_price, appraisal, donor_receipt, cost or other; a note is required for other), and its amount is the valuation. Requires `finance.donation.record`.")
+        .WithDescription("`{donorName, email?, phone?, amount, currency, method, date?, designation?, designationId?, donorId?, anonymous?, dedication?, referenceNo?, note?, valuation?}` with `method` one of bank, cash, cheque, bkash, nagad, in_kind. The donation is created `pending` and posts nothing until a different user approves it. `date` is when it arrived (not in the future). An in_kind gift needs `valuation: {basis, itemDescription, note?}` (basis market_price, appraisal, donor_receipt, cost or other; a note is required for other), and its amount is the valuation. A gift can be designated to a sponsored student: `designation: \"student\"` with `designationId: \"stu_...\"` and a `donorId` (required). The donor's link to that student must have been active on the received date (checked once, here), otherwise 400 on `designationId`; 503 `SPONSORSHIP_UNAVAILABLE` if the sponsorship service cannot be reached. With a `donorId` the gift is tied to that donor by id, not by email. Requires `finance.donation.record`.")
         .WithTags("Offline donations")
         .RequirePermission(Permissions.FinanceDonationRecord);
 
@@ -87,6 +87,7 @@ public static class OfflineEndpoints
 
     private static IResult Failure(HttpContext context, ResultError error) => ApiError.Create(context, error.Code switch
     {
+        "SPONSORSHIP_UNAVAILABLE" => StatusCodes.Status503ServiceUnavailable,
         "NOT_FOUND" => StatusCodes.Status404NotFound,
         "SEPARATION_OF_DUTIES" => StatusCodes.Status403Forbidden,
         "ALREADY_DECIDED" or "PROOF_REQUIRED" or "TOO_MANY_PROOFS" or "PERIOD_CLOSED" => StatusCodes.Status409Conflict,

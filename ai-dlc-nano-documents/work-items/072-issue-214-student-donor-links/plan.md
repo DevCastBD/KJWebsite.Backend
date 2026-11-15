@@ -1,6 +1,6 @@
 <!-- phase: DONE | branch: Feature/issue-214-student-donor-links | tasks: 9/9
      base: cf5168e | updated: 2026-11-15
-     next: none in code; awaiting the human decision on commit, push and PR (nothing is committed) -->
+     next: none; PR #224 awaits human review and merge -->
 # Plan: Student-donor links (BE-107, #214). Full design: C:\Users\Tahmid\.claude\plans\merry-chasing-thimble.md
 ## Tasks
 - [x] Finance: link-target, link-notices (updates gate, idempotent, key required), donor.student_linked mapping, GET donors/me/identity (revised, user confirmed)

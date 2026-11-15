@@ -101,7 +101,14 @@ public sealed class ReceiptService(FinanceDbContext db, IDonorProtector protecto
         var series = FiscalCalendar.FiscalYear(donation.ReceivedOn, ledgerOptions.Value.FiscalYearStartMonth);
         var last = await db.Receipts.AsNoTracking().Where(r => r.Series == series).OrderByDescending(r => r.Seq).Select(r => new { r.Seq, r.Hash }).FirstOrDefaultAsync(cancellationToken);
         var seq = (last?.Seq ?? 0) + 1;
-        var email = protector.Unprotect(donation.DonorEmailProtected).Trim();
+
+        // A gift tied to its donor by id takes that donor's CURRENT name and email (the gift's own copy was taken when it was recorded and may be older), and is
+        // never matched by email. A donor id that no longer resolves is a fault, not a reason to guess by email.
+        var tied = donation.DonorId is null ? null : await db.Donors.AsNoTracking().FirstOrDefaultAsync(d => d.Id == donation.DonorId, cancellationToken)
+            ?? throw new InvalidOperationException($"Donation {donation.Id} is tied to a donor that does not exist.");
+        var nameProtected = tied?.NameProtected ?? donation.DonorNameProtected;
+        var emailProtected = tied?.EmailProtected ?? donation.DonorEmailProtected;
+        var email = protector.Unprotect(emailProtected).Trim();
         var offline = await db.OfflineRecords.AsNoTracking().FirstOrDefaultAsync(o => o.DonationId == donation.Id, cancellationToken);
         var now = clock.GetUtcNow();
 
@@ -115,10 +122,10 @@ public sealed class ReceiptService(FinanceDbContext db, IDonorProtector protecto
             PrevHash = last?.Hash ?? GenesisHash,
             IssuedAt = now,
             ReceivedOn = donation.ReceivedOn,
-            DonorNameProtected = donation.DonorNameProtected,
-            DonorEmailProtected = donation.DonorEmailProtected,
+            DonorNameProtected = nameProtected,
+            DonorEmailProtected = emailProtected,
             // A donor with no email cannot be recognised across gifts, so each such gift stands alone.
-            DonorKey = await keys.ResolveAsync(db, email, donation.Id, cancellationToken),
+            DonorKey = tied?.DonorKey ?? await keys.ResolveAsync(db, email, donation.Id, cancellationToken),
             Amount = donation.Amount,
             FeeAmount = donation.FeeAmount,
             Currency = donation.Currency,
@@ -141,7 +148,7 @@ public sealed class ReceiptService(FinanceDbContext db, IDonorProtector protecto
             {
                 Template = "donation.receipt",
                 Language = donation.Language,
-                RecipientProtected = donation.DonorEmailProtected,
+                RecipientProtected = emailProtected,
                 PayloadProtected = protector.Protect(JsonSerializer.Serialize(new { number = receipt.Number, reference = donation.Reference })),
                 CreatedAt = now
             });

@@ -135,13 +135,14 @@ public static class DonorSelfEndpoints
                 {
                     Designations.Campaign when id is not null && campaigns.TryGetValue(id, out var campaign) =>
                         donor.Language == "bn" && !string.IsNullOrWhiteSpace(campaign.TitleBn) ? campaign.TitleBn! : campaign.Title,
+                    Designations.Student => donor.Language == "bn" ? "শিক্ষার্থী পৃষ্ঠপোষকতা" : "Student sponsorship",
                     Designations.General => "General",
                     _ => id ?? type
                 };
 
                 var page = ordered.Skip(skip).Take(take).Select(r => new DonorMeGift(
                     r.DonationId, r.Reference, r.ReceivedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), r.Amount.ToString("0.00", CultureInfo.InvariantCulture), r.Currency,
-                    Label(r.DesignationType, r.DesignationId), r.DesignationType, r.DesignationId, "confirmed", r.IsInKind, r.Number)).ToList();
+                    Label(r.DesignationType, r.DesignationId), r.DesignationType, r.DesignationType == Designations.Student ? null : r.DesignationId, "confirmed", r.IsInKind, r.Number)).ToList();
 
                 // Totals cover everything the filter matched, not just this page, and never add one currency to another.
                 var totals = DonorSegments.Totals(ordered.Select(r => new GiftFact(r.ReceivedOn, r.Currency, r.Amount, r.IsInKind, false)))

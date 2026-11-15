@@ -1,5 +1,11 @@
 # Backlog
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
+- [2026-11-15] finance/offline: date is checked against UTC today; Dhaka 00:00-06:00 refuses today (found: 073)
+- [2026-11-15] donors/self: the General gift label stays English for bn donors (found: 073)
+- [2026-11-15] finance/donors: approval overwrites the donor name on every email-matched gift (found: 073)
+- [2026-11-15] donors/self: campaign label looks campaigns up by id but designations store the slug (found: 073)
+- [2026-11-15] finance/reports: student gifts show as one student:stu_... line each in reports and CRM text (found: 073)
+- [2026-11-15] sponsorship/names: any finance.view holder can read a student's preferred name by id (found: 073)
 - [2026-11-15] sponsorship/notice: pending link notices have no retry sender; needs a worker and BE-093 (found: 072)
 - [2026-11-15] sponsorship/retention: D13 window for frozen copies and idempotency bodies; photo sign-off (found: 072)
 - [2026-11-15] sponsorship/photo: PHOTO_FROZEN locks a photo once any link ended, even vs a removal request (found: 072)
@@ -9,7 +15,7 @@
 - [2026-11-12] sponsorship/consents, frozen_copies: append-only in code only, no DB trigger (found: 071, 072)
 - [2026-11-12] sponsorship: Postgres migrations, unique-violation mapping, parallel unlink not run on PG (found: 071, 072)
 - [2026-11-11] donors/self: a shared member+donor sign-in disabled via membership is not seen by Finance; D16 holds only for Finance-set state (found: 070)
-- [2026-11-11] donors/self: project designations show the project id; titles live in Content; student name joins with #215 (found: 070)
+- [2026-11-11] donors/self: project designations show the project id; titles live in Content; student name joins with #225 (found: 070)
 - [2026-11-11] tests: 4 tests find the repo root from the assembly and fail with --artifacts-path outside the repo (found: 070)
 - [2026-11-09] finance/migration: DonorProfile migration SQL and its KJ_TEST_POSTGRES test never run against a database (found: 069-issue-211)
 - [2026-11-09] auth/email: a donor with a sign-in cannot change email; needs an Identity email-change endpoint (found: 069-issue-211)

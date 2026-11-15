@@ -1,14 +1,14 @@
 # AI-DLC Nano State
-- Active work item: none
-- Phase: —
-- Branch: Feature/issue-214-student-donor-links  (was stacked on the #213 branch, which has since merged)
-- Base SHA: cf5168e
-- Next step: #214 is built and verified but uncommitted; decide on commit, push and PR (not merge); next ticket #215
+- Active work item: work-items/073-issue-215-student-designation
+- Phase: CONSTRUCT
+- Branch: Feature/issue-215-student-designation  (off origin/develop at ee9f3c6)
+- Base SHA: 93215fd
+- Next step: Sponsorship endpoints (designation check, designatable-students, names) with tests, via Codex
 - Paused work items:
-  - work-items/072-issue-214-student-donor-links (DONE, uncommitted, no PR yet)
+  - work-items/072-issue-214-student-donor-links (DONE, PR #224 merged)
   - work-items/071-issue-213-sponsorship-module (DONE, PR #223 merged)
   - work-items/070-issue-212-donor-self-service (DONE, PR #222 merged)
   - work-items/069-issue-211-donor-crm (DONE, PR #221 merged)
   - work-items/011-issue-116-p1-platform-core (CLARIFY)
-- Uncommitted code: yes
-- Last updated: 2026-11-15T12:50Z by claude
+- Uncommitted code: no
+- Last updated: 2026-11-15T14:10Z by claude

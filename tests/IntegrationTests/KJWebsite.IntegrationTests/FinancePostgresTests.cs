@@ -25,7 +25,7 @@ public sealed class FinancePostgresTests
             {
                 var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
                 db.Database.GetPendingMigrations().Should().BeEmpty();
-                db.Database.GetAppliedMigrations().Should().HaveCount(15);
+                db.Database.GetAppliedMigrations().Should().HaveCount(16);
             }
 
             await TestCampaigns.SeedAsync(factory.Services, "flood-relief", currency: "USD");

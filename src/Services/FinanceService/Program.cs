@@ -130,6 +130,12 @@ builder.Services.AddHttpClient(AuthDonorClient.ClientName, (services, client) =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 builder.Services.AddScoped<IAuthDonorClient, AuthDonorClient>();
+builder.Services.AddHttpClient(SponsorshipLinks.ClientName, (services, client) =>
+{
+    client.BaseAddress = new Uri(services.GetRequiredService<IConfiguration>()["Services:Sponsorship:Url"] ?? "http://localhost:7006/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<ISponsorshipLinks, SponsorshipLinks>();
 builder.Services.Configure<ExpenseOptions>(builder.Configuration.GetSection(ExpenseOptions.SectionName));
 builder.Services.AddScoped<ExpenseService>();
 builder.Services.Configure<BudgetOptions>(builder.Configuration.GetSection(BudgetOptions.SectionName));

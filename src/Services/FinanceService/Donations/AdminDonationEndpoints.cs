@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FinanceService.Controls;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
+using FinanceService.Donors;
 using FinanceService.Ledger;
 using FinanceService.Offline;
 using FinanceService.Payments;
@@ -34,9 +35,11 @@ public static class AdminDonationEndpoints
 
     public static void MapAdminDonations(this IEndpointRouteBuilder app)
     {
-        app.MapGet($"{Route}/donations", async (FinanceDbContext db, IDonorProtector protector, string? from, string? to, string? status, string? method, string? designation, int? limit, int? offset) =>
+        app.MapGet($"{Route}/donations", async (HttpContext context, ISponsorshipLinks sponsorship, FinanceDbContext db, IDonorProtector protector, string? studentId, string? from, string? to, string? status, string? method, string? designation, int? limit, int? offset) =>
         {
             var query = Views(db);
+            if (!string.IsNullOrWhiteSpace(studentId))
+                query = query.Where(v => v.Donation.DesignationType == Designations.Student && v.Donation.DesignationId == studentId);
             if (DateOnly.TryParse(from, out var fromDate))
             {
                 query = query.Where(v => v.Donation.ReceivedOn >= fromDate);
@@ -69,17 +72,20 @@ public static class AdminDonationEndpoints
             var skip = Math.Max(0, offset ?? 0);
             var total = await query.CountAsync();
             var page = await query.OrderByDescending(v => v.Donation.ReceivedOn).ThenByDescending(v => v.Donation.Id).Skip(skip).Take(take).ToListAsync();
-            return Results.Ok(new PagingEnvelope<FinanceDonationRow>([.. page.Select(v => Row(v, protector))], total, null, take, skip));
+            var rows = await NamesAsync(page.Select(v => Row(v, protector)).ToList(), sponsorship, context);
+            return Results.Ok(new PagingEnvelope<FinanceDonationRow>(rows, total, null, take, skip));
         })
         .WithName("ListFinanceDonations")
         .WithSummary("Donations and their reversing entries, newest first")
-        .WithDescription("Filters: from/to (UTC dates, inclusive), method (the gateway), status (pending, confirmed, failed, cancelled, refunded), designation (`general`, `campaign:slug`, `project:slug`). Amounts are decimal strings; reversals are negative. Donor names are shown to finance staff even for anonymous gifts, flagged by `anonymous`.")
+        .WithDescription("Filters: from/to (UTC dates, inclusive), method (the gateway), status (pending, confirmed, failed, cancelled, refunded), designation (`general`, `campaign:slug`, `project:slug`, `student:stu_...`), studentId (the designated student). Rows carry `donorId`, `studentId` and `studentName` (the preferred name, null if the sponsorship service cannot be reached). Amounts are decimal strings; reversals are negative. Donor names are shown to finance staff even for anonymous gifts, flagged by `anonymous`.")
         .WithTags("Finance")
         .RequirePermission(Permissions.FinanceView);
 
-        app.MapGet($"{Route}/donations/totals", async (FinanceDbContext db, string? designation) =>
+        app.MapGet($"{Route}/donations/totals", async (FinanceDbContext db, string? designation, string? studentId) =>
         {
             var query = Views(db);
+            if (!string.IsNullOrWhiteSpace(studentId))
+                query = query.Where(v => v.Donation.DesignationType == Designations.Student && v.Donation.DesignationId == studentId);
             if (!string.IsNullOrWhiteSpace(designation))
             {
                 var parts = designation.Split(':', 2);
@@ -100,11 +106,11 @@ public static class AdminDonationEndpoints
         })
         .WithName("GetFinanceDonationTotals")
         .WithSummary("Confirmed and pending totals per currency")
-        .WithDescription("One entry per currency, never converted. Confirmed is net of reversals (reversing entries are negative); count includes every entry.")
+        .WithDescription("One entry per currency, never converted. Confirmed is net of reversals (reversing entries are negative); count includes every entry. Optional filters: designation and studentId (the designated student).")
         .WithTags("Finance")
         .RequirePermission(Permissions.FinanceView);
 
-        app.MapGet($"{Route}/donations/{{id}}", async (HttpContext context, string id, FinanceDbContext db, IDonorProtector protector) =>
+        app.MapGet($"{Route}/donations/{{id}}", async (HttpContext context, string id, FinanceDbContext db, IDonorProtector protector, ISponsorshipLinks sponsorship) =>
         {
             var view = await Views(db).FirstOrDefaultAsync(v => v.Donation.Id == id);
             if (view is null)
@@ -112,7 +118,9 @@ public static class AdminDonationEndpoints
                 return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Donation not found.");
             }
 
-            return Results.Ok(await DetailAsync(db, view, protector));
+            var detail = await DetailAsync(db, view, protector);
+            var rows = await NamesAsync([detail.Donation], sponsorship, context);
+            return Results.Ok(detail with { Donation = rows[0] });
         })
         .WithName("GetFinanceDonation")
         .WithSummary("One donation with donor contact details, events and its reversal")
@@ -169,7 +177,7 @@ public static class AdminDonationEndpoints
         return new FinanceDonationRow(
             d.Id, d.Reference, PublicDonationEndpoints.FormatDate(d.ReceivedOn), protector.Unprotect(d.DonorNameProtected), d.IsAnonymous,
             PublicDonationEndpoints.Format(d.Amount), PublicDonationEndpoints.Format(d.FeeAmount), d.Currency, view.Gateway ?? view.OfflineMethod, view.OfflineMethod != null,
-            DesignationText(d.DesignationType, d.DesignationId), d.Kind, view.Reversed ? "refunded" : view.Latest);
+            DesignationText(d.DesignationType, d.DesignationId), d.Kind, view.Reversed ? "refunded" : view.Latest, d.DonorId, d.DesignationType == Designations.Student ? d.DesignationId : null, null);
     }
 
     private static async Task<FinanceDonationDetail> DetailAsync(FinanceDbContext db, DonationView view, IDonorProtector protector)
@@ -186,6 +194,15 @@ public static class AdminDonationEndpoints
             Row(view, protector), protector.Unprotect(d.DonorEmailProtected), d.DonorPhoneProtected is null ? null : protector.Unprotect(d.DonorPhoneProtected),
             d.Dedication, d.RecurringPlanId, d.ReversesDonationId, reversedBy, d.ReversalReason,
             [.. events.Select(e => new FinanceDonationEvent(e.Status, e.Note, e.At))], settlement, offline);
+    }
+
+    private static async Task<List<FinanceDonationRow>> NamesAsync(List<FinanceDonationRow> rows, ISponsorshipLinks sponsorship, HttpContext context)
+    {
+        var ids = rows.Where(r => r.StudentId is not null).Select(r => r.StudentId!).Distinct(StringComparer.Ordinal).ToArray();
+        if (ids.Length == 0) return rows;
+        var result = await sponsorship.NamesAsync(ids, DonorProfileEndpoints.Bearer(context) ?? string.Empty, context.RequestAborted);
+        if (result.Outcome != SponsorshipOutcome.Ok) return rows;
+        return rows.Select(r => r.StudentId is not null && result.Value!.TryGetValue(r.StudentId, out var name) ? r with { StudentName = name } : r).ToList();
     }
 
     private static string DesignationText(string type, string? id) => type == Designations.General ? type : $"{type}:{id}";
