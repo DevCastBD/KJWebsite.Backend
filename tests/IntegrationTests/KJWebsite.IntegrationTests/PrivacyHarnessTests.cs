@@ -11,6 +11,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using static KJWebsite.IntegrationTests.PrivacyFlows;
+
 namespace KJWebsite.IntegrationTests;
 
 #pragma warning disable CA1848, CA1873 // Exercise the provider with ordinary log calls, including exception formatting.
@@ -75,19 +77,7 @@ public sealed class PrivacyHarnessTests(PrivacyStack stack) : IClassFixture<Priv
     private const string Donors = "/api/v1/admin/finance/donors";
     private const string Students = "/api/v1/admin/sponsorship/students";
     private static string DonorToken => TestTokens.Issue([], extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)]);
-    private async Task<HttpResponseMessage> Send(HttpMethod method, string path, string? token = null, object? body = null)
-    {
-        using var request = new HttpRequestMessage(method, path);
-        if (token is not null) request.Headers.Authorization = new("Bearer", token);
-        if (body is not null) request.Content = JsonContent.Create(body);
-        if (method == HttpMethod.Post) request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
-        return await stack.Gateway.SendAsync(request);
-    }
-    private static async Task<JsonElement> Json(HttpResponseMessage response, HttpStatusCode expected)
-    {
-        response.StatusCode.Should().Be(expected, await response.Content.ReadAsStringAsync());
-        return await response.Content.ReadFromJsonAsync<JsonElement>();
-    }
+
     [Theory]
     [InlineData("/api/v1/content/projects", "content", false, 200)]
     [InlineData("/api/v1/donors/me", "finance", true, 404)]
@@ -95,7 +85,7 @@ public sealed class PrivacyHarnessTests(PrivacyStack stack) : IClassFixture<Priv
     public async Task GatewayReachesOneCluster(string path, string cluster, bool donor, int status)
     {
         stack.ResetCalls();
-        using var response = await Send(HttpMethod.Get, path, donor ? DonorToken : null);
+        using var response = await Send(stack, HttpMethod.Get, path, donor ? DonorToken : null);
         ((int)response.StatusCode).Should().Be(status);
         stack.Calls(cluster).Should().Be(1);
         foreach (var other in new[] { "content", "cta", "auth", "membership", "finance", "sponsorship" }.Except([cluster])) stack.Calls(other).Should().Be(0);
@@ -104,7 +94,7 @@ public sealed class PrivacyHarnessTests(PrivacyStack stack) : IClassFixture<Priv
     public async Task LoginReachesIdentity()
     {
         stack.ResetCalls();
-        using var response = await Send(HttpMethod.Post, "/api/v1/auth/login", body: new { email = "unknown@example.org", password = "UnknownPassword123" });
+        using var response = await Send(stack, HttpMethod.Post, "/api/v1/auth/login", body: new { email = "unknown@example.org", password = "UnknownPassword123" });
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         stack.Calls("auth").Should().Be(1);
     }
@@ -114,7 +104,7 @@ public sealed class PrivacyHarnessTests(PrivacyStack stack) : IClassFixture<Priv
     public async Task InternalPathsReachNoCluster(string path)
     {
         stack.ResetCalls();
-        using var response = await Send(HttpMethod.Get, path, DonorToken);
+        using var response = await Send(stack, HttpMethod.Get, path, DonorToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         foreach (var cluster in new[] { "content", "cta", "auth", "membership", "finance", "sponsorship" }) stack.Calls(cluster).Should().Be(0);
     }
@@ -123,11 +113,11 @@ public sealed class PrivacyHarnessTests(PrivacyStack stack) : IClassFixture<Priv
     {
         foreach (var token in TestTokens.Malformed().Prepend(TestTokens.Expired([Permissions.ContentView])))
         {
-            using var response = await Send(HttpMethod.Get, "/api/v1/admin/content/projects", token);
+            using var response = await Send(stack, HttpMethod.Get, "/api/v1/admin/content/projects", token);
             var json = await Json(response, HttpStatusCode.Unauthorized);
             json.GetProperty("error").GetProperty("code").GetString().Should().Be("UNAUTHORIZED");
         }
-        using var control = await Send(HttpMethod.Get, "/api/v1/admin/content/projects", TestTokens.ContentAdmin());
+        using var control = await Send(stack, HttpMethod.Get, "/api/v1/admin/content/projects", TestTokens.ContentAdmin());
         control.StatusCode.Should().Be(HttpStatusCode.OK);
     }
     [Fact]
@@ -135,98 +125,48 @@ public sealed class PrivacyHarnessTests(PrivacyStack stack) : IClassFixture<Priv
     {
         var email = stack.Seed("registration email", $"{stack.NewSeed("register")}@example.org");
         var password = stack.NewSeed("Password9");
-        using var response = await Send(HttpMethod.Post, "/api/v1/auth/register", body: new { email, password });
+        using var response = await Send(stack, HttpMethod.Post, "/api/v1/auth/register", body: new { email, password });
         await Json(response, HttpStatusCode.Created);
         var sender = (InMemoryAuthEmailSender)stack.Auth.Services.GetRequiredService<IAuthEmailSender>();
         sender.Sent.Should().ContainSingle(m => m.To.Equals(email, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(m.Token));
         GlobalLogSink.Default.Violations.Should().BeEmpty();
     }
-    private async Task<(string Id, string Email, string Password)> CreateDonor(string token)
-    {
-        var name = stack.NewSeed("donor");
-        var email = stack.Seed("donor email", $"{stack.NewSeed("email")}@example.org");
-        var password = stack.NewSeed("Password9");
-        using var response = await Send(HttpMethod.Post, Donors, token, new { name, email });
-        var id = (await Json(response, HttpStatusCode.Created)).GetProperty("donor").GetProperty("id").GetString()!;
-        using var provision = await Send(HttpMethod.Post, $"{Donors}/{id}/login", token, new { password });
-        await Json(provision, HttpStatusCode.Created);
-        return (id, email, password);
-    }
+
     [Fact]
     public async Task FinanceProvisionsARealIdentitySession()
     {
         var staff = await stack.NewAdminAsync();
-        var donor = await CreateDonor(staff.Token);
+        var donor = await CreateDonor(stack, staff.Token);
         (await stack.LoginAsync(donor.Email, donor.Password)).Should().NotBeNullOrEmpty();
         GlobalLogSink.Default.Violations.Should().BeEmpty();
     }
-    private async Task<string> LinkStudent(string token, string donorId)
-    {
-        using var created = await Send(HttpMethod.Post, Students, token, new
-        {
-            name = stack.NewSeed("student"),
-            preferredName = stack.NewSeed("preferred"),
-            dateOfBirth = "2012-03-04",
-            gender = "female",
-            school = stack.NewSeed("school"),
-            @class = "Class 6",
-            programme = "pathshala",
-            district = "Dhaka",
-            address = stack.NewSeed("address"),
-            guardianName = stack.NewSeed("guardian"),
-            guardianPhone = "+8801711000000",
-            status = "active"
-        });
-        var id = (await Json(created, HttpStatusCode.Created)).GetProperty("id").GetString()!;
-        using var form = new MultipartFormDataContent();
-        var file = new ByteArrayContent(Encoding.ASCII.GetBytes("%PDF-1.4 signed form"));
-        file.Headers.ContentType = new("application/pdf");
-        form.Add(file, "form", "form.pdf");
-        using var upload = new HttpRequestMessage(HttpMethod.Put, $"{Students}/{id}/consent-form") { Content = form };
-        upload.Headers.Authorization = new("Bearer", token);
-        using var uploaded = await stack.Gateway.SendAsync(upload);
-        await Json(uploaded, HttpStatusCode.OK);
-        using var consent = await Send(HttpMethod.Post, $"{Students}/{id}/consents", token, new { granted = true });
-        await Json(consent, HttpStatusCode.Created);
-        using var link = await Send(HttpMethod.Post, $"/api/v1/admin/sponsorship/donors/{donorId}/students", token,
-            new { studentId = id, startDate = DateTime.UtcNow.AddDays(-1).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) });
-        var linked = await Json(link, HttpStatusCode.Created);
-        var linkId = linked.GetProperty("id").GetString();
-        using var scope = stack.Sponsorship.Services.CreateScope();
-        var row = await scope.ServiceProvider.GetRequiredService<SponsorshipService.Data.SponsorshipDbContext>().Links.SingleAsync(l => l.Id == linkId);
-        row.NoticeStatus.Should().Be("suppressed");
-        return id;
-    }
+
     [Fact]
     public async Task SponsorshipUsesRealFinanceLinkTargetAndNotices()
     {
         var staff = await stack.NewAdminAsync();
-        var donor = await CreateDonor(staff.Token);
-        await LinkStudent(staff.Token, donor.Id);
+        var donor = await CreateDonor(stack, staff.Token);
+        await LinkStudent(stack, staff.Token, donor.Id);
         GlobalLogSink.Default.Violations.Should().BeEmpty();
     }
     [Fact]
     public async Task FinanceChecksRealSponsorshipBeforeAcceptingStudentGift()
     {
         var staff = await stack.NewAdminAsync();
-        var donor = await CreateDonor(staff.Token);
-        var student = await LinkStudent(staff.Token, donor.Id);
-        using var gift = await Send(HttpMethod.Post, "/api/v1/admin/finance/donations", staff.Token,
+        var donor = await CreateDonor(stack, staff.Token);
+        var student = await LinkStudent(stack, staff.Token, donor.Id);
+        using var gift = await Send(stack, HttpMethod.Post, "/api/v1/admin/finance/donations", staff.Token,
             new { donorId = donor.Id, amount = "500.00", currency = "BDT", method = "cash", designation = "student", designationId = student });
         await Json(gift, HttpStatusCode.Created);
         GlobalLogSink.Default.Violations.Should().BeEmpty();
     }
-    private static void Private(HttpResponseMessage response)
-    {
-        response.Headers.CacheControl.Should().BeEquivalentTo(System.Net.Http.Headers.CacheControlHeaderValue.Parse("private, no-store"));
-        response.Headers.Vary.Should().Contain("Authorization");
-    }
+
     [Fact]
     public async Task PrivateAdminResponsesCoverSuccessAndAuthorizationRefusals()
     {
         var staff = await stack.NewAdminAsync();
-        var donor = await CreateDonor(staff.Token);
-        using var gift = await Send(HttpMethod.Post, "/api/v1/admin/finance/donations", staff.Token,
+        var donor = await CreateDonor(stack, staff.Token);
+        using var gift = await Send(stack, HttpMethod.Post, "/api/v1/admin/finance/donations", staff.Token,
             new { donorId = donor.Id, amount = "500.00", currency = "BDT", method = "cash", designation = "general" });
         var giftId = (await Json(gift, HttpStatusCode.Created)).GetProperty("id").GetString();
         using var proofRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/v1/admin/finance/donations/{giftId}/proofs")
@@ -247,7 +187,7 @@ public sealed class PrivacyHarnessTests(PrivacyStack stack) : IClassFixture<Priv
         {
             foreach (var (token, status) in new[] { (staff.Token, HttpStatusCode.OK), ((string?)null, HttpStatusCode.Unauthorized), (realDonorToken, HttpStatusCode.Forbidden) })
             {
-                using var response = await Send(HttpMethod.Get, path, token);
+                using var response = await Send(stack, HttpMethod.Get, path, token);
                 response.StatusCode.Should().Be(status, path);
                 Private(response);
             }
