@@ -29,22 +29,22 @@ public static partial class DesignationEndpoints
         db.Links.AsNoTracking().Where(link => link.DonorId == donorId && link.StartDate <= date &&
             (link.EndType == null || (link.EndType == LinkEndTypes.Ended && link.EndDate != null && date <= link.EndDate)));
 
-    private static async Task<IResult> DesignationAsync(HttpContext context, string donorId, string studentId, SponsorshipDbContext db)
+    private static async Task<IResult> DesignationAsync(HttpContext context, string donorId, string studentId, string? date, SponsorshipDbContext db)
     {
-        if (!LinkEndpoints.Date(context.Request.Query["date"], out var date)) return StudentEndpoints.Invalid(context, ["date"]);
-        var match = await (from link in ActiveLinks(db, donorId, date)
+        if (!LinkEndpoints.Date(date, out var day)) return StudentEndpoints.Invalid(context, ["date"]);
+        var match = await (from link in ActiveLinks(db, donorId, day)
                            join student in db.Students.AsNoTracking() on link.StudentId equals student.Id
                            where link.StudentId == studentId
                            select new { student.PreferredName }).FirstOrDefaultAsync(context.RequestAborted);
-        return Results.Ok(new { donorId, studentId, date = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), active = match is not null, studentName = match?.PreferredName });
+        return Results.Ok(new { donorId, studentId, date = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), active = match is not null, studentName = match?.PreferredName });
     }
 
-    private static async Task<IResult> DesignatableAsync(HttpContext context, string donorId, SponsorshipDbContext db, FoundationDay day)
+    private static async Task<IResult> DesignatableAsync(HttpContext context, string donorId, string? date, SponsorshipDbContext db, FoundationDay today)
     {
-        var date = day.Today;
-        if (context.Request.Query.ContainsKey("date") && !LinkEndpoints.Date(context.Request.Query["date"], out date))
+        var asOf = today.Today;
+        if (date is not null && !LinkEndpoints.Date(date, out asOf))
             return StudentEndpoints.Invalid(context, ["date"]);
-        var rows = await (from link in ActiveLinks(db, donorId, date)
+        var rows = await (from link in ActiveLinks(db, donorId, asOf)
                           join student in db.Students.AsNoTracking() on link.StudentId equals student.Id
                           select new { StudentId = student.Id, student.PreferredName, link.StartDate, EndDate = link.EndType == null ? null : link.EndDate, link.Id })
             .ToListAsync(context.RequestAborted);
@@ -55,13 +55,13 @@ public static partial class DesignationEndpoints
         return Results.Ok(new { items });
     }
 
-    private static async Task<IResult> NamesAsync(HttpContext context, SponsorshipDbContext db)
+    private static async Task<IResult> NamesAsync(HttpContext context, string? ids, SponsorshipDbContext db)
     {
-        var ids = context.Request.Query["ids"].ToString().Split(',').Select(id => id.Trim()).Distinct(StringComparer.Ordinal).ToArray();
-        if (ids.Length > 100 || ids.Any(id => !StudentIdPattern().IsMatch(id))) return StudentEndpoints.Invalid(context, ["ids"]);
-        var rows = await db.Students.AsNoTracking().Where(student => ids.Contains(student.Id))
+        var wanted = (ids ?? string.Empty).Split(',').Select(id => id.Trim()).Distinct(StringComparer.Ordinal).ToArray();
+        if (wanted.Length > 100 || wanted.Any(id => !StudentIdPattern().IsMatch(id))) return StudentEndpoints.Invalid(context, ["ids"]);
+        var rows = await db.Students.AsNoTracking().Where(student => wanted.Contains(student.Id))
             .Select(student => new { student.Id, student.PreferredName }).ToDictionaryAsync(student => student.Id, context.RequestAborted);
-        return Results.Ok(new { items = ids.Where(rows.ContainsKey).Select(id => rows[id]) });
+        return Results.Ok(new { items = wanted.Where(rows.ContainsKey).Select(id => rows[id]) });
     }
 
     [GeneratedRegex(@"\Astu_[0-9a-f]{32}\z", RegexOptions.CultureInvariant)]

@@ -18,7 +18,7 @@ namespace FinanceService.Offline;
 /// rejected and recorded again, a proof is never removed.
 /// </summary>
 public sealed partial class OfflineDonationService(
-    FinanceDbContext db, IDonorProtector protector, IProofStore proofs, DonationConfirmation confirmation, LedgerService ledger, IOptions<ProofOptions> proofOptions, TimeProvider clock, ISponsorshipLinks sponsorship, Receipts.DonorKeyHasher keys)
+    FinanceDbContext db, IDonorProtector protector, IProofStore proofs, DonationConfirmation confirmation, LedgerService ledger, IOptions<ProofOptions> proofOptions, TimeProvider clock, ISponsorshipLinks sponsorship)
 {
     [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+\z", RegexOptions.CultureInvariant)]
     private static partial Regex Email();
@@ -81,39 +81,35 @@ public sealed partial class OfflineDonationService(
         }
         else if (request.DesignationId is not null) invalid.Add("designationId");
 
+        // A student gift cannot be anonymous: there is no donor to link, whether or not a donorId was sent.
+        if (designationType == Designations.Student && request.Anonymous) invalid.Add("anonymous");
+
         DonorEntity? donor = null;
         if (request.DonorId is not null)
         {
             donor = await db.Donors.AsNoTracking().FirstOrDefaultAsync(d => d.Id == request.DonorId, cancellationToken);
             if (donor is null) invalid.Add("donorId");
-            if (request.Anonymous) invalid.Add("anonymous");
+            if (request.Anonymous && !invalid.Contains("anonymous")) invalid.Add("anonymous");
         }
-        var name = request.DonorName?.Trim();
-        if (donor is not null && string.IsNullOrWhiteSpace(name)) name = protector.Unprotect(donor.NameProtected);
+
+        // A gift tied to a donor by id uses that donor's own name, email and phone, whatever was typed: the donor record is the source, a gift never changes it
+        // (staff correct contact details through the donor profile), and the receipt takes the donor's current details again at approval.
+        var name = donor is not null ? protector.Unprotect(donor.NameProtected) : request.DonorName?.Trim();
         if (name is not { Length: > 0 and <= 120 })
         {
             invalid.Add("donorName");
         }
 
-        var email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
-        if (email is not null && (email.Length > 254 || !Email().IsMatch(email)))
+        var email = donor is not null ? protector.Unprotect(donor.EmailProtected) : string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
+        if (donor is null && email is not null && (email.Length > 254 || !Email().IsMatch(email)))
         {
             invalid.Add("email");
         }
 
-        if (donor is not null)
-        {
-            if (email is null) email = protector.Unprotect(donor.EmailProtected);
-            else
-            {
-                var emailKey = keys.ForEmail(email);
-                if (emailKey != donor.EmailKey && (donor.AccountSubject is not null ||
-                    await db.Donors.AnyAsync(d => d.Id != donor.Id && d.EmailKey == emailKey, cancellationToken))) invalid.Add("email");
-            }
-        }
-
-        var phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
-        if (phone is not null && !Phone().IsMatch(phone))
+        var phone = donor is not null
+            ? donor.PhoneProtected is null ? null : protector.Unprotect(donor.PhoneProtected)
+            : string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim();
+        if (donor is null && phone is not null && !Phone().IsMatch(phone))
         {
             invalid.Add("phone");
         }
@@ -200,7 +196,7 @@ public sealed partial class OfflineDonationService(
             DonorNameProtected = protector.Protect(name!),
             DonorEmailProtected = protector.Protect(email ?? string.Empty),
             DonorPhoneProtected = phone is null ? null : protector.Protect(phone),
-            Language = "en",
+            Language = donor?.Language ?? "en",
             CommunicationConsent = request.CommunicationConsent,
             CreatedBy = actor,
             CreatedAt = now,

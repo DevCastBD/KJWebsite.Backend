@@ -22,7 +22,7 @@ public sealed class FinanceStudentDesignationTests : IDisposable
 {
     private const string Route = "/api/v1/admin/finance/donations";
     private const string Student = "stu_0123456789abcdef0123456789abcdef";
-    private static readonly string Maker = TestTokens.Issue([Permissions.FinanceView, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceDonorManage], subject: "usr_maker");
+    private static readonly string Maker = TestTokens.Issue([Permissions.FinanceView, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceDonorManage, Permissions.FinanceDonationReverse], subject: "usr_maker");
     private static readonly string Checker = TestTokens.Issue([Permissions.FinanceView, Permissions.FinanceDonationApprove], subject: "usr_checker");
     private readonly FinanceApiFactory _factory = new();
     private readonly FakeSponsorshipLinks _links = new();
@@ -69,7 +69,7 @@ public sealed class FinanceStudentDesignationTests : IDisposable
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token ?? Maker);
         if (body is not null) request.Content = JsonContent.Create(body);
         if (method == HttpMethod.Post) request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
-        return await _client.SendAsync(request);
+        return await TestControls.SendAsync(_client, request);
     }
     private static async Task<JsonElement> Json(HttpResponseMessage response, HttpStatusCode status = HttpStatusCode.OK)
     {
@@ -91,6 +91,8 @@ public sealed class FinanceStudentDesignationTests : IDisposable
     [InlineData("missing", "donorId")]
     [InlineData("unknown", "donorId")]
     [InlineData("anonymous", "anonymous")]
+    [InlineData("anonymous-missing", "anonymous")]
+    [InlineData("amount", "amount")]
     [InlineData("malformed", "designationId")]
     [InlineData("extra-id", "designationId")]
     [InlineData("string-form", "designation")]
@@ -104,6 +106,8 @@ public sealed class FinanceStudentDesignationTests : IDisposable
             "missing" => gift with { DonorId = null },
             "unknown" => gift with { DonorId = "dnr_unknown" },
             "anonymous" => gift with { Anonymous = true },
+            "anonymous-missing" => gift with { Anonymous = true, DonorId = null },
+            "amount" => gift with { Amount = "0.00" },
             "malformed" => gift with { DesignationId = "stu_bad" },
             "extra-id" => gift with { Designation = "general" },
             "string-form" => gift with { Designation = "student:" + Student },
@@ -114,7 +118,10 @@ public sealed class FinanceStudentDesignationTests : IDisposable
         using var response = await Send(HttpMethod.Post, Route, gift);
         var json = await Json(response, HttpStatusCode.BadRequest);
         json.GetProperty("error").GetProperty("code").GetString().Should().Be("VALIDATION_ERROR");
-        (await response.Content.ReadAsStringAsync()).Should().Contain(field);
+        json.GetProperty("error").GetProperty("message").GetString().Should().Contain(field);
+        if (scenario == "string-form") json.GetProperty("error").GetProperty("message").GetString().Should().Be("Invalid fields: designation.");
+        if (scenario == "anonymous-missing") json.GetProperty("error").GetProperty("message").GetString().Should().Contain("donorId");
+        if (scenario != "inactive") _links.Checks.Should().BeEmpty();
         (await Db(async db => (await db.Donations.CountAsync(), await db.OfflineRecords.CountAsync()))).Should().Be(before);
     }
 
@@ -149,53 +156,86 @@ public sealed class FinanceStudentDesignationTests : IDisposable
         (await Db(db => db.Donors.CountAsync())).Should().Be(1);
     }
 
+    private static void AssertDonorUnchanged(DonorEntity actual, DonorEntity before)
+    {
+        actual.EmailProtected.Should().Be(before.EmailProtected);
+        actual.EmailKey.Should().Be(before.EmailKey);
+        actual.NameProtected.Should().Be(before.NameProtected);
+        actual.PhoneProtected.Should().Be(before.PhoneProtected);
+        actual.Language.Should().Be(before.Language);
+        actual.Version.Should().Be(before.Version);
+        actual.DonorKey.Should().Be(before.DonorKey);
+    }
+
     [Theory]
-    [InlineData("changed")]
+    [InlineData("different")]
     [InlineData("conflict")]
     [InlineData("account")]
-    [InlineData("apply")]
-    public async Task ApprovalAlwaysAttachesByIdAndOnlyAppliesAnAllowedEmail(string scenario)
+    [InlineData("malformed")]
+    public async Task TypedContactsAreIgnoredAndGiftNeverChangesDonor(string scenario)
     {
-        var donor = await Donor();
-        var original = await Db(db => db.Donors.SingleAsync());
-        var id = await Record(Gift(donor, email: "new@example.org"));
-        (await Db(db => db.Donors.SingleAsync())).EmailKey.Should().Be(original.EmailKey);
-        if (scenario == "conflict") await Donor("new@example.org");
-        if (scenario == "account") await Edit(donor, (d, _) => d.AccountSubject = "usr_donor");
-        if (scenario == "changed") await Edit(donor, (d, s) => { d.EmailKey = s.GetRequiredService<DonorKeyHasher>().ForEmail("edited@example.org"); d.EmailProtected = s.GetRequiredService<IDonorProtector>().Protect("edited@example.org"); });
+        var donor = await Donor(subject: scenario == "account" ? "usr_donor" : null);
+        await Edit(donor, (d, s) => { d.PhoneProtected = s.GetRequiredService<IDonorProtector>().Protect("+8801712345678"); d.Language = "bn"; d.Version = 7; });
+        if (scenario == "conflict") await Donor("typed@example.org");
+        var before = await Db(db => db.Donors.SingleAsync(d => d.Id == donor));
+        var id = await Record(Gift(donor, email: scenario == "malformed" ? "not an email" : "typed@example.org") with { DonorName = "Typed name", Phone = "invalid phone" });
+        AssertDonorUnchanged(await Db(db => db.Donors.SingleAsync(d => d.Id == donor)), before);
+        var gift = await Db(db => db.Donations.SingleAsync());
+        await Scope(s =>
+        {
+            var protector = s.GetRequiredService<IDonorProtector>();
+            protector.Unprotect(gift.DonorEmailProtected).Should().Be("original@example.org");
+            protector.Unprotect(gift.DonorNameProtected).Should().Be("Donor");
+            protector.Unprotect(gift.DonorPhoneProtected!).Should().Be("+8801712345678");
+            return Task.FromResult(0);
+        });
+        gift.Language.Should().Be("bn");
         await Approve(id);
-        var updated = await Db(db => db.Donors.SingleAsync(d => d.Id == donor));
-        updated.DonorKey.Should().Be(original.DonorKey);
-        updated.Version.Should().Be(original.Version + 1);
-        var expectedEmail = scenario is "conflict" or "account" ? "original@example.org" : "new@example.org";
-        (await Scope(s => Task.FromResult(s.GetRequiredService<IDonorProtector>().Unprotect(updated.EmailProtected)))).Should().Be(expectedEmail);
-        updated.EmailKey.Should().Be(await Scope(s => Task.FromResult(s.GetRequiredService<DonorKeyHasher>().ForEmail(expectedEmail))));
-        (await Db(db => db.Receipts.SingleAsync())).DonorKey.Should().Be(original.DonorKey);
+        AssertDonorUnchanged(await Db(db => db.Donors.SingleAsync(d => d.Id == donor)), before);
+        (await Db(db => db.Receipts.SingleAsync())).DonorKey.Should().Be(before.DonorKey);
         (await Db(db => db.Donors.CountAsync())).Should().Be(scenario == "conflict" ? 2 : 1);
     }
 
     [Fact]
-    public async Task EmailChangedBetweenRecordAndApprovalDoesNotCreateAnotherDonor()
+    public async Task CorrectedContactsAtApprovalAppearOnReceiptAndNotificationWithoutCreatingDonor()
     {
         var donor = await Donor();
         var id = await Record(Gift(donor));
-        await Edit(donor, (d, s) => { d.EmailKey = s.GetRequiredService<DonorKeyHasher>().ForEmail("edited@example.org"); d.EmailProtected = s.GetRequiredService<IDonorProtector>().Protect("edited@example.org"); });
+        await Edit(donor, (d, s) =>
+        {
+            var protector = s.GetRequiredService<IDonorProtector>();
+            d.EmailKey = s.GetRequiredService<DonorKeyHasher>().ForEmail("corrected@example.org");
+            d.EmailProtected = protector.Protect("corrected@example.org");
+            d.NameProtected = protector.Protect("Corrected name");
+            d.Version++;
+        });
+        var corrected = await Db(db => db.Donors.SingleAsync());
         await Approve(id);
+        AssertDonorUnchanged(await Db(db => db.Donors.SingleAsync()), corrected);
         (await Db(db => db.Donors.CountAsync())).Should().Be(1);
-        (await Db(db => db.Receipts.SingleAsync())).DonorKey.Should().Be((await Db(db => db.Donors.SingleAsync())).DonorKey);
+        var receipt = await Db(db => db.Receipts.SingleAsync());
+        receipt.DonorKey.Should().Be(corrected.DonorKey);
+        var notification = await Db(db => db.Notifications.SingleAsync(n => n.Template == "donation.receipt"));
+        await Scope(s =>
+        {
+            var protector = s.GetRequiredService<IDonorProtector>();
+            protector.Unprotect(receipt.DonorEmailProtected).Should().Be("corrected@example.org").And.NotBe("original@example.org");
+            protector.Unprotect(receipt.DonorNameProtected).Should().Be("Corrected name");
+            protector.Unprotect(notification.RecipientProtected).Should().Be("corrected@example.org").And.NotBe("original@example.org");
+            return Task.FromResult(0);
+        });
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task EmailChangesAreRefusedForConflictsAndSignIns(bool signIn)
+    [Fact]
+    public async Task MissingDonorAtApprovalFailsWithoutIssuingReceiptOrMatchingEmail()
     {
-        var donor = await Donor(subject: signIn ? "usr_donor" : null);
-        if (!signIn) await Donor("taken@example.org");
-        using var response = await Send(HttpMethod.Post, Route, Gift(donor, email: "taken@example.org"));
-        await Json(response, HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).Should().Contain("email");
-        (await Db(db => db.Donations.CountAsync())).Should().Be(0);
+        var donor = await Donor();
+        var id = await Record(Gift(donor));
+        await Db(async db => { db.Donors.Remove(await db.Donors.SingleAsync()); return await db.SaveChangesAsync(); });
+        await Donor(); // Same email must never substitute for the missing id.
+        using var response = await Send(HttpMethod.Post, $"{Route}/{id}/approve", new { }, Checker);
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        (await Db(db => db.Receipts.CountAsync())).Should().Be(0);
     }
 
     [Fact]
@@ -247,16 +287,22 @@ public sealed class FinanceStudentDesignationTests : IDisposable
     [Fact]
     public async Task ReversalCopiesDonorIdAndKeepsStudentFilterAndRefundedStatus()
     {
-        var donor = await Donor();
+        var donor = await Donor(subject: "usr_donor");
         var id = await Record(Gift(donor));
         await Approve(id);
-        await Scope(async services =>
-        {
-            var result = await services.GetRequiredService<DonationReversal>().StageAsync(id, "Correction", "usr_checker", default);
-            result.IsSuccess.Should().BeTrue();
-            result.Value!.DonorId.Should().Be(donor);
-            return await services.GetRequiredService<FinanceDbContext>().SaveChangesAsync();
-        });
+        var token = TestTokens.Issue([], subject: "usr_donor", extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)]);
+        using var beforeResponse = await Send(HttpMethod.Get, "/api/v1/donors/me/donations", token: token);
+        var before = await Json(beforeResponse);
+        before.GetProperty("items").GetArrayLength().Should().Be(1);
+        before.GetProperty("totals")[0].GetProperty("cash").GetString().Should().Be("500.00");
+        using var reversal = await Send(HttpMethod.Post, $"{Route}/{id}/reversal", new { reason = "Correction" });
+        await Json(reversal, HttpStatusCode.Created);
+        (await Db(db => db.Donations.SingleAsync(d => d.ReversesDonationId == id))).DonorId.Should().Be(donor);
+        using var afterResponse = await Send(HttpMethod.Get, "/api/v1/donors/me/donations", token: token);
+        var after = await Json(afterResponse);
+        after.GetProperty("items").GetArrayLength().Should().Be(0);
+        after.GetProperty("total").GetInt32().Should().Be(0);
+        after.GetProperty("totals").GetArrayLength().Should().Be(0);
         using var response = await Send(HttpMethod.Get, Route + "?studentId=" + Student);
         var page = await Json(response);
         page.GetProperty("total").GetInt32().Should().Be(2);
@@ -269,9 +315,11 @@ public sealed class FinanceStudentDesignationTests : IDisposable
     public async Task DonorLabelFollowsLanguage(string language, string label)
     {
         var donor = await Donor(subject: "usr_donor");
-        var id = await Record(Gift(donor));
-        await Approve(id);
         await Edit(donor, (d, _) => d.Language = language);
+        var id = await Record(Gift(donor));
+        (await Db(db => db.Donations.SingleAsync())).Language.Should().Be(language);
+        await Approve(id);
+        (await Db(db => db.Donors.SingleAsync())).Language.Should().Be(language);
         var token = TestTokens.Issue([], subject: "usr_donor", extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)]);
         using var response = await Send(HttpMethod.Get, "/api/v1/donors/me/donations", token: token);
         var row = (await Json(response)).GetProperty("items")[0];
@@ -283,7 +331,8 @@ public sealed class FinanceStudentDesignationTests : IDisposable
     public async Task PublicFormStillRefusesStudentDesignation()
     {
         using var response = await _client.PostAsJsonAsync("/api/v1/donations", new { amount = "500.00", currency = "BDT", frequency = "once", designation = new { type = "student", id = Student }, donor = new { name = "Donor", email = "donor@example.org" }, language = "en" });
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var json = await Json(response, HttpStatusCode.BadRequest);
+        json.GetProperty("error").GetProperty("message").GetString().Should().Be("Invalid fields: designation.type.");
     }
 
     [Fact]

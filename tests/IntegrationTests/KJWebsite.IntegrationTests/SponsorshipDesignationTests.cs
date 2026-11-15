@@ -56,6 +56,14 @@ public sealed class SponsorshipDesignationTests : IDisposable
     }
 
     [Fact]
+    public async Task EmptyBoundQueryParametersNameTheirInvalidFields()
+    {
+        await Invalid(Designation(Id()) + "?date=", "date");
+        await Invalid(Designatable() + "?date=", "date");
+        await Invalid(Names(""), "ids");
+    }
+
+    [Fact]
     public async Task DesignationChecksEveryHistoricalWindowAndReturnsOnlyActivePreferredName()
     {
         var id = await Create();

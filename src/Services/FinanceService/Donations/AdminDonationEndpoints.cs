@@ -106,7 +106,7 @@ public static class AdminDonationEndpoints
         })
         .WithName("GetFinanceDonationTotals")
         .WithSummary("Confirmed and pending totals per currency")
-        .WithDescription("One entry per currency, never converted. Confirmed is net of reversals (reversing entries are negative); count includes every entry.")
+        .WithDescription("One entry per currency, never converted. Confirmed is net of reversals (reversing entries are negative); count includes every entry. Optional filters: designation and studentId (the designated student).")
         .WithTags("Finance")
         .RequirePermission(Permissions.FinanceView);
 
