@@ -383,9 +383,14 @@ public sealed class PrivacyEndToEndTests(PrivacyStack stack) : IClassFixture<Pri
         using var sponsorship = stack.Sponsorship.Services.CreateScope();
         var f = finance.ServiceProvider.GetRequiredService<FinanceDbContext>();
         var s = sponsorship.ServiceProvider.GetRequiredService<SponsorshipDbContext>();
-        return JsonSerializer.Serialize(new { Donors = await f.Donors.AsNoTracking().OrderBy(x => x.Id).ToListAsync(),
-            Students = await s.Students.AsNoTracking().OrderBy(x => x.Id).ToListAsync(), Links = await s.Links.AsNoTracking().OrderBy(x => x.Id).ToListAsync(),
-            Copies = await s.FrozenCopies.AsNoTracking().OrderBy(x => x.LinkId).ToListAsync(), Consents = await s.Consents.AsNoTracking().OrderBy(x => x.Id).ToListAsync() });
+        return JsonSerializer.Serialize(new
+        {
+            Donors = await f.Donors.AsNoTracking().OrderBy(x => x.Id).ToListAsync(),
+            Students = await s.Students.AsNoTracking().OrderBy(x => x.Id).ToListAsync(),
+            Links = await s.Links.AsNoTracking().OrderBy(x => x.Id).ToListAsync(),
+            Copies = await s.FrozenCopies.AsNoTracking().OrderBy(x => x.LinkId).ToListAsync(),
+            Consents = await s.Consents.AsNoTracking().OrderBy(x => x.Id).ToListAsync()
+        });
     }
 
     private static async Task PasswordsAbsentFromAudit<T>(IServiceProvider services, string service, string[] passwords) where T : DbContext

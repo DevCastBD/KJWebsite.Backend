@@ -1,9 +1,9 @@
 # AI-DLC Nano State
 - Active work item: work-items/074-issue-216-privacy-test-suite
-- Phase: CONSTRUCT
+- Phase: WRAP-UP
 - Branch: Feature/issue-216-privacy-test-suite  (off origin/develop at 5e56346)
 - Base SHA: 303e05e
-- Next step: Codex task A: PrivacyStack harness, GlobalLogSink, TestTokens.Expired, factory hooks, small source fixes, with tests
+- Next step: reviewer agent on the branch diff, fix findings, then ask the user before push and PR (never merge)
 - Paused work items:
   - work-items/073-issue-215-student-designation (DONE, PR #228 merged)
   - work-items/072-issue-214-student-donor-links (DONE, PR #224 merged)
@@ -11,4 +11,4 @@
   - work-items/070-issue-212-donor-self-service (DONE, PR #222 merged)
   - work-items/069-issue-211-donor-crm (DONE, PR #221 merged)
 - Uncommitted code: no
-- Last updated: 2026-11-16T09:30Z by claude
+- Last updated: 2026-11-16 by claude

@@ -20,15 +20,27 @@ public sealed partial class PrivacyPublicRouteTests(PrivacyStack stack, ITestOut
         { "get", "post", "put", "patch", "delete", "head", "options", "trace" };
     private static readonly Dictionary<string, string> PathValues = new(StringComparer.Ordinal)
     {
-        ["id"] = "00000000-0000-0000-0000-000000000001", ["slug"] = "privacy-scan-missing",
-        ["type"] = "page", ["token"] = "invalid-preview-token", ["kind"] = "photo",
-        ["reference"] = "PRIVACY-SCAN-MISSING", ["gateway"] = "stripe"
+        ["id"] = "00000000-0000-0000-0000-000000000001",
+        ["slug"] = "privacy-scan-missing",
+        ["type"] = "page",
+        ["token"] = "invalid-preview-token",
+        ["kind"] = "photo",
+        ["reference"] = "PRIVACY-SCAN-MISSING",
+        ["gateway"] = "stripe"
     };
     private static readonly Dictionary<string, string> QueryValues = new(StringComparer.Ordinal)
     {
-        ["lang"] = "en", ["status"] = "published", ["limit"] = "100", ["offset"] = "0",
-        ["tag"] = "", ["path"] = "/privacy-scan-missing", ["q"] = "privacy-scan-missing",
-        ["type"] = "", ["chapter"] = "", ["page"] = "1", ["result"] = "cancel",
+        ["lang"] = "en",
+        ["status"] = "published",
+        ["limit"] = "100",
+        ["offset"] = "0",
+        ["tag"] = "",
+        ["path"] = "/privacy-scan-missing",
+        ["q"] = "privacy-scan-missing",
+        ["type"] = "",
+        ["chapter"] = "",
+        ["page"] = "1",
+        ["result"] = "cancel",
         ["token"] = "invalid-download-token"
     };
 
