@@ -13,4 +13,6 @@
 ## Out of scope
 - Closing the Identity-direct disable window (#229); Postgres runs; a deployed gateway; a browser.
 ## Follow-ups
-- (none yet)
+- Review (not fixed): GlobalLogSink is process-wide, so a leak caused in one class is reported in whichever test checks next and later checks cascade; tag seeds and violations per owner.
+- Review (not fixed): factory handler instances are reused after IHttpClientFactory handler lifetime (2 min); set an infinite lifetime or wrap per call.
+- Gateway forwarder logs query strings at Information; public search terms reach the logs.
