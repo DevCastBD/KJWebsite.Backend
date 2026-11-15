@@ -17,8 +17,7 @@ public interface IAuthEmailSender
 }
 
 /// <summary>
-/// Holds the most recent messages in memory instead of sending them. Content (address, token) is logged
-/// only when <paramref name="logContent"/> is set, which is Development only: PII never reaches production logs.
+/// Holds the most recent messages in memory instead of sending them. Development logs include only kind and user id.
 /// </summary>
 public sealed partial class InMemoryAuthEmailSender(ILogger<InMemoryAuthEmailSender> logger, bool logContent) : IAuthEmailSender
 {
@@ -37,7 +36,7 @@ public sealed partial class InMemoryAuthEmailSender(ILogger<InMemoryAuthEmailSen
 
         if (logContent)
         {
-            LogContent(email.Kind, email.To, email.UserId, email.Token);
+            LogContent(email.Kind, email.UserId);
         }
         else
         {
@@ -47,8 +46,8 @@ public sealed partial class InMemoryAuthEmailSender(ILogger<InMemoryAuthEmailSen
         return Task.CompletedTask;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Auth email {Kind} to {To}: user {UserId} token {Token}")]
-    private partial void LogContent(AuthEmailKind kind, string to, string userId, string token);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Auth email {Kind}: user {UserId}")]
+    private partial void LogContent(AuthEmailKind kind, string userId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Auth email {Kind} was not delivered: no email provider is configured yet (#32).")]
     private partial void LogNotDelivered(AuthEmailKind kind);

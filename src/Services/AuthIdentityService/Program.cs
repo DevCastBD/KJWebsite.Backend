@@ -118,6 +118,7 @@ if (app.Environment.IsDevelopment())
     }).AllowAnonymous();
 }
 
+app.UsePrivateResponses("/api/v1/admin/auth/donors");
 app.UseAuthentication();
 app.UseAuthorization();
 

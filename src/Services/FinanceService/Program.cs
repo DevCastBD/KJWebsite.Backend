@@ -202,6 +202,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseDonorSelfHeaders();
+app.UsePrivateResponses("/api/v1/admin/finance/donors", "/api/v1/admin/finance/donations");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseKjIdempotency();
