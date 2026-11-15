@@ -1,14 +1,14 @@
 # AI-DLC Nano State
-- Active work item: none
-- Phase: —
-- Branch: Feature/issue-215-student-designation  (off origin/develop at ee9f3c6)
-- Base SHA: 93215fd
-- Next step: PR #228 for #215 awaits human review and merge; next ticket #216 (BE-109 privacy suite)
+- Active work item: work-items/074-issue-216-privacy-test-suite
+- Phase: CONSTRUCT
+- Branch: Feature/issue-216-privacy-test-suite  (off origin/develop at 5e56346)
+- Base SHA: 303e05e
+- Next step: Codex task A: PrivacyStack harness, GlobalLogSink, TestTokens.Expired, factory hooks, small source fixes, with tests
 - Paused work items:
-  - work-items/073-issue-215-student-designation (DONE, PR #228 open)
+  - work-items/073-issue-215-student-designation (DONE, PR #228 merged)
   - work-items/072-issue-214-student-donor-links (DONE, PR #224 merged)
   - work-items/071-issue-213-sponsorship-module (DONE, PR #223 merged)
   - work-items/070-issue-212-donor-self-service (DONE, PR #222 merged)
   - work-items/069-issue-211-donor-crm (DONE, PR #221 merged)
 - Uncommitted code: no
-- Last updated: 2026-11-15T19:10Z by claude
+- Last updated: 2026-11-16T09:30Z by claude
