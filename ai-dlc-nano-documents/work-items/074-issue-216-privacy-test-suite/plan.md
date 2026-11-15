@@ -5,6 +5,7 @@
 ## Tasks
 - [ ] A: PrivacyStack harness (gateway plus six services in memory, wired), GlobalLogSink on all factories, TestTokens.Expired, handler hooks
 - [ ] A: small source fixes: no-store middleware (Finance donors and donations, Identity donors) and Identity dev email sender log redaction, with tests
+- [ ] Donor CSV export fix for donors with no gifts, with a regression test (user asked; found by task A)
 - [ ] B: T-01, T-02, T-07 endpoint enumeration across all six services
 - [ ] C: end-to-end T-03, T-04, T-05, T-06, T-11, T-24, T-25, T-26 through the gateway with the real Finance
 - [ ] C: T-14 (Finance disable path), T-22 (twice through the gateway), T-27, T-28, T-29
