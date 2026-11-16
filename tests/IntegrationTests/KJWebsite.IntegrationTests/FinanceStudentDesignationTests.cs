@@ -373,7 +373,7 @@ public sealed class FinanceStudentDesignationTests : IDisposable
         var donor = await Donor(subject: "usr_donor");
         await Approve(await Record(Gift(donor)));
         _links.DonorNames[Student] = "Must not appear on failure";
-        _links.DonorNamesResult = new(unavailable ? SponsorshipOutcome.Unavailable : SponsorshipOutcome.Ok, new Dictionary<string, string>());
+        _links.DonorNamesResult = unavailable ? new(SponsorshipOutcome.Unavailable) : new(SponsorshipOutcome.Ok, new Dictionary<string, string>());
         var token = TestTokens.Issue([], subject: "usr_donor", extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)]);
         using var response = await Send(HttpMethod.Get, "/api/v1/donors/me/donations", token: token);
         var row = (await Json(response)).GetProperty("items")[0];
