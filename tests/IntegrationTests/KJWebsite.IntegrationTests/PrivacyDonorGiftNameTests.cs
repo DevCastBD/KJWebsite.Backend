@@ -52,7 +52,7 @@ public sealed class PrivacyDonorGiftNameTests(PrivacyStack stack) : IClassFixtur
     [InlineData("mistaken")]
     [InlineData("cancelled")]
     [InlineData("other-donor")]
-    [InlineData("never-linked")]
+    [InlineData("other-donor-link-voided")]
     public async Task GiftNameHiddenCasesHaveIdenticalPlainGiftShape(string kind)
     {
         var f = await Setup();
@@ -65,7 +65,7 @@ public sealed class PrivacyDonorGiftNameTests(PrivacyStack stack) : IClassFixtur
         StableGift(hidden).Should().Be(PlainShape(), $"{kind} must have exactly the plain gift fields");
         var page = await Page(f.Token);
         page.ToString().Should().NotContain(hiddenName);
-        using var lookup = await Send(stack, HttpMethod.Get, Names + (kind is "other-donor" or "never-linked" ? await GiftStudent(gift) : f.Student), f.Token);
+        using var lookup = await Send(stack, HttpMethod.Get, Names + (kind is "other-donor" or "other-donor-link-voided" ? await GiftStudent(gift) : f.Student), f.Token);
         (await Json(lookup, HttpStatusCode.OK)).GetProperty("items").EnumerateArray().Should().BeEmpty();
         Private(lookup);
         await NoLeaks(f, hiddenName);
@@ -190,7 +190,7 @@ public sealed class PrivacyDonorGiftNameTests(PrivacyStack stack) : IClassFixtur
         var student = await LinkStudent(stack, f.Staff, other.Id);
         using var response = await Send(stack, HttpMethod.Get, $"{Students}/{student}", f.Staff);
         var name = (await Json(response, HttpStatusCode.OK)).GetProperty("preferredName").GetString()!;
-        if (kind == "never-linked")
+        if (kind == "other-donor-link-voided")
         {
             using var unlinked = await Send(stack, HttpMethod.Post, $"/api/v1/admin/sponsorship/donors/{other.Id}/students/{student}/unlink", f.Staff,
                 new { type = "mistaken", reason = stack.NewSeed("unlink-reason") });

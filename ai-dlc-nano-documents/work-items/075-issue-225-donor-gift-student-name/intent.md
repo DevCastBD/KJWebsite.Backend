@@ -12,4 +12,5 @@
 ## Out of scope
 - Staff-side names; service credentials (BE-093); Identity-direct disable window (#229).
 ## Follow-ups
-- (none yet)
+- Review (not fixed): DonorNamesAsync takes (bearer, ids) while NamesAsync takes (ids, bearer); easy to swap.
+- Review (not fixed): the abort of a donor request is logged as "Sponsorship could not complete" (misleading warning).

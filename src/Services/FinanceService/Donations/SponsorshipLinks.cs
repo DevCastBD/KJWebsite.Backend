@@ -40,16 +40,21 @@ public sealed partial class SponsorshipLinks(IHttpClientFactory factory, ILogger
 
     public async Task<SponsorshipResult<IReadOnlyDictionary<string, string>>> DonorNamesAsync(string? bearer, IReadOnlyCollection<string> studentIds, CancellationToken ct)
     {
+        // Best effort: a slow Sponsorship must not hold up the donor's gift history for the full client timeout.
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(DonorNamesTimeout);
         var names = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var batch in studentIds.Distinct(StringComparer.Ordinal).Chunk(100))
         {
             var result = await GetAsync($"/api/v1/donors/me/students/names?ids={string.Join(",", batch.Select(Uri.EscapeDataString))}", bearer,
-                j => j.GetProperty("items").EnumerateArray().ToDictionary(i => Required(i, "id"), i => Required(i, "preferredName"), StringComparer.Ordinal), ct);
+                j => j.GetProperty("items").EnumerateArray().ToDictionary(i => Required(i, "id"), i => Required(i, "preferredName"), StringComparer.Ordinal), limit.Token);
             if (result.Outcome != SponsorshipOutcome.Ok) return new(SponsorshipOutcome.Unavailable);
             foreach (var pair in result.Value!) names[pair.Key] = pair.Value;
         }
         return new(SponsorshipOutcome.Ok, names);
     }
+
+    private static readonly TimeSpan DonorNamesTimeout = TimeSpan.FromSeconds(3);
 
     private static string Required(JsonElement json, string key) => json.GetProperty(key).GetString() is { Length: > 0 } value ? value : throw new JsonException();
 

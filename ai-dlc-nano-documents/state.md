@@ -1,9 +1,9 @@
 # AI-DLC Nano State
 - Active work item: work-items/075-issue-225-donor-gift-student-name
-- Phase: CONSTRUCT
+- Phase: WRAP-UP
 - Branch: Feature/issue-225-donor-gift-student-name  (off origin/develop at 32095a2)
 - Base SHA: 32095a2
-- Next step: Codex task 1: Sponsorship donor names lookup with tests
+- Next step: ask the user before push and PR for #225 (never merge)
 - Paused work items:
   - work-items/074-issue-216-privacy-test-suite (DONE, PR #230 merged)
   - work-items/073-issue-215-student-designation (DONE, PR #228 merged)

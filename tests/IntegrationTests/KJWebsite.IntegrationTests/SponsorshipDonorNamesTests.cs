@@ -97,6 +97,38 @@ public sealed partial class SponsorshipLinkTests
     }
 
     [Fact]
+    public async Task DonorNamesKeepsAnOlderFrozenCopyBesideALaterCancelledOrMistakenLink()
+    {
+        var id = await Consented();
+        await Edit(id, new { preferredName = "NamesOlderCopy225" });
+        await CreatedLink(id);
+        using (var ended = await Unlink(id)) await Status(ended, 200);
+        await Edit(id, new { preferredName = "NamesLaterLive225" });
+        using (var future = await Link(id, start: Date(10))) await Status(future, 201);
+        using (var cancelled = await Unlink(id, endDate: null)) await Status(cancelled, 200);
+        using (var afterCancel = await Names(id))
+        {
+            await Status(afterCancel, 200);
+            (await afterCancel.Content.ReadAsStringAsync()).Should().Be(NamesBody(id, "NamesOlderCopy225"));
+        }
+        await CreatedLink(id);
+        using (var mistaken = await Unlink(id, "mistaken")) await Status(mistaken, 200);
+        using var afterMistaken = await Names(id);
+        await Status(afterMistaken, 200);
+        (await afterMistaken.Content.ReadAsStringAsync()).Should().Be(NamesBody(id, "NamesOlderCopy225"));
+    }
+
+    [Fact]
+    public async Task DonorNamesCountsTheLimitAfterRemovingDuplicates()
+    {
+        var ids = Enumerable.Range(0, 100).Select(i => $"stu_{i:x32}").ToList();
+        ids.Add(ids[0]);
+        using var response = await Names(string.Join(',', ids));
+        await Status(response, 200);
+        (await response.Content.ReadAsStringAsync()).Should().Be("{\"items\":[]}");
+    }
+
+    [Fact]
     public async Task DonorNamesSkipsEndedLinkWithoutItsOwnFrozenCopy()
     {
         var id = await NamedStudent("NamesMissingCopy225");
