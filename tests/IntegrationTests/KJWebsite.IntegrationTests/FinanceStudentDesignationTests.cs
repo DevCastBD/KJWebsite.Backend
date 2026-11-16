@@ -290,11 +290,14 @@ public sealed class FinanceStudentDesignationTests : IDisposable
         var donor = await Donor(subject: "usr_donor");
         var id = await Record(Gift(donor));
         await Approve(id);
+        _links.DonorNames[Student] = "Asha";
         var token = TestTokens.Issue([], subject: "usr_donor", extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)]);
         using var beforeResponse = await Send(HttpMethod.Get, "/api/v1/donors/me/donations", token: token);
         var before = await Json(beforeResponse);
         before.GetProperty("items").GetArrayLength().Should().Be(1);
+        before.GetProperty("items")[0].GetProperty("studentName").GetString().Should().Be("Asha");
         before.GetProperty("totals")[0].GetProperty("cash").GetString().Should().Be("500.00");
+        _links.DonorNameCalls.Clear();
         using var reversal = await Send(HttpMethod.Post, $"{Route}/{id}/reversal", new { reason = "Correction" });
         await Json(reversal, HttpStatusCode.Created);
         (await Db(db => db.Donations.SingleAsync(d => d.ReversesDonationId == id))).DonorId.Should().Be(donor);
@@ -303,6 +306,7 @@ public sealed class FinanceStudentDesignationTests : IDisposable
         after.GetProperty("items").GetArrayLength().Should().Be(0);
         after.GetProperty("total").GetInt32().Should().Be(0);
         after.GetProperty("totals").GetArrayLength().Should().Be(0);
+        _links.DonorNameCalls.Should().BeEmpty();
         using var response = await Send(HttpMethod.Get, Route + "?studentId=" + Student);
         var page = await Json(response);
         page.GetProperty("total").GetInt32().Should().Be(2);
@@ -325,6 +329,120 @@ public sealed class FinanceStudentDesignationTests : IDisposable
         var row = (await Json(response)).GetProperty("items")[0];
         row.GetProperty("designation").GetString().Should().Be(label);
         row.GetProperty("designationId").ValueKind.Should().Be(JsonValueKind.Null);
+        row.GetProperty("studentName").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Theory]
+    [InlineData("en", "Student sponsorship: Asha")]
+    [InlineData("bn", "শিক্ষার্থী পৃষ্ঠপোষকতা: Asha")]
+    public async Task DonorStudentNamesFollowVisibilityAndLanguageAndForwardOwnBearer(string language, string label)
+    {
+        const string hidden = "stu_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        var donor = await Donor(subject: "usr_donor");
+        await Edit(donor, (d, _) => d.Language = language);
+        var visibleGift = await Record(Gift(donor));
+        await Approve(visibleGift);
+        var hiddenGift = await Record(Gift(donor, hidden));
+        await Approve(hiddenGift);
+        var duplicate = await Record(Gift(donor));
+        await Approve(duplicate);
+        _links.DonorNames[Student] = "Asha";
+        var token = TestTokens.Issue([], subject: "usr_donor", extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)]);
+
+        using var response = await Send(HttpMethod.Get, "/api/v1/donors/me/donations", token: token);
+        var page = await Json(response);
+        page.GetProperty("total").GetInt32().Should().Be(3);
+        page.GetProperty("totals")[0].GetProperty("cash").GetString().Should().Be("1500.00");
+        foreach (var row in page.GetProperty("items").EnumerateArray())
+        {
+            var visible = row.GetProperty("id").GetString() != hiddenGift;
+            row.GetProperty("studentName").GetString().Should().Be(visible ? "Asha" : null);
+            row.GetProperty("designation").GetString().Should().Be(visible ? label : label[..label.IndexOf(':')]);
+            row.GetProperty("designationId").ValueKind.Should().Be(JsonValueKind.Null);
+        }
+        _links.DonorNameCalls.Should().ContainSingle();
+        _links.DonorNameCalls[0].Ids.Should().BeEquivalentTo([Student, hidden]);
+        _links.DonorNameCalls[0].Bearer.Should().Be(token).And.NotBe(Maker);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DonorStudentNameMissingOrUnavailableKeepsPlainLabel(bool unavailable)
+    {
+        var donor = await Donor(subject: "usr_donor");
+        await Approve(await Record(Gift(donor)));
+        _links.DonorNames[Student] = "Must not appear on failure";
+        _links.DonorNamesResult = new(unavailable ? SponsorshipOutcome.Unavailable : SponsorshipOutcome.Ok, new Dictionary<string, string>());
+        var token = TestTokens.Issue([], subject: "usr_donor", extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)]);
+        using var response = await Send(HttpMethod.Get, "/api/v1/donors/me/donations", token: token);
+        var row = (await Json(response)).GetProperty("items")[0];
+        row.GetProperty("studentName").ValueKind.Should().Be(JsonValueKind.Null);
+        row.GetProperty("designation").GetString().Should().Be("Student sponsorship");
+        row.GetProperty("designationId").ValueKind.Should().Be(JsonValueKind.Null);
+        _links.DonorNameCalls.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task DonorNamesUseOnlyThePageAndSkipGeneralCampaignAndInKindGifts()
+    {
+        var donor = await Donor(subject: "usr_donor");
+        for (var i = 0; i < 5; i++) await Approve(await Record(Gift(donor, null, "general")));
+        await Approve(await Record(Gift(donor)));
+        await Approve(await Record(Gift(donor)));
+        _links.DonorNames[Student] = "Asha";
+        var token = TestTokens.Issue([], subject: "usr_donor", extraClaims: [new Claim(KjClaims.Role, KjRoles.Donor)]);
+        using var firstResponse = await Send(HttpMethod.Get, "/api/v1/donors/me/donations?limit=2", token: token);
+        var first = await Json(firstResponse);
+        first.GetProperty("items").EnumerateArray().Should().OnlyContain(r => r.GetProperty("studentName").GetString() == "Asha");
+        _links.DonorNameCalls.Should().ContainSingle();
+        _links.DonorNameCalls[0].Ids.Should().Equal(Student);
+        _links.DonorNameCalls.Clear();
+
+        using var secondResponse = await Send(HttpMethod.Get, "/api/v1/donors/me/donations?limit=2&offset=2", token: token);
+        var second = await Json(secondResponse);
+        second.GetProperty("items").GetArrayLength().Should().Be(2);
+        second.GetProperty("limit").GetInt32().Should().Be(2);
+        second.GetProperty("offset").GetInt32().Should().Be(2);
+        second.GetProperty("total").GetInt32().Should().Be(7);
+        second.GetProperty("totals").GetRawText().Should().Be(first.GetProperty("totals").GetRawText());
+        second.GetProperty("totals")[0].GetProperty("cash").GetString().Should().Be("3500.00");
+        second.GetProperty("items").EnumerateArray().Should().OnlyContain(r => r.GetProperty("designation").GetString() == "General" && r.GetProperty("studentName").ValueKind == JsonValueKind.Null);
+        _links.DonorNameCalls.Should().BeEmpty();
+
+        // Append older receipt variants to exercise history projection independently of gift recording.
+        await Db(async db =>
+        {
+            db.Campaigns.Add(new CampaignEntity { Id = "history-campaign", Slug = "history-campaign", Title = "School fund", Currency = "BDT" });
+            var donorKey = (await db.Donors.SingleAsync()).DonorKey;
+            for (var i = 0; i < 2; i++)
+            {
+                var giftId = $"don_history_variant_{i}";
+                db.Donations.Add(new DonationEntity { Id = giftId, Reference = $"HISTORY-{i}", DonorId = donor, Amount = 500, Currency = "BDT" });
+                db.Receipts.Add(new ReceiptEntity
+                {
+                    Id = $"rcp_history_variant_{i}",
+                    DonationId = giftId,
+                    Series = "2000-01",
+                    Seq = i + 1,
+                    Number = $"KJR-2000-01-{i + 1:D6}",
+                    ReceivedOn = new DateOnly(2000, 7, 1),
+                    DonorKey = donorKey,
+                    Amount = 500,
+                    Currency = "BDT",
+                    DesignationType = i == 0 ? "campaign" : "general",
+                    DesignationId = i == 0 ? "history-campaign" : null,
+                    IsInKind = i == 1
+                });
+            }
+            return await db.SaveChangesAsync();
+        });
+        using var variantsResponse = await Send(HttpMethod.Get, "/api/v1/donors/me/donations?limit=100&offset=2", token: token);
+        var variants = (await Json(variantsResponse)).GetProperty("items").EnumerateArray().ToArray();
+        variants.Should().HaveCount(7).And.OnlyContain(r => r.GetProperty("studentName").ValueKind == JsonValueKind.Null);
+        variants.Single(r => r.GetProperty("designationType").GetString() == "campaign").GetProperty("designation").GetString().Should().Be("School fund");
+        variants.Single(r => r.GetProperty("inKind").GetBoolean()).GetProperty("designation").GetString().Should().Be("General");
+        _links.DonorNameCalls.Should().BeEmpty();
     }
 
     [Fact]
@@ -407,6 +525,14 @@ internal sealed class FakeSponsorshipLinks : ISponsorshipLinks
     public Dictionary<string, string> Names { get; } = [];
     public List<(string Donor, string Student, DateOnly Date, string Bearer)> Checks { get; } = [];
     public List<(string[] Ids, string Bearer)> NameCalls { get; } = [];
+    public Dictionary<string, string> DonorNames { get; } = [];
+    public SponsorshipResult<IReadOnlyDictionary<string, string>>? DonorNamesResult { get; set; }
+    public List<(string[] Ids, string? Bearer)> DonorNameCalls { get; } = [];
+    public Task<SponsorshipResult<IReadOnlyDictionary<string, string>>> DonorNamesAsync(string? bearer, IReadOnlyCollection<string> studentIds, CancellationToken ct)
+    {
+        DonorNameCalls.Add((studentIds.ToArray(), bearer));
+        return Task.FromResult(DonorNamesResult ?? (Down ? new SponsorshipResult<IReadOnlyDictionary<string, string>>(SponsorshipOutcome.Unavailable) : new(SponsorshipOutcome.Ok, DonorNames)));
+    }
     public Task<SponsorshipResult<DesignationCheck>> CheckAsync(string donorId, string studentId, DateOnly receivedOn, string bearer, CancellationToken ct)
     {
         Checks.Add((donorId, studentId, receivedOn, bearer));
@@ -429,6 +555,9 @@ public sealed class FinanceSponsorshipLinksTests
     [InlineData(201, "{}")]
     [InlineData(200, "not json")]
     [InlineData(200, "{}")]
+    [InlineData(200, "{\"items\":[{\"id\":\"stu_id\"}]}")]
+    [InlineData(200, "{\"items\":[{\"id\":\"stu_id\",\"preferredName\":null}]}")]
+    [InlineData(200, "{\"items\":[{\"id\":\"stu_id\",\"preferredName\":123}]}")]
     public async Task NonCleanResponsesAreUnavailable(int status, string body)
     {
         using var handler = new StubHandler(_ => new HttpResponseMessage((HttpStatusCode)status) { Content = new StringContent(body) });
@@ -436,6 +565,7 @@ public sealed class FinanceSponsorshipLinksTests
         var links = new SponsorshipLinks(factory, NullLogger<SponsorshipLinks>.Instance);
         (await links.CheckAsync("dnr_id", "stu_id", new DateOnly(2026, 11, 1), "staff", default)).Outcome.Should().Be(SponsorshipOutcome.Unavailable);
         (await links.NamesAsync(["stu_id"], "staff", default)).Outcome.Should().Be(SponsorshipOutcome.Unavailable);
+        (await links.DonorNamesAsync("donor", ["stu_id"], default)).Outcome.Should().Be(SponsorshipOutcome.Unavailable);
     }
 
     [Theory]
@@ -447,6 +577,49 @@ public sealed class FinanceSponsorshipLinksTests
         using var factory = new ClientFactory(handler);
         var links = new SponsorshipLinks(factory, NullLogger<SponsorshipLinks>.Instance);
         (await links.CheckAsync("dnr_id", "stu_id", new DateOnly(2026, 11, 1), "staff", default)).Outcome.Should().Be(SponsorshipOutcome.Unavailable);
+        (await links.DonorNamesAsync("donor", ["stu_id"], default)).Outcome.Should().Be(SponsorshipOutcome.Unavailable);
+    }
+
+    [Fact]
+    public async Task DonorNamesDeduplicateBatch101MergeForwardBearerAndSkipEmptyInput()
+    {
+        var batches = new List<string[]>();
+        using var handler = new StubHandler(request =>
+        {
+            request.Method.Should().Be(HttpMethod.Get);
+            request.RequestUri!.AbsolutePath.Should().Be("/api/v1/donors/me/students/names");
+            request.Headers.Authorization!.ToString().Should().Be("Bearer donor");
+            var batch = Uri.UnescapeDataString(request.RequestUri.Query[5..]).Split(',');
+            batches.Add(batch);
+            return new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = batch.Select(id => new { id, preferredName = "Name " + id }) }) };
+        });
+        using var factory = new ClientFactory(handler);
+        var links = new SponsorshipLinks(factory, NullLogger<SponsorshipLinks>.Instance);
+        var empty = await links.DonorNamesAsync(null, [], default);
+        empty.Outcome.Should().Be(SponsorshipOutcome.Ok);
+        empty.Value.Should().BeEmpty();
+        batches.Should().BeEmpty();
+        var ids = Enumerable.Range(0, 101).Select(i => "stu_" + i.ToString("x32", System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        var result = await links.DonorNamesAsync("donor", [.. ids, ids[0]], default);
+        result.Outcome.Should().Be(SponsorshipOutcome.Ok);
+        result.Value.Should().BeEquivalentTo(ids.ToDictionary(id => id, id => "Name " + id));
+        batches.Select(b => b.Length).Should().Equal(100, 1);
+        batches.SelectMany(b => b).Should().Equal(ids);
+    }
+
+    [Fact]
+    public async Task DonorNamesDiscardsEarlierBatchesWhenALaterBatchFails()
+    {
+        var calls = 0;
+        using var handler = new StubHandler(_ => ++calls == 1
+            ? new(HttpStatusCode.OK) { Content = JsonContent.Create(new { items = new[] { new { id = "stu_0", preferredName = "Name" } } }) }
+            : new(HttpStatusCode.ServiceUnavailable));
+        using var factory = new ClientFactory(handler);
+        var links = new SponsorshipLinks(factory, NullLogger<SponsorshipLinks>.Instance);
+        var result = await links.DonorNamesAsync("donor", Enumerable.Range(0, 101).Select(i => "stu_" + i).ToArray(), default);
+        result.Outcome.Should().Be(SponsorshipOutcome.Unavailable);
+        result.Value.Should().BeNull();
+        calls.Should().Be(2);
     }
 
     [Fact]
