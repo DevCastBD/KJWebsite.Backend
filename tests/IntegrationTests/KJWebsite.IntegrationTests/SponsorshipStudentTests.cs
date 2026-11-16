@@ -22,6 +22,8 @@ public sealed class SponsorshipApiFactory : SqliteWebApplicationFactory<Sponsors
 {
     public string FilesPath { get; } = Path.Combine(Path.GetTempPath(), $"kj-test-sponsorship-{Guid.NewGuid():N}");
 
+    public HttpMessageHandler? FinanceHandler { get; set; }
+
     public FakeProjects Projects { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -35,6 +37,7 @@ public sealed class SponsorshipApiFactory : SqliteWebApplicationFactory<Sponsors
             }));
         builder.ConfigureServices(services =>
         {
+            if (FinanceHandler is not null) services.AddHttpClient("finance").ConfigurePrimaryHttpMessageHandler(() => FinanceHandler);
             services.RemoveAll<IProjectCatalogue>();
             services.AddSingleton<IProjectCatalogue>(Projects);
         });

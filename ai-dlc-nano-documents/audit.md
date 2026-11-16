@@ -384,3 +384,15 @@
 - 2026-11-15T16:30Z [claude] 073-issue-215-student-designation PHASE CONSTRUCT→WRAP-UP @4c34628: full suite 1228+46 pass, format clean, openapi additive
 - 2026-11-15T18:10Z [claude] 073-issue-215-student-designation DECISION @4c34628: review found email overwrite and language bug; gifts never change the donor (user)
 - 2026-11-15T18:40Z [claude] 073-issue-215-student-designation REVISED @4c34628: review fixes in code, tests and docs; full suite 1230+46 pass; GitHub corrections await the user
+- 2026-11-15T18:55Z [claude] 073-issue-215-student-designation SIDE-EFFECT @e62c0a3: replaced #215 body, commented FrontEnd#353 with the corrected contract (user approved)
+- 2026-11-15T19:00Z [claude] 073-issue-215-student-designation SIDE-EFFECT @e62c0a3: pushed Feature/issue-215-student-designation, opened PR #228 against develop; not merged
+- 2026-11-15T19:10Z [claude] 073-issue-215-student-designation DONE @e62c0a3: PR #228 open for review; suite 1230+46 pass
+- 2026-11-16T09:00Z [claude] 074-issue-216-privacy-test-suite CREATED @5e56346: issue #216 sponsorship privacy test suite (BE-109)
+- 2026-11-16T09:10Z [claude] 074-issue-216-privacy-test-suite SIDE-EFFECT @5e56346: created #229 (BE-114) on board, replaced #216 body (user approved)
+- 2026-11-16T09:15Z [claude] 074-issue-216-privacy-test-suite DECISION @5e56346: T-14 tests Finance disable path, Identity-direct window is #229; fix no-store and dev email log here (user)
+- 2026-11-16T09:20Z [claude] 074-issue-216-privacy-test-suite SIDE-EFFECT @5e56346: assigned tahmidsparrow, board status In progress (verified)
+- 2026-11-16T09:25Z [claude] 074-issue-216-privacy-test-suite BRANCH @303e05e: Feature/issue-216-privacy-test-suite off origin/develop, docs commit cherry-picked (user approved)
+- 2026-11-16T09:30Z [claude] 074-issue-216-privacy-test-suite PHASE PLAN→CONSTRUCT @303e05e: plan approved by user via plan mode
+- 2026-11-15T19:48Z [claude] 074-issue-216-privacy-test-suite DECISION @8f5a3d4: live run found FE role-name and shape gaps, filed FE#361 and FE#362 (user asked); CORS header fixed here; tasks B and C done
+- 2026-11-15T20:10Z [claude] 074-issue-216-privacy-test-suite PHASE CONSTRUCT→WRAP-UP @02ae3b5: tasks A-D and docs done, full suite 1269 passed, 3 flake runs clean, 4 of 5 mutations caught then pinned the 5th
+- 2026-11-16T04:49Z [claude] 074-issue-216-privacy-test-suite SIDE-EFFECT @145762b: pushed branch and opened PR #230 (user said Open PR); not merged

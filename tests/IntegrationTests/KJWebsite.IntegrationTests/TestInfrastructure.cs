@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using AuthIdentityService.Data;
 using ContentService.Data;
 using CtaSubmissionService.Data;
@@ -5,12 +6,15 @@ using FinanceService.Data;
 using MembershipService.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Yarp.ReverseProxy.Forwarder;
 
 namespace KJWebsite.IntegrationTests;
 
@@ -27,6 +31,7 @@ public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebAp
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.ConfigureServices(s => s.AddSingleton<ILoggerProvider>(GlobalLogSink.Default.Provider));
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<TContext>>();
@@ -59,6 +64,7 @@ public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebAp
         }
 
         TryDeleteFile(_dbPath);
+        if (disposing) GlobalLogSink.Default.AssertNone();
     }
 
     // Windows can briefly hold the file handle after ClearAllPools(); a short retry avoids leaking temp files.
@@ -121,6 +127,27 @@ public static class TestTokens
                 new Microsoft.IdentityModel.Tokens.RsaSecurityKey(rsa.ExportParameters(true)), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256)
         });
     }
+
+    public static string Expired(string[] permissions, string subject = "usr_test", IEnumerable<Claim>? extraClaims = null)
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create();
+        rsa.ImportFromPem(TestJwtKeys.Primary);
+        var claims = new List<Claim> { new("sub", subject), new("sid", "ses_test") };
+        claims.AddRange(permissions.Select(p => new Claim("permissions", p)));
+        claims.AddRange(extraClaims ?? []);
+        return new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler().CreateToken(new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor
+        {
+            Issuer = "kjwebsite-auth",
+            Audience = "kjwebsite-api",
+            Subject = new ClaimsIdentity(claims),
+            NotBefore = DateTime.UtcNow.AddHours(-2),
+            IssuedAt = DateTime.UtcNow.AddHours(-2),
+            Expires = DateTime.UtcNow.AddHours(-1),
+            SigningCredentials = new(new Microsoft.IdentityModel.Tokens.RsaSecurityKey(rsa.ExportParameters(true)), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256)
+        });
+    }
+
+    public static string[] Malformed() => ["not-a-jwt", "eyJhbGciOiJSUzI1NiJ9.garbage.signature", ""];
 
     /// <summary>A token holding every content permission, publishing included.</summary>
     public static string ContentAdmin() => Issue(
@@ -214,6 +241,7 @@ public abstract class PostgresWebApplicationFactory<TEntryPoint>(string connecti
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.ConfigureServices(s => s.AddSingleton<ILoggerProvider>(GlobalLogSink.Default.Provider));
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
@@ -221,6 +249,11 @@ public abstract class PostgresWebApplicationFactory<TEntryPoint>(string connecti
                 ["ConnectionStrings:" + connectionName] = connectionString
             });
         });
+    }
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing) GlobalLogSink.Default.AssertNone();
     }
 }
 
@@ -272,7 +305,30 @@ public sealed class PostgresContentApiFactory(string connectionString)
 
 public sealed class GatewayApiFactory : WebApplicationFactory<ApiGateway.ApiGatewayTestEntryPoint>
 {
-    protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Development");
+    public Dictionary<string, Func<HttpMessageHandler>>? ClusterHandlers { get; set; }
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment("Development");
+        builder.ConfigureServices(s => s.AddSingleton<ILoggerProvider>(GlobalLogSink.Default.Provider));
+        if (ClusterHandlers is { } handlers)
+        {
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["RateLimiting:Enabled"] = "false",
+                ["Site:BaseUrl"] = "http://localhost"
+            }));
+            builder.ConfigureTestServices(s => s.Replace(ServiceDescriptor.Singleton<IForwarderHttpClientFactory>(new InProcessForwarder(handlers))));
+        }
+    }
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        if (disposing) GlobalLogSink.Default.AssertNone();
+    }
+    private sealed class InProcessForwarder(Dictionary<string, Func<HttpMessageHandler>> handlers) : IForwarderHttpClientFactory
+    {
+        public HttpMessageInvoker CreateClient(ForwarderHttpClientContext context) => new(handlers[context.ClusterId](), disposeHandler: false);
+    }
 }
 
 public class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.FinanceServiceTestEntryPoint, FinanceDbContext>
@@ -285,6 +341,8 @@ public class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.Fina
 
     /// <summary>Lets a test register extra services (for example another payment gateway) before the host is built.</summary>
     public Action<IServiceCollection>? ConfigureTestServices { get; set; }
+
+    public HttpMessageHandler? SponsorshipHandler { get; set; }
 
     public CapturingLoggerProvider Logs { get; } = new();
 
@@ -307,6 +365,7 @@ public class FinanceApiFactory : SqliteWebApplicationFactory<FinanceService.Fina
             }
 
             services.AddHttpClient("auth").ConfigurePrimaryHttpMessageHandler(() => AuthHandler ?? new HttpClientHandler());
+            if (SponsorshipHandler is not null) services.AddHttpClient("sponsorship").ConfigurePrimaryHttpMessageHandler(() => SponsorshipHandler);
             services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(Logs);
             ConfigureTestServices?.Invoke(services);
         });

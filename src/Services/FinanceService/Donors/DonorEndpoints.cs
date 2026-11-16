@@ -205,7 +205,9 @@ public static class DonorEndpoints
                 {
                     Cell(donor.Entity.Id), Cell(donor.Name), Cell(donor.Email), Cell(donor.Gifts.Count.ToString(CultureInfo.InvariantCulture)),
                     Cell(string.Join("; ", donor.Totals.Select(t => $"{t.Currency} {t.Cash.ToDecimalString()} money + {t.InKind.ToDecimalString()} in-kind"))),
-                    Cell(donor.Gifts.Min(g => g.Fact.ReceivedOn).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), Cell(donor.Gifts.Max(g => g.Fact.ReceivedOn).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                    // A donor staff created before any gift has no first or last gift date: empty cells, as in the list.
+                    Cell(donor.Gifts.Count == 0 ? string.Empty : donor.Gifts.Min(g => g.Fact.ReceivedOn).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                    Cell(donor.Gifts.Count == 0 ? string.Empty : donor.Gifts.Max(g => g.Fact.ReceivedOn).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
                     Cell(string.Join("; ", donor.Segments)),
                     Cell(state[ConsentPurposes.Thanks].Granted ? "yes" : "no"), Cell(state[ConsentPurposes.Updates].Granted ? "yes" : "no"), Cell(state[ConsentPurposes.Appeals].Granted ? "yes" : "no")
                 })).Append("\r\n");

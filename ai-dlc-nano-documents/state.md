@@ -1,14 +1,14 @@
 # AI-DLC Nano State
-- Active work item: work-items/073-issue-215-student-designation
-- Phase: CONSTRUCT
-- Branch: Feature/issue-215-student-designation  (off origin/develop at ee9f3c6)
-- Base SHA: 93215fd
-- Next step: Sponsorship endpoints (designation check, designatable-students, names) with tests, via Codex
+- Active work item: work-items/074-issue-216-privacy-test-suite
+- Phase: WRAP-UP
+- Branch: Feature/issue-216-privacy-test-suite  (off origin/develop at 5e56346)
+- Base SHA: 303e05e
+- Next step: reviewer agent on the branch diff, fix findings, then ask the user before push and PR (never merge)
 - Paused work items:
+  - work-items/073-issue-215-student-designation (DONE, PR #228 merged)
   - work-items/072-issue-214-student-donor-links (DONE, PR #224 merged)
   - work-items/071-issue-213-sponsorship-module (DONE, PR #223 merged)
   - work-items/070-issue-212-donor-self-service (DONE, PR #222 merged)
   - work-items/069-issue-211-donor-crm (DONE, PR #221 merged)
-  - work-items/011-issue-116-p1-platform-core (CLARIFY)
 - Uncommitted code: no
-- Last updated: 2026-11-15T14:10Z by claude
+- Last updated: 2026-11-16 by claude
