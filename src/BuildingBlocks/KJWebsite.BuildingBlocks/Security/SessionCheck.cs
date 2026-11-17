@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace KJWebsite.BuildingBlocks.Security;
@@ -26,7 +27,13 @@ public static partial class SessionCheck
         try
         {
             var options = SessionCheckOptions.From(http.RequestServices.GetRequiredService<IConfiguration>());
-            if (!options.Enabled) return;
+            if (!options.Enabled)
+            {
+                // The switch exists for tests and local development. Anywhere else it is ignored, so one stray setting cannot bring the stale-session window back.
+                if (http.RequestServices.GetRequiredService<IHostEnvironment>().IsDevelopment()) return;
+                IgnoredDisable(http.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(SessionCheck).FullName!));
+            }
+
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(aborted);
             timeout.CancelAfter(options.Timeout);
             using var client = http.RequestServices.GetRequiredService<IHttpClientFactory>().CreateClient(ClientName);
@@ -58,6 +65,9 @@ public static partial class SessionCheck
         }
         context.Fail("The session check could not be completed.");
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Auth:SessionCheck:Enabled=false is ignored outside Development; the session check stays on.")]
+    private static partial void IgnoredDisable(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Sign-in service is unavailable.")]
     private static partial void Unavailable(ILogger logger);

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AuthIdentityService.Data;
 using AuthIdentityService.Data.Entities;
+using AuthIdentityService.Tokens;
 using KJWebsite.BuildingBlocks.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +20,16 @@ public static partial class AuthSeeder
         var users = services.GetRequiredService<UserManager<AuthUserEntity>>();
         var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(AuthSeeder));
 
-        await SeedRolesAsync(roles);
+        var superAdminChanged = await SeedRolesAsync(roles);
+        if (superAdminChanged)
+        {
+            // New permissions reach SuperAdmin at startup: its holders sign in again so their access matches the role.
+            var sessions = services.GetRequiredService<RefreshTokenService>();
+            foreach (var holder in await users.GetUsersInRoleAsync(KjRoles.SuperAdmin))
+            {
+                await sessions.RevokeAllAsync(holder.Id);
+            }
+        }
 
         var admin = await users.FindByEmailAsync(DevAdminEmail);
         if (!isDevelopment)
@@ -31,6 +41,7 @@ public static partial class AuthSeeder
                 admin.LockoutEnabled = true;
                 admin.LockoutEnd = DateTimeOffset.MaxValue;
                 await users.UpdateAsync(admin);
+                await services.GetRequiredService<RefreshTokenService>().RevokeAllAsync(admin.Id);
                 LogDevAdminDisabled(logger);
             }
 
@@ -82,8 +93,9 @@ public static partial class AuthSeeder
     /// administrator gave it, so a restart never undoes a change made through the role-management API. SuperAdmin is the exception: it
     /// always holds every permission in the catalog, so a key added in code reaches it at once and it can never be locked out.
     /// </summary>
-    public static async Task SeedRolesAsync(RoleManager<AuthRoleEntity> roles)
+    public static async Task<bool> SeedRolesAsync(RoleManager<AuthRoleEntity> roles)
     {
+        var superAdminChanged = false;
         foreach (var (name, permissions) in KjRoles.Seed)
         {
             var role = await roles.FindByNameAsync(name);
@@ -103,8 +115,11 @@ public static partial class AuthSeeder
             foreach (var permission in permissions.Where(p => !held.Contains(p)))
             {
                 await roles.AddClaimAsync(role!, new Claim(KjClaims.Permission, permission));
+                superAdminChanged |= name == KjRoles.SuperAdmin && !isNew;
             }
         }
+
+        return superAdminChanged;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The development seed account exists outside Development and has been disabled.")]

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace KJWebsite.IntegrationTests;
 
@@ -26,7 +27,7 @@ public sealed class SessionCheckTests
     public async Task ProtectedEndpointFailsClosed(string result, int expected)
     {
         using var handler = new StubHandler(result);
-        await using var app = await Host(handler);
+        await using var app = await Host(handler, timeout: result == "timeout" ? "00:00:00.025" : null);
         using var client = app.GetTestClient();
         using var response = await Send(client, "/protected", TestTokens.Issue([]));
         ((int)response.StatusCode).Should().Be(expected);
@@ -38,7 +39,7 @@ public sealed class SessionCheckTests
     public async Task DisabledCheckDoesNotCallIdentity()
     {
         using var handler = new StubHandler("throw");
-        await using var app = await Host(handler, enabled: false);
+        await using var app = await Host(handler, enabled: false, development: true);
         using var client = app.GetTestClient();
         using var response = await Send(client, "/protected", TestTokens.Issue([]));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -46,10 +47,32 @@ public sealed class SessionCheckTests
     }
 
     [Fact]
-    public async Task ConfigurationIsReadForEachRequest()
+    public async Task DisablingTheCheckIsIgnoredOutsideDevelopment()
     {
         using var handler = new StubHandler("401");
         await using var app = await Host(handler, enabled: false);
+        using var client = app.GetTestClient();
+        using var response = await Send(client, "/protected", TestTokens.Issue([]));
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        handler.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ARedirectAnswerFromIdentityFailsClosedAsUnavailable()
+    {
+        using var handler = new StubHandler("302");
+        await using var app = await Host(handler);
+        using var client = app.GetTestClient();
+        using var response = await Send(client, "/protected", TestTokens.Issue([]));
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        handler.Calls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ConfigurationIsReadForEachRequest()
+    {
+        using var handler = new StubHandler("401");
+        await using var app = await Host(handler, enabled: false, development: true);
         using var client = app.GetTestClient();
         var token = TestTokens.Issue([]);
         using var before = await Send(client, "/protected", token);
@@ -146,14 +169,14 @@ public sealed class SessionCheckTests
         handler.Calls.Should().Be(0);
     }
 
-    private static async Task<WebApplication> Host(StubHandler handler, bool enabled = true, string? address = null)
+    private static async Task<WebApplication> Host(StubHandler handler, bool enabled = true, string? address = null, string? timeout = null, bool development = false)
     {
-        var builder = WebApplication.CreateBuilder();
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = development ? Environments.Development : Environments.Production });
         builder.WebHost.UseTestServer();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary),
-            ["Auth:SessionCheck:Timeout"] = "00:00:00.025",
+            ["Auth:SessionCheck:Timeout"] = timeout ?? "00:00:05",
             ["Services:Auth:Url"] = address ?? "http://localhost:7003/"
         });
         // Leave Enabled unset in the ordinary cases to exercise the production default.

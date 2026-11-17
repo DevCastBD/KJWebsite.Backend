@@ -99,7 +99,8 @@ public static class JwtAuthenticationExtensions
         Func<IServiceProvider, IEnumerable<SecurityKey>>? keys = null,
         Func<TokenValidatedContext, Task>? onTokenValidated = null)
     {
-        services.AddHttpClient(SessionCheck.ClientName);
+        // A redirect would drop the Authorization header and turn every user into a fake logout; a 3xx must fail closed as 503 instead.
+        services.AddHttpClient(SessionCheck.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
         {
             options.MapInboundClaims = false;

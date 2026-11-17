@@ -69,13 +69,13 @@ public sealed class PrivacySessionEndToEndTests(PrivacySessionStack stack) : ICl
         {
             var session = await Login(user.Email, user.Password);
             sessions.Add(session);
-            await Gets([Finance], session.Access, HttpStatusCode.OK, "before role permission edit");
+            await Gets([Finance, Membership, Content], session.Access, HttpStatusCode.OK, "before role permission edit");
         }
         await Request(HttpMethod.Put, $"/api/v1/admin/auth/roles/{role}/permissions", staff.Token, new { permissions = new[] { Permissions.ContentView } });
         using (new AssertionScope())
             foreach (var session in sessions)
             {
-                await Gets([Finance], session.Access, HttpStatusCode.Unauthorized, "role permission edit affects both users");
+                await Gets([Finance, Membership, Content], session.Access, HttpStatusCode.Unauthorized, "role permission edit affects both users");
                 await RejectRefresh(session);
             }
         foreach (var user in users)

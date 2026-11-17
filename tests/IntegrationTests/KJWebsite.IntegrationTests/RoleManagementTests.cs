@@ -213,6 +213,40 @@ public sealed class RoleManagementTests : IDisposable
     }
 
     [Fact]
+    public async Task AStartupThatAddsPermissionsToSuperAdminEndsItsSessions()
+    {
+        var token = await SuperAdminToken();
+        (await Send(HttpMethod.Get, $"{Base}/roles", token)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var roles = scope.ServiceProvider.GetRequiredService<RoleManager<AuthRoleEntity>>();
+            var superAdmin = (await roles.FindByNameAsync(KjRoles.SuperAdmin))!;
+            await roles.RemoveClaimAsync(superAdmin, (await roles.GetClaimsAsync(superAdmin)).First(c => c.Value == Permissions.AuditView));
+
+            await AuthSeeder.SeedAsync(scope.ServiceProvider, isDevelopment: true);
+
+            (await roles.GetClaimsAsync(superAdmin)).Select(c => c.Value).Should().Contain(Permissions.AuditView);
+        }
+
+        (await Send(HttpMethod.Get, $"{Base}/roles", token)).StatusCode.Should().Be(HttpStatusCode.Unauthorized, "the permission change ends the SuperAdmin session");
+    }
+
+    [Fact]
+    public async Task DisablingTheDevelopmentAdminOutsideDevelopmentEndsItsSessions()
+    {
+        var token = await SuperAdminToken();
+        (await Send(HttpMethod.Get, $"{Base}/roles", token)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            await AuthSeeder.SeedAsync(scope.ServiceProvider, isDevelopment: false);
+        }
+
+        (await Send(HttpMethod.Get, $"{Base}/roles", token)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task RoleAndAssignmentChangesAreWrittenToTheAuditLog()
     {
         var token = await SuperAdminToken();
