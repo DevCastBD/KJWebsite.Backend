@@ -242,6 +242,7 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
                 var expected = (route.Method, route.Pattern) switch
                 {
                     ("GET", "/api/v1/auth/me" or "/api/v1/auth/me/export" or "/api/v1/auth/sessions") => HttpStatusCode.OK,
+                    ("GET", "/api/v1/auth/sessions/current") => HttpStatusCode.NoContent,
                     ("POST", "/api/v1/auth/change-password") => HttpStatusCode.BadRequest,
                     ("POST", "/api/v1/auth/logout-all") => HttpStatusCode.NoContent,
                     ("DELETE", "/api/v1/auth/sessions/{id}") => HttpStatusCode.NotFound,

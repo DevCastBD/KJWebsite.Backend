@@ -144,12 +144,15 @@ public sealed class DonorIdentityTests : IDisposable
     }
 
     [Fact]
-    public async Task ADonorEmailThatBelongsToAMemberGainsTheRoleAndKeepsItsPasswordAndSessions()
+    public async Task ADonorEmailThatBelongsToAMemberGainsTheRoleKeepsItsPasswordAndEndsItsSessions()
     {
         var admin = await Token("admin5@example.org", KjRoles.Admin);
         await CreateUser("member@example.org", KjRoles.Member, "Member-Own-Pass-77");
         using var memberLogin = await Login("member@example.org", "Member-Own-Pass-77");
-        var memberRefresh = (await Json(memberLogin)).GetProperty("refresh_token").GetString();
+        var memberBody = await Json(memberLogin);
+        var memberRefresh = memberBody.GetProperty("refresh_token").GetString();
+        var memberAccess = memberBody.GetProperty("access_token").GetString();
+        (await Send(HttpMethod.Get, "/api/v1/auth/sessions/current", memberAccess)).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         using var response = await Send(HttpMethod.Post, Provision, admin, new { donorId = "d6", email = "member@example.org", password = Initial });
 
@@ -165,12 +168,13 @@ public sealed class DonorIdentityTests : IDisposable
         (await users.GetRolesAsync(user)).Should().BeEquivalentTo([KjRoles.Member, KjRoles.Donor]);
         user.MustChangePassword.Should().BeFalse();
 
-        // The member's own password still works, the staff-chosen one does not, and the earlier session survives.
+        // The member's own password still works, the staff-chosen one does not, and the earlier session ends.
+        (await Send(HttpMethod.Get, "/api/v1/auth/sessions/current", memberAccess)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         using var after = await Login("member@example.org", "Member-Own-Pass-77");
         after.StatusCode.Should().Be(HttpStatusCode.OK);
         (await Json(after)).GetProperty("user").GetProperty("roles").EnumerateArray().Select(r => r.GetString()).Should().Contain([KjRoles.Member, KjRoles.Donor]);
         (await Login("member@example.org", Initial)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await _client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = memberRefresh })).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await _client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = memberRefresh })).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         // Doing it again changes nothing and does not fail.
         (await Send(HttpMethod.Post, Provision, admin, new { donorId = "d6", email = "member@example.org", password = Initial })).StatusCode.Should().Be(HttpStatusCode.OK);
@@ -256,7 +260,7 @@ public sealed class DonorIdentityTests : IDisposable
     }
 
     [Fact]
-    public async Task EveryAuthorizedEndpointOfEveryServiceCarriesTheGateExceptTheThreeThatClearIt()
+    public async Task EveryAuthorizedEndpointOfEveryServiceCarriesTheGateExceptTheReviewedSessionAndPasswordEndpoints()
     {
         await using var content = new ContentApiFactory();
         await using var cta = new CtaApiFactory();
@@ -288,7 +292,7 @@ public sealed class DonorIdentityTests : IDisposable
             }
         }
 
-        allowed.Should().BeEquivalentTo(["GetCurrentUser", "LogoutAll", "ChangePassword"]);
+        allowed.Should().BeEquivalentTo(["GetCurrentUser", "GetCurrentSessionState", "LogoutAll", "ChangePassword"]);
     }
 
     [Fact]
