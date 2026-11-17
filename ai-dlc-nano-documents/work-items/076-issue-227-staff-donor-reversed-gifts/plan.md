@@ -6,7 +6,7 @@
 - [ ] 1 DonorData: DonorView.Reversed, query, GiftViews merge with status; endpoint summary
 - [ ] 2 Tests in FinanceDonorTests and one assertion in FinanceStudentDesignationTests
 - [ ] 3 openapi.v1.yaml regenerated and verified
-- [ ] 4 Docs via Codex (DONORS, SPONSORSHIP, DONATIONS, MASTER_PLAN)
+- [x] 4 Docs (DONORS, SPONSORSHIP, DONATIONS); MASTER_PLAN row left as is (no done marker in that table)
 - [ ] 5 Full suite, 3 runs, mutation checks, format, live check, reviewer
 - [ ] 6 Ask before push and PR (never merge)
 ## Tests

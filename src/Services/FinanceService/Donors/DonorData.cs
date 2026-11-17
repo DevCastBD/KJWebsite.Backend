@@ -11,7 +11,7 @@ namespace FinanceService.Donors;
 
 public sealed record DonorGift(GiftFact Fact, string DonationId, string Reference, string ReceiptNumber, string? Method, string DesignationType, string? DesignationId, bool Offline);
 
-/// <summary>A donor with everything derived from their valid, non-anonymous receipts as of a date.</summary>
+/// <summary>A donor with everything derived from their valid, non-anonymous receipts as of a date. Reversed gifts are carried separately and only listed, never counted.</summary>
 public sealed class DonorView
 {
     public required DonorEntity Entity { get; init; }
@@ -79,6 +79,7 @@ public sealed class DonorData(FinanceDbContext db, IDonorProtector protector, Do
             .ToListAsync(cancellationToken);
         // Valid receipts feed every figure. A reversed gift (its receipt is void and a reversal donation exists, the rule the main donation list uses for `refunded`) is only listed.
         var byKey = gifts.Where(g => !g.Voided && g.ReceivedOn <= asOf).ToLookup(g => g.DonorKey);
+        // Reversal is the only thing that voids a receipt, so a void without a reversal donation cannot occur.
         var reversedByKey = gifts.Where(g => g.Voided && g.Reversed && g.ReceivedOn <= asOf).ToLookup(g => g.DonorKey);
         var everGave = gifts.Where(g => !g.Voided).Select(g => g.DonorKey).ToHashSet(StringComparer.Ordinal);
 
