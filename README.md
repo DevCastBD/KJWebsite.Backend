@@ -98,6 +98,8 @@ The gateway at `http://localhost:7000` expects the downstream services on their 
 
 Secrets (signing key, connection strings) are read only from environment variables or a vault; none is committed. See [docs/SECRET_SCAN.md](docs/SECRET_SCAN.md).
 
+**Session check.** Finance, Sponsorship, Membership, Content and CTA re-check bearer-token sessions with Identity on every request using the caller's own `Authorization` header and `GET /api/v1/auth/sessions/current`, without a cache. `Auth:SessionCheck:Enabled` defaults to `true`; `Auth:SessionCheck:Timeout` defaults to 2 seconds. Every deployed service needs `Services:Auth:Url` (`Services__Auth__Url`) pointing at Identity; its default is the local development address `http://localhost:7003/`. A missing deployment value that leaves the local default, or a wrong value, makes authenticated calls return `503 AUTH_UNAVAILABLE`. Revoked or disabled sessions return `401 UNAUTHORIZED`; an Identity outage fails closed with `503 AUTH_UNAVAILABLE`. Each authenticated request costs one extra Identity call per service; requests without a token make no check and public pages are unaffected. See [docs/AUTH_TOKENS.md](docs/AUTH_TOKENS.md).
+
 ## Database and migrations
 
 Auth, Content and CTA use Npgsql and apply their PostgreSQL EF Core migrations at startup. Each has a named schema and its own migration-history table. To create and apply a new Auth migration, set `ConnectionStrings__AuthDb` first and run:

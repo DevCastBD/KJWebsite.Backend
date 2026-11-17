@@ -23,7 +23,7 @@ Ten built-in roles (plan §3.1) are created on first start with the permissions 
 | `POST /donors`, `PUT /donors/{userId}/password`, `PUT /donors/{userId}/status` | `finance.donor.provision` |
 
 The donor endpoints are in Identity:
-- `POST /donors` creates an email-confirmed `Donor` account with a staff-chosen initial password under the platform password policy (minimum 10 characters) and the must-change flag set. It is idempotent per donor id and never returns the password. If the email belongs to a `Member` account, it adds the `Donor` role and leaves the password, sessions and flag untouched. Any other existing account returns `409 EMAIL_TAKEN`.
+- `POST /donors` creates an email-confirmed `Donor` account with a staff-chosen initial password under the platform password policy (minimum 10 characters) and the must-change flag set. It is idempotent per donor id and never returns the password. If the email belongs to a `Member` account, adding the `Donor` role ends every session; the member keeps their account, password and flag and signs in again. Any other existing account returns `409 EMAIL_TAKEN`.
 - `PUT /donors/{userId}/password` sets a new initial password under the same policy, sets the must-change flag, clears a lockout and ends every session.
 - `PUT /donors/{userId}/status` sets the account active or disabled; disabling ends every session.
 - Both `PUT` endpoints refuse an account that is not donor-only (`409 ACCOUNT_SHARED`), because membership staff own a member account. The member status and erase endpoints skip donor-created accounts (`404`).

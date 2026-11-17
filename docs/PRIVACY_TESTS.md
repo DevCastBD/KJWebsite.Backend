@@ -34,7 +34,7 @@ The sponsorship suite uses 18 scenario ids from T-01 to T-29; the numbering is n
 
 ### Account state, passwords and concurrency
 
-- **T-14** (`PrivacyEndToEndTests`): disabling through Finance rejects the same live token across donor services, Identity and refresh.
+- **T-14** (`PrivacyEndToEndTests`, `PrivacySessionEndToEndTests`): the original Finance-disable check remains; with the session check enabled, disabling through Finance or directly in Identity makes the old token return 401 on every donor route, rejects refresh and makes sign-in return `403 ACCOUNT_DISABLED`.
 - **T-27** (`PrivacyEndToEndTests`): wrong-password and unknown-email failures have identical bodies after request-specific ids are removed.
 - **T-28** (`PrivacyEndToEndTests`): provision, reset and password change enforce the initial-change flag and expose no password in responses, audits or logs.
 - **T-29** (`PrivacyEndToEndTests`): student and donor PATCH without a current ETag returns 428 or 412 and preserves fields and versions.
@@ -53,6 +53,8 @@ Those classes are outside the Privacy filter; run the integration project withou
 `PrivacyStack` starts the gateway plus Identity, Content, CTA, Membership, Finance and Sponsorship once per test class.
 YARP forwards to TestServer handlers. Membership and Finance call the real test Identity; Finance and Sponsorship call each other through handlers. Sponsorship's project catalogue uses `FakeProjects`.
 Staff accounts use real Identity sessions. Helpers provision donors, change initial passwords, upload forms and photos, grant consent and create links through the gateway.
+
+The test factories and `PrivacyStack` turn the session check off by default. `PrivacySessionStack` enables it for Finance, Sponsorship, Membership, Content and CTA and routes their checks to the real test Identity through TestServer handlers. `PrivacySessionEndToEndTests` covers staff promotion and demotion, role permission edits, Identity and Finance donor disable, staff password reset, member-to-donor role grant, logout and logout-all. It checks old access and refresh tokens, multiple devices and fresh sign-in with updated claims. It also simulates an Identity outage to check `503 AUTH_UNAVAILABLE`, unaffected public pages and recovery with the same tokens, and watches issued access and refresh tokens for log leaks.
 
 `Seed(label, value)` registers a private value with `GlobalLogSink.Default`; `NewSeed(prefix)` registers a unique `KJPRIV-...` value. Register before exercising the request; earlier log lines are not scanned again. Seeds must have at least 12 characters.
 The process-wide sink checks each log write, case-insensitively, including category, level, formatted message, exception and scopes. All service and gateway factories attach it, so a seeded value in logs fails a test when `AssertNone()` runs, including at factory disposal.
@@ -77,6 +79,5 @@ Log failures instead identify the logger: `logger '<category>' logged '<value>' 
 ## Limits
 
 The suite does not prove Postgres-only behaviour, a deployed gateway's configuration, or a real browser's behaviour.
-T-14 covers `PUT /api/v1/admin/finance/donors/{id}/login/status`, which updates Finance and Identity together.
-An Identity-direct disable remains open as **#229 / BE-114**: Identity revokes sessions and answers 401, but Finance's account state stays active. Finance donor endpoints and Sponsorship endpoints that ask Finance can keep answering 200 with the unexpired token for up to 15 minutes.
+The **#229 / BE-114** window is closed: every service except Identity re-checks bearer-token sessions with Identity on every request, without a cache. An old token receives `401 UNAUTHORIZED` after revocation, even when Finance's local account state stays active. If Identity is unreachable, times out or returns any status other than 204, 401 or 403, authenticated calls fail closed with `503 AUTH_UNAVAILABLE`; public pages are unaffected. An anonymous endpoint called with a dead token answers as anonymous.
 See [DONORS.md](DONORS.md) and [SPONSORSHIP.md](SPONSORSHIP.md) for the endpoint contracts and remaining policy decisions.

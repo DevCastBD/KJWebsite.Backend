@@ -8,8 +8,18 @@ Implements ADR-003 (issues #23, #16). The Auth service issues the tokens; every 
 - Claims: `sub` (user id), `email`, `role` (one per role), `permissions` (one per permission key), `sid` (session id), `jti`, `iss`, `aud`, `iat`, `nbf`, `exp`. While the account must change its password, the token also carries `pwd_change` with the value `true`.
 - Issuer `Jwt:Issuer` (default `kjwebsite-auth`), audience `Jwt:Audience` (default `kjwebsite-api`).
 - Verified locally with the public key, so a restart or a second replica needs no shared state.
-- Within the Auth service a revoked session stops working at once. Other services accept a revoked session's token until it expires (at most 15 minutes).
+- A revoked session stops working at once in Identity and every other service; see Session check below.
 - Every permission policy and the default policy include a shared requirement that refuses a token carrying `pwd_change=true` with `403 PASSWORD_CHANGE_REQUIRED` in every service. Only `POST /api/v1/auth/change-password`, `POST /api/v1/auth/logout-all` and `GET /api/v1/auth/me` accept it. The logout endpoint takes a refresh token and needs no access token.
+
+## Session check
+
+Finance, Sponsorship, Membership, Content and CTA re-check the caller's session on every request carrying a bearer token. They call Identity `GET /api/v1/auth/sessions/current` with the caller's own `Authorization` header. Identity returns `204` for a live session of an active account, `401` for a revoked session and `403 ACCOUNT_DISABLED` for an inactive account. The calling service turns both `401` and `403` into `401 UNAUTHORIZED`. Unreachable Identity, a timeout or any other status fails closed with `503 AUTH_UNAVAILABLE`.
+
+`Auth:SessionCheck:Enabled` defaults to `true` (the test factories turn it off); `Auth:SessionCheck:Timeout` defaults to 2 seconds. `Services:Auth:Url` defaults to `http://localhost:7003/`. Every service needs this URL pointing at Identity when deployed; a missing deployment value that leaves the local default, or a wrong value, makes authenticated calls return `503`.
+
+There is no cache: each authenticated request costs one extra Identity call per service. Requests without a token make no session-check call. An anonymous endpoint called with a dead token answers as anonymous. If Identity is down, authenticated calls return `503`; public pages are unaffected.
+
+A role change (`PUT /api/v1/admin/auth/users/{id}/roles`), role permission edit, staff account disable, staff password reset, logout-all, member erase or granting the Donor role to an existing member ends that person's sessions on every device across every service. Logout ends only the presented session. The person signs in again to get the new role and permissions. Before #229 / BE-114, other services accepted the old 15-minute access token with its old permissions until it expired.
 
 ## Sign-in and password changes
 
