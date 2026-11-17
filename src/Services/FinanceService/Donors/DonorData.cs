@@ -18,6 +18,9 @@ public sealed class DonorView
     public required string Name { get; init; }
     public required string Email { get; init; }
     public required IReadOnlyList<DonorGift> Gifts { get; init; }
+
+    /// <summary>Gifts reversed after they were received. Staff see them (as `refunded`) in the gift list only; every total, count and segment uses <see cref="Gifts"/>.</summary>
+    public IReadOnlyList<DonorGift> Reversed { get; init; } = [];
     public required IReadOnlyList<string> Segments { get; init; }
     public required IReadOnlyList<(string Currency, Money Cash, Money InKind)> Totals { get; init; }
 
@@ -37,9 +40,10 @@ public sealed class DonorView
 
     public IReadOnlyList<DonorGiftView> GiftViews() =>
     [
-        .. Gifts.OrderByDescending(g => g.Fact.ReceivedOn).ThenByDescending(g => g.ReceiptNumber, StringComparer.Ordinal).Select(g => new DonorGiftView(
-            g.DonationId, g.Reference, g.Fact.ReceivedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Entity.Id, Name, g.Fact.Amount.ToString("0.00", CultureInfo.InvariantCulture),
-            g.Fact.Currency, g.Method, g.Offline, g.DesignationId is null ? g.DesignationType : $"{g.DesignationType}:{g.DesignationId}", "confirmed", g.ReceiptNumber))
+        .. Gifts.Select(g => (Gift: g, Status: "confirmed")).Concat(Reversed.Select(g => (Gift: g, Status: "refunded")))
+            .OrderByDescending(x => x.Gift.Fact.ReceivedOn).ThenByDescending(x => x.Gift.ReceiptNumber, StringComparer.Ordinal).Select(x => new DonorGiftView(
+                x.Gift.DonationId, x.Gift.Reference, x.Gift.Fact.ReceivedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), Entity.Id, Name, x.Gift.Fact.Amount.ToString("0.00", CultureInfo.InvariantCulture),
+                x.Gift.Fact.Currency, x.Gift.Method, x.Gift.Offline, x.Gift.DesignationId is null ? x.Gift.DesignationType : $"{x.Gift.DesignationType}:{x.Gift.DesignationId}", x.Status, x.Gift.ReceiptNumber))
     ];
 }
 
@@ -53,16 +57,36 @@ public sealed class DonorData(FinanceDbContext db, IDonorProtector protector, Do
         var donors = await db.Donors.AsNoTracking().ToListAsync(cancellationToken);
         var gifts = await (from r in db.Receipts.AsNoTracking()
                            join d in db.Donations.AsNoTracking() on r.DonationId equals d.Id
-                           where !r.IsAnonymous && !db.ReceiptVoids.Any(v => v.ReceiptId == r.Id)
-                           select new { r.DonorKey, r.ReceivedOn, r.Currency, r.Amount, r.IsInKind, d.RecurringPlanId, r.Number, DonationId = d.Id, d.Reference, r.Method, r.DesignationType, r.DesignationId, Offline = db.OfflineRecords.Any(o => o.DonationId == d.Id) })
+                           where !r.IsAnonymous
+                           select new
+                           {
+                               r.DonorKey,
+                               r.ReceivedOn,
+                               r.Currency,
+                               r.Amount,
+                               r.IsInKind,
+                               d.RecurringPlanId,
+                               r.Number,
+                               DonationId = d.Id,
+                               d.Reference,
+                               r.Method,
+                               r.DesignationType,
+                               r.DesignationId,
+                               Offline = db.OfflineRecords.Any(o => o.DonationId == d.Id),
+                               Voided = db.ReceiptVoids.Any(v => v.ReceiptId == r.Id),
+                               Reversed = db.Donations.Any(x => x.ReversesDonationId == d.Id)
+                           })
             .ToListAsync(cancellationToken);
-        var byKey = gifts.Where(g => g.ReceivedOn <= asOf).ToLookup(g => g.DonorKey);
-        var everGave = gifts.Select(g => g.DonorKey).ToHashSet(StringComparer.Ordinal);
+        // Valid receipts feed every figure. A reversed gift (its receipt is void and a reversal donation exists, the rule the main donation list uses for `refunded`) is only listed.
+        var byKey = gifts.Where(g => !g.Voided && g.ReceivedOn <= asOf).ToLookup(g => g.DonorKey);
+        var reversedByKey = gifts.Where(g => g.Voided && g.Reversed && g.ReceivedOn <= asOf).ToLookup(g => g.DonorKey);
+        var everGave = gifts.Where(g => !g.Voided).Select(g => g.DonorKey).ToHashSet(StringComparer.Ordinal);
 
         var views = new List<DonorView>();
         foreach (var donor in donors)
         {
             var mine = byKey[donor.DonorKey].Select(g => new DonorGift(new GiftFact(g.ReceivedOn, g.Currency, g.Amount, g.IsInKind, g.RecurringPlanId is not null), g.DonationId, g.Reference, g.Number, g.Method, g.DesignationType, g.DesignationId, g.Offline)).ToList();
+            var reversed = reversedByKey[donor.DonorKey].Select(g => new DonorGift(new GiftFact(g.ReceivedOn, g.Currency, g.Amount, g.IsInKind, g.RecurringPlanId is not null), g.DonationId, g.Reference, g.Number, g.Method, g.DesignationType, g.DesignationId, g.Offline)).ToList();
             // A donor with no gift at all (made by staff before a first gift) is listed; one whose gifts all fall after the date is not yet.
             if (mine.Count == 0 && everGave.Contains(donor.DonorKey))
             {
@@ -76,6 +100,7 @@ public sealed class DonorData(FinanceDbContext db, IDonorProtector protector, Do
                 Name = protector.Unprotect(donor.NameProtected),
                 Email = protector.Unprotect(donor.EmailProtected),
                 Gifts = mine,
+                Reversed = reversed,
                 Segments = DonorSegments.Of(facts, asOf, options.Value),
                 Totals = DonorSegments.Totals(facts)
             });

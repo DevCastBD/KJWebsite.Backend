@@ -3954,7 +3954,7 @@ paths:
     get:
       tags:
         - "Donors"
-      summary: "A donor\u0027s confirmed, unreversed gifts, newest first"
+      summary: "A donor\u0027s gifts, newest first; a reversed gift is listed with status refunded and is not counted in any total"
       operationId: "ListDonorDonations"
       parameters:
         -

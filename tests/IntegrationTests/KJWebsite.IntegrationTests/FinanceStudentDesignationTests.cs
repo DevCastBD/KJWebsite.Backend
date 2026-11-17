@@ -311,6 +311,8 @@ public sealed class FinanceStudentDesignationTests : IDisposable
         var page = await Json(response);
         page.GetProperty("total").GetInt32().Should().Be(2);
         page.GetProperty("items").EnumerateArray().Single(r => r.GetProperty("id").GetString() == id).GetProperty("status").GetString().Should().Be("refunded");
+        using var staffList = await Send(HttpMethod.Get, $"/api/v1/admin/finance/donors/{donor}/donations");
+        (await Json(staffList)).GetProperty("items").EnumerateArray().Single(r => r.GetProperty("id").GetString() == id).GetProperty("status").GetString().Should().Be("refunded");
     }
 
     [Theory]

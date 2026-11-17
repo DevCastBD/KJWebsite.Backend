@@ -301,6 +301,61 @@ public sealed class FinanceDonorTests : IDisposable
     }
 
     [Fact]
+    public async Task StaffGiftListKeepsAReversedGiftAsRefundedWhileCountsTotalsAndDetailHeaderIgnoreIt()
+    {
+        var (keptId, _) = await ConfirmedAsync("rev@example.org", "100.00", name: "Rev");
+        var (reversedId, _) = await ConfirmedAsync("rev@example.org", "777.00", name: "Rev");
+        var (laterId, _) = await ConfirmedAsync("rev@example.org", "250.50", name: "Rev");
+        (await SendAsync(HttpMethod.Post, $"/api/v1/admin/finance/donations/{reversedId}/reversal", Reverser, new { reason = "Chargeback" })).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var row = (await GetAsync("/api/v1/admin/finance/donors")).GetProperty("items").EnumerateArray().Single(d => d.GetProperty("name").GetString() == "Rev");
+        var donorId = row.GetProperty("id").GetString();
+        row.GetProperty("count").GetInt32().Should().Be(2);
+        row.GetProperty("totals").EnumerateArray().Single().GetProperty("cash").GetString().Should().Be("350.50");
+
+        var items = (await GetAsync($"/api/v1/admin/finance/donors/{donorId}/donations")).GetProperty("items").EnumerateArray().ToList();
+        items.Should().HaveCount(3);
+        items.Select(i => i.GetProperty("id").GetString()).Should().BeEquivalentTo(new[] { keptId, reversedId, laterId });
+        items.Single(i => i.GetProperty("id").GetString() == reversedId).GetProperty("status").GetString().Should().Be("refunded");
+        items.Where(i => i.GetProperty("id").GetString() != reversedId).Select(i => i.GetProperty("status").GetString()).Should().OnlyContain(status => status == "confirmed");
+        var reversed = items.Single(i => i.GetProperty("id").GetString() == reversedId);
+        reversed.GetProperty("amount").GetString().Should().Be("777.00");
+        reversed.GetProperty("receipt").GetString().Should().NotBeNullOrEmpty();
+        items.Select(i => i.GetProperty("receipt").GetString()).Should().BeInDescendingOrder(StringComparer.Ordinal);
+
+        var detail = await GetAsync($"/api/v1/admin/finance/donors/{donorId}");
+        detail.GetProperty("donor").GetProperty("count").GetInt32().Should().Be(2);
+        detail.GetProperty("gifts").EnumerateArray().Select(g => (g.GetProperty("id").GetString(), g.GetProperty("status").GetString()))
+            .Should().BeEquivalentTo(items.Select(i => (i.GetProperty("id").GetString(), i.GetProperty("status").GetString())));
+        (await GetAsync("/api/v1/admin/finance/donors/reconciliation")).GetProperty("reconciled").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ADonorWhoseOnlyGiftWasReversedShowsOneRefundedRowAndNothingCounted()
+    {
+        var (id, _) = await ConfirmedAsync("only@example.org", "300.00", name: "Only");
+        (await SendAsync(HttpMethod.Post, $"/api/v1/admin/finance/donations/{id}/reversal", Reverser, new { reason = "Duplicate" })).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var row = (await GetAsync("/api/v1/admin/finance/donors")).GetProperty("items").EnumerateArray().Single(d => d.GetProperty("name").GetString() == "Only");
+        row.GetProperty("count").GetInt32().Should().Be(0);
+        row.GetProperty("totals").GetArrayLength().Should().Be(0);
+        var items = (await GetAsync($"/api/v1/admin/finance/donors/{row.GetProperty("id").GetString()}/donations")).GetProperty("items").EnumerateArray().ToList();
+        items.Should().ContainSingle().Which.GetProperty("status").GetString().Should().Be("refunded");
+    }
+
+    [Fact]
+    public async Task AReversedAnonymousGiftStaysOutOfTheStaffGiftList()
+    {
+        await ConfirmedAsync("anon@example.org", "50.00", name: "Anon");
+        var (anonymousId, _) = await ConfirmedAsync("anon@example.org", "90.00", name: "Anon", anonymous: true);
+        (await SendAsync(HttpMethod.Post, $"/api/v1/admin/finance/donations/{anonymousId}/reversal", Reverser, new { reason = "Mistake" })).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var row = (await GetAsync("/api/v1/admin/finance/donors")).GetProperty("items").EnumerateArray().Single(d => d.GetProperty("name").GetString() == "Anon");
+        var items = (await GetAsync($"/api/v1/admin/finance/donors/{row.GetProperty("id").GetString()}/donations")).GetProperty("items").EnumerateArray().ToList();
+        items.Should().ContainSingle().Which.GetProperty("status").GetString().Should().Be("confirmed");
+    }
+
+    [Fact]
     public async Task AnyDriftBetweenGivingAndTheLedgerIsReportedWithTheDifference()
     {
         await ConfirmedAsync("a@example.org", "400.00", name: "A");
