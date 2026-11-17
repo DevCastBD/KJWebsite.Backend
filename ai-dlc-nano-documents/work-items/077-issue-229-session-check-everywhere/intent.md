@@ -11,4 +11,5 @@
 ## Out of scope
 - Redis or other infrastructure, caching, service credentials (BE-093), gateway or frontend changes.
 ## Follow-ups
-- (none yet)
+- Review (not fixed): donor role grant revokes after the role is added; a failed revoke between the two leaves sessions until a retry.
+- Review (not fixed): no end-to-end test of a CTA admin endpoint under the session check.

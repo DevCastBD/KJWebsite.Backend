@@ -1,9 +1,9 @@
 # AI-DLC Nano State
 - Active work item: work-items/077-issue-229-session-check-everywhere
-- Phase: CONSTRUCT
+- Phase: WRAP-UP
 - Branch: Feature/issue-229-session-check-everywhere  (off origin/develop at 2bdf47c)
 - Base SHA: 2bdf47c
-- Next step: Codex task 1: Identity sessions/current endpoint and donor-provisioning revoke
+- Next step: ask the user before push and PR for #229 (never merge)
 - Paused work items:
   - work-items/076-issue-227-staff-donor-reversed-gifts (DONE, PR #232 merged)
   - work-items/075-issue-225-donor-gift-student-name (DONE, PR #231 merged)
