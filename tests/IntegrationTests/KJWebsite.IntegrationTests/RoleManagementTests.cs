@@ -92,7 +92,7 @@ public sealed class RoleManagementTests : IDisposable
         (await Send(HttpMethod.Put, $"{Base}/users/{second}/roles", token, new { roles = new[] { KjRoles.SuperAdmin } })).StatusCode.Should().Be(HttpStatusCode.OK);
         var secondToken = await Login("second@example.org", Password);
 
-        // With two, either can step down — but not both.
+        // With two, either can step down, but not both.
         (await Send(HttpMethod.Put, $"{Base}/users/usr_admin/roles", secondToken, new { roles = new[] { "Admin" } })).StatusCode.Should().Be(HttpStatusCode.OK);
         await AssertProblem(await Send(HttpMethod.Put, $"{Base}/users/{second}/roles", secondToken, new { roles = Array.Empty<string>() }), HttpStatusCode.Conflict, "LAST_SUPERADMIN");
     }
