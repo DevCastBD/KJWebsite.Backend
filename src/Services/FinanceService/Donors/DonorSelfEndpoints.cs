@@ -17,8 +17,8 @@ public sealed record DonorMeView(string Name, string Type, string Organisation, 
 /// </summary>
 public sealed record DonorIdentityView(string Id, string Language);
 
-/// <summary>One of the donor's own gifts, from a valid receipt. `Designation` is a label for display; the student's name joins it with #214.</summary>
-public sealed record DonorMeGift(string Id, string Reference, string Date, string Amount, string Currency, string Designation, string DesignationType, string? DesignationId, string Status, bool InKind, string ReceiptNumber);
+/// <summary>One of the donor's own gifts, from a valid receipt. Student names appear only when Sponsorship permits this donor to see them.</summary>
+public sealed record DonorMeGift(string Id, string Reference, string Date, string Amount, string Currency, string Designation, string DesignationType, string? DesignationId, string? StudentName, string Status, bool InKind, string ReceiptNumber);
 
 public sealed record DonorMeTotal(string Currency, string Cash, string InKind);
 
@@ -88,7 +88,7 @@ public static class DonorSelfEndpoints
         .ExcludeFromDescription()
         .RequireDonorSelf();
 
-        app.MapGet($"{Route}/donations", async (HttpContext context, FinanceDbContext db, int? limit, int? offset, int? year) =>
+        app.MapGet($"{Route}/donations", async (HttpContext context, FinanceDbContext db, ISponsorshipLinks sponsorship, int? limit, int? offset, int? year) =>
         {
             var invalid = new List<string>();
             if (limit is < 1 or > MaxLimit)
@@ -128,21 +128,32 @@ public static class DonorSelfEndpoints
                 var take = limit ?? DefaultLimit;
                 var skip = offset ?? 0;
 
-                var campaignIds = ordered.Skip(skip).Take(take).Where(r => r.DesignationType == Designations.Campaign && r.DesignationId is not null).Select(r => r.DesignationId!).Distinct().ToList();
+                var pageRows = ordered.Skip(skip).Take(take).ToList();
+                var studentIds = pageRows.Where(r => r.DesignationType == Designations.Student && r.DesignationId is not null).Select(r => r.DesignationId!).Distinct(StringComparer.Ordinal).ToArray();
+                IReadOnlyDictionary<string, string> studentNames = new Dictionary<string, string>(StringComparer.Ordinal);
+                if (studentIds.Length > 0)
+                {
+                    var result = await sponsorship.DonorNamesAsync(DonorProfileEndpoints.Bearer(context), studentIds, context.RequestAborted);
+                    if (result.Outcome == SponsorshipOutcome.Ok && result.Value is not null) studentNames = result.Value;
+                }
+                string? StudentName(string type, string? id) => type == Designations.Student && id is not null ? studentNames.GetValueOrDefault(id) : null;
+
+                var campaignIds = pageRows.Where(r => r.DesignationType == Designations.Campaign && r.DesignationId is not null).Select(r => r.DesignationId!).Distinct().ToList();
                 var campaigns = await db.Campaigns.AsNoTracking().Where(c => campaignIds.Contains(c.Id)).ToDictionaryAsync(c => c.Id, context.RequestAborted);
 
                 string Label(string type, string? id) => type switch
                 {
                     Designations.Campaign when id is not null && campaigns.TryGetValue(id, out var campaign) =>
                         donor.Language == "bn" && !string.IsNullOrWhiteSpace(campaign.TitleBn) ? campaign.TitleBn! : campaign.Title,
-                    Designations.Student => donor.Language == "bn" ? "শিক্ষার্থী পৃষ্ঠপোষকতা" : "Student sponsorship",
+                    Designations.Student => (donor.Language == "bn" ? "শিক্ষার্থী পৃষ্ঠপোষকতা" : "Student sponsorship") +
+                        (StudentName(type, id) is { } name ? $": {name}" : string.Empty),
                     Designations.General => "General",
                     _ => id ?? type
                 };
 
-                var page = ordered.Skip(skip).Take(take).Select(r => new DonorMeGift(
+                var page = pageRows.Select(r => new DonorMeGift(
                     r.DonationId, r.Reference, r.ReceivedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), r.Amount.ToString("0.00", CultureInfo.InvariantCulture), r.Currency,
-                    Label(r.DesignationType, r.DesignationId), r.DesignationType, r.DesignationType == Designations.Student ? null : r.DesignationId, "confirmed", r.IsInKind, r.Number)).ToList();
+                    Label(r.DesignationType, r.DesignationId), r.DesignationType, r.DesignationType == Designations.Student ? null : r.DesignationId, StudentName(r.DesignationType, r.DesignationId), "confirmed", r.IsInKind, r.Number)).ToList();
 
                 // Totals cover everything the filter matched, not just this page, and never add one currency to another.
                 var totals = DonorSegments.Totals(ordered.Select(r => new GiftFact(r.ReceivedOn, r.Currency, r.Amount, r.IsInKind, false)))

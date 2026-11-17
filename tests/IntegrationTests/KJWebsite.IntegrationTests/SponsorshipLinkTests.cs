@@ -139,7 +139,7 @@ public sealed class FakeFinanceDonors : IFinanceDonors
     }
 }
 
-public sealed class SponsorshipLinkTests : IDisposable
+public sealed partial class SponsorshipLinkTests : IDisposable
 {
     private const string Base = "/api/v1/admin/sponsorship";
     private const string Mine = "/api/v1/donors/me/students";

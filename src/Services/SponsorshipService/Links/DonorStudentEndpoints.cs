@@ -29,6 +29,10 @@ public static class DonorStudentEndpoints
             return Results.Ok(new PagingEnvelope<DonorLinkedStudent>(items, links.Count, null, take, skip));
         }).WithName("ListMyStudents").WithTags("Donor: Students").RequireDonorSelf();
 
+        app.MapGet($"{Route}/names", NamesAsync)
+            .WithName("GetMyStudentPreferredNames").WithTags("Donor: Students")
+            .WithDescription("Returns preferred names for up to 100 visible students, ordered by ID.").RequireDonorSelf();
+
         app.MapGet($"{Route}/{{studentId}}", async (HttpContext context, string studentId, SponsorshipDbContext db, IFinanceDonors finance, IProjectCatalogue catalogue, FoundationDay clock) =>
         {
             var me = await finance.MeAsync(LinkEndpoints.Bearer(context), context.RequestAborted);
@@ -66,6 +70,31 @@ public static class DonorStudentEndpoints
         string[] writes = ["POST", "PUT", "PATCH", "DELETE"];
         app.MapMethods(Route, writes, ReadOnly).AllowAnonymous().ExcludeFromDescription();
         app.MapMethods($"{Route}/{{**rest}}", writes, ReadOnly).AllowAnonymous().ExcludeFromDescription();
+    }
+
+    private static async Task<IResult> NamesAsync(HttpContext context, string? ids, SponsorshipDbContext db, IFinanceDonors finance, FoundationDay clock)
+    {
+        var ct = context.RequestAborted;
+        var me = await finance.MeAsync(LinkEndpoints.Bearer(context), ct);
+        if (Refusal(context, me) is { } refusal) return refusal;
+        var wanted = (ids ?? string.Empty).Split(',').Select(id => id.Trim()).Distinct(StringComparer.Ordinal).ToArray();
+        if (wanted.Length > 100 || wanted.Any(id => !DesignationEndpoints.StudentIdPattern().IsMatch(id))) return StudentEndpoints.Invalid(context, ["ids"]);
+
+        var links = (await SelectedAsync(db, me.Value!.Id, null, clock, ct)).Where(l => wanted.Contains(l.StudentId)).ToList();
+        var liveIds = links.Where(l => l.EndType is null).Select(l => l.StudentId).ToArray();
+        var live = await db.Students.AsNoTracking().Where(s => liveIds.Contains(s.Id))
+            .Select(s => new { s.Id, s.PreferredName }).ToDictionaryAsync(s => s.Id, s => s.PreferredName, ct);
+        var endedIds = links.Where(l => l.EndType == LinkEndTypes.Ended).Select(l => l.Id).ToArray();
+        var frozen = await db.FrozenCopies.AsNoTracking().Where(f => endedIds.Contains(f.LinkId))
+            .Select(f => new { f.LinkId, f.PreferredName }).ToDictionaryAsync(f => f.LinkId, f => f.PreferredName, ct);
+        var items = new List<object>();
+        foreach (var link in links.OrderBy(l => l.StudentId, StringComparer.Ordinal))
+        {
+            var names = link.EndType is null ? live : frozen;
+            if (names.TryGetValue(link.EndType is null ? link.StudentId : link.Id, out var name))
+                items.Add(new { id = link.StudentId, preferredName = name });
+        }
+        return Results.Ok(new { items });
     }
 
     private static async Task<List<LinkEntity>> SelectedAsync(SponsorshipDbContext db, string donorId, string? studentId, FoundationDay clock, CancellationToken ct)

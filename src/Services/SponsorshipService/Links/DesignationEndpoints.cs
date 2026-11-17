@@ -65,5 +65,5 @@ public static partial class DesignationEndpoints
     }
 
     [GeneratedRegex(@"\Astu_[0-9a-f]{32}\z", RegexOptions.CultureInvariant)]
-    private static partial Regex StudentIdPattern();
+    internal static partial Regex StudentIdPattern();
 }

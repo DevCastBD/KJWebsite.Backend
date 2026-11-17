@@ -5906,6 +5906,21 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/donors/me/students/names:
+    get:
+      tags:
+        - "Donor: Students"
+      description: "Returns preferred names for up to 100 visible students, ordered by ID."
+      operationId: "GetMyStudentPreferredNames"
+      parameters:
+        -
+          name: "ids"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/donors/me/students/{studentId}":
     get:
       tags:

@@ -96,12 +96,14 @@ public sealed class PrivacyEndToEndTests(PrivacyStack stack) : IClassFixture<Pri
         }
     }
 
-    private string[] DonorPaths(string student, bool includeInternal = false) => new[] { stack.Finance.Services, stack.Sponsorship.Services }
+    private string[] DonorPaths(string student, bool includeInternal = false, bool includeRequiredQuery = false) => new[] { stack.Finance.Services, stack.Sponsorship.Services }
         .SelectMany(services => services.GetRequiredService<EndpointDataSource>().Endpoints.OfType<RouteEndpoint>())
         .Where(e => e.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.Contains("GET") == true)
         .Select(e => e.RoutePattern.RawText!)
         .Where(path => path.StartsWith("/api/v1/donors/me", StringComparison.Ordinal) && (includeInternal || !path.EndsWith("/identity", StringComparison.Ordinal)))
-        .Select(path => path.Replace("{studentId}", student, StringComparison.Ordinal)).Distinct().Order(StringComparer.Ordinal).ToArray();
+        .Select(path => path.Replace("{studentId}", student, StringComparison.Ordinal))
+        .Select(path => includeRequiredQuery && path == $"{Mine}/names" ? $"{path}?ids={student}" : path)
+        .Distinct().Order(StringComparer.Ordinal).ToArray();
 
     [Fact]
     public async Task T05EveryDonorSelfPathRejectsWritesWithoutChanges()
@@ -247,7 +249,7 @@ public sealed class PrivacyEndToEndTests(PrivacyStack stack) : IClassFixture<Pri
         var session = await ChooseSession(donor.Email, donor.Password);
         var token = session.GetProperty("access_token").GetString()!;
         var refreshToken = session.GetProperty("refresh_token").GetString();
-        var paths = DonorPaths(student).Append("/api/v1/auth/me").ToArray();
+        var paths = DonorPaths(student, includeRequiredQuery: true).Append("/api/v1/auth/me").ToArray();
         foreach (var path in paths)
         {
             using var baseline = await Send(stack, HttpMethod.Get, path, token);
@@ -278,7 +280,7 @@ public sealed class PrivacyEndToEndTests(PrivacyStack stack) : IClassFixture<Pri
         var giftId = (await Json(gift, HttpStatusCode.Created)).GetProperty("id").GetString();
         using var scope = stack.Finance.Services.CreateScope();
         var subject = await scope.ServiceProvider.GetRequiredService<FinanceDbContext>().Donors.Where(x => x.Id == donor.Id).Select(x => x.AccountSubject).SingleAsync();
-        var paths = DonorPaths(student).Select(p => (Path: p, Token: token, Cluster: p.Contains("/students", StringComparison.Ordinal) ? "sponsorship" : "finance"))
+        var paths = DonorPaths(student, includeRequiredQuery: true).Select(p => (Path: p, Token: token, Cluster: p.Contains("/students", StringComparison.Ordinal) ? "sponsorship" : "finance"))
             .Concat(new[] { Students, $"{Students}/{student}", $"{Students}/{student}/photo" }.Select(p => (p, staff.Token, "sponsorship")))
             .Concat(new[] { Donors, $"{Donors}/{donor.Id}", $"{Donors}/{donor.Id}/donations", $"{Donors}/export", "/api/v1/admin/finance/donations", $"/api/v1/admin/finance/donations/{giftId}" }.Select(p => (p, staff.Token, "finance")))
             .Append(($"/api/v1/admin/auth/donors/{subject}", staff.Token, "auth"));
