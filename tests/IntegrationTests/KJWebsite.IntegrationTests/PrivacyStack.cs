@@ -11,7 +11,7 @@ namespace KJWebsite.IntegrationTests;
 
 #pragma warning disable CA1711 // The fixture name is the shared test API.
 #pragma warning disable CA1822 // Keep fixture helpers available through the fixture instance.
-public sealed class PrivacyStack : IAsyncLifetime
+public class PrivacyStack : IAsyncLifetime
 {
     private readonly ConcurrentDictionary<string, int> _calls = new();
     private readonly List<IDisposable> _handlers = [];
@@ -24,8 +24,20 @@ public sealed class PrivacyStack : IAsyncLifetime
     public SponsorshipApiFactory Sponsorship { get; } = new();
     public GatewayApiFactory GatewayFactory { get; } = new();
     public HttpClient Gateway { get; private set; } = null!;
+    protected virtual bool SessionCheckEnabled => false;
+    public bool IdentityUnavailable { get; set; }
     public Task InitializeAsync()
     {
+        Content.SessionCheckEnabled = Cta.SessionCheckEnabled = Membership.SessionCheckEnabled =
+            Finance.SessionCheckEnabled = Sponsorship.SessionCheckEnabled = SessionCheckEnabled;
+        if (SessionCheckEnabled)
+        {
+            Content.SessionCheckHandler = SessionHandler();
+            Cta.SessionCheckHandler = SessionHandler();
+            Membership.SessionCheckHandler = SessionHandler();
+            Finance.SessionCheckHandler = SessionHandler();
+            Sponsorship.SessionCheckHandler = SessionHandler();
+        }
         Membership.AuthHandler = Lazy(() => Auth.Server.CreateHandler());
         Finance.AuthHandler = Lazy(() => Auth.Server.CreateHandler());
         Finance.SponsorshipHandler = Lazy(() => Sponsorship.Server.CreateHandler());
@@ -45,6 +57,8 @@ public sealed class PrivacyStack : IAsyncLifetime
         Gateway = GatewayFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, HandleCookies = false });
         return Task.CompletedTask;
     }
+    private LazyHandler SessionHandler() => Lazy(() => new AvailabilityHandler(
+        () => IdentityUnavailable, Auth.Server.CreateHandler()));
     private LazyHandler Lazy(Func<HttpMessageHandler> create)
     {
         var handler = new LazyHandler(create);
@@ -104,4 +118,14 @@ public sealed class PrivacyStack : IAsyncLifetime
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) { count(); return base.SendAsync(request, cancellationToken); }
     }
+    private sealed class AvailabilityHandler(Func<bool> unavailable, HttpMessageHandler inner) : DelegatingHandler(inner)
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            unavailable() ? throw new HttpRequestException("Identity is unavailable.") : base.SendAsync(request, cancellationToken);
+    }
+}
+
+public sealed class PrivacySessionStack : PrivacyStack
+{
+    protected override bool SessionCheckEnabled => true;
 }

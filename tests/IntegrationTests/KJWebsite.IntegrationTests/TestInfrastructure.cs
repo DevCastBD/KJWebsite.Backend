@@ -28,9 +28,15 @@ public abstract class SqliteWebApplicationFactory<TEntryPoint, TContext> : WebAp
 {
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"kj-test-{Guid.NewGuid():N}.db");
 
+    public bool SessionCheckEnabled { get; set; }
+    public HttpMessageHandler? SessionCheckHandler { get; set; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("Auth:SessionCheck:Enabled", SessionCheckEnabled.ToString());
+        builder.ConfigureServices(services => services.AddHttpClient(KJWebsite.BuildingBlocks.Security.SessionCheck.ClientName)
+            .ConfigurePrimaryHttpMessageHandler(() => SessionCheckHandler ?? new HttpClientHandler()));
         builder.ConfigureServices(s => s.AddSingleton<ILoggerProvider>(GlobalLogSink.Default.Provider));
         builder.ConfigureServices(services =>
         {
@@ -241,6 +247,7 @@ public abstract class PostgresWebApplicationFactory<TEntryPoint>(string connecti
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.UseSetting("Auth:SessionCheck:Enabled", "false");
         builder.ConfigureServices(s => s.AddSingleton<ILoggerProvider>(GlobalLogSink.Default.Provider));
         builder.ConfigureAppConfiguration((_, configuration) =>
         {
