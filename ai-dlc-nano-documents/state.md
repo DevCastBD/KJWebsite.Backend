@@ -1,14 +1,14 @@
 # AI-DLC Nano State
-- Active work item: work-items/076-issue-227-staff-donor-reversed-gifts
+- Active work item: work-items/077-issue-229-session-check-everywhere
 - Phase: CONSTRUCT
-- Branch: Feature/issue-227-staff-donor-gift-list-reversed  (off origin/develop at 8509ee0)
-- Base SHA: 8509ee0
-- Next step: implement DonorData reversed gifts merge, then tests
+- Branch: Feature/issue-229-session-check-everywhere  (off origin/develop at 2bdf47c)
+- Base SHA: 2bdf47c
+- Next step: Codex task 1: Identity sessions/current endpoint and donor-provisioning revoke
 - Paused work items:
+  - work-items/076-issue-227-staff-donor-reversed-gifts (DONE, PR #232 merged)
   - work-items/075-issue-225-donor-gift-student-name (DONE, PR #231 merged)
   - work-items/074-issue-216-privacy-test-suite (DONE, PR #230 merged)
   - work-items/073-issue-215-student-designation (DONE, PR #228 merged)
   - work-items/072-issue-214-student-donor-links (DONE, PR #224 merged)
-  - work-items/071-issue-213-sponsorship-module (DONE, PR #223 merged)
 - Uncommitted code: no
 - Last updated: 2026-11-17 by claude
