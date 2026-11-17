@@ -242,6 +242,7 @@ public sealed class PrivacyEndToEndTests(PrivacyStack stack) : IClassFixture<Pri
     [Fact]
     public async Task T14FinanceDisableRevokesSameTokenAcrossServicesAndRefresh()
     {
+        // The real session-check stack answers 401 first: see PrivacySessionEndToEndTests.SessionFinanceDisableEndsDonorAccess.
         var staff = await stack.NewAdminAsync();
         var donor = await CreateDonor(stack, staff.Token);
         var student = await LinkStudent(stack, staff.Token, donor.Id);

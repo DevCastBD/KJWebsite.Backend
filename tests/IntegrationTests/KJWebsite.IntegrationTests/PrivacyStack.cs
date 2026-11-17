@@ -80,7 +80,9 @@ public class PrivacyStack : IAsyncLifetime
     {
         using var response = await Gateway.PostAsJsonAsync("/api/v1/auth/login", new { email, password });
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("access_token").GetString()!;
+        var session = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Seed("refresh token", session.GetProperty("refresh_token").GetString()!);
+        return Seed("access token", session.GetProperty("access_token").GetString()!);
     }
     public Task<(string UserId, string Email, string Password, string Token)> NewAdminAsync() => NewUserAsync(KjRoles.Admin);
     public Task<(string UserId, string Email, string Password, string Token)> NewSuperAdminAsync() => NewUserAsync(KjRoles.SuperAdmin);
