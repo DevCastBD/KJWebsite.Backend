@@ -106,7 +106,7 @@ public static class DonorEndpoints
             return donor is null ? ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_FOUND", "Donor not found.") : Results.Ok(new { items = donor.GiftViews() });
         })
         .WithName("ListDonorDonations")
-        .WithSummary("A donor's confirmed, unreversed gifts, newest first")
+        .WithSummary("A donor's gifts, newest first; a reversed gift is listed with status refunded and is not counted in any total")
         .WithTags("Donors")
         .RequirePermission(Permissions.FinanceView);
 
