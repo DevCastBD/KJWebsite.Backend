@@ -1,9 +1,9 @@
 # AI-DLC Nano State
 - Active work item: work-items/078-issue-226-gift-donor-id-attribution
-- Phase: CONSTRUCT
+- Phase: WRAP-UP
 - Branch: Feature/issue-226-gift-donor-id-attribution  (off origin/develop at a00e162)
 - Base SHA: a00e162
-- Next step: Codex task 1: public intake donor id, recurring plan column, tests
+- Next step: ask the user before push and PR for #226 (never merge)
 - Paused work items:
   - work-items/077-issue-229-session-check-everywhere (DONE, PR #233 merged)
   - work-items/076-issue-227-staff-donor-reversed-gifts (DONE, PR #232 merged)

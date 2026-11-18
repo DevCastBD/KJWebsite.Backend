@@ -12,4 +12,5 @@
 ## Out of scope
 - Rewriting existing rows, attributing anonymous gifts, instalment creation, frontend changes.
 ## Follow-ups
-- (none yet)
+- Found while building: a gift tied by id used to skip the profile refresh and take the donor profile on its receipt; kept the old behaviour for online gifts (refresh only for a matching email, receipt keeps typed name and email) and offline gifts unchanged.
+- Not fixed: anyone can type a donor email on the public form and overwrite that donor's name and phone at confirmation (existing).
