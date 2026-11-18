@@ -2,6 +2,8 @@
 
 Endpoints require a **permission key**, never a role name (`Permissions` in BuildingBlocks; `PermissionCatalog` groups them by module with a description, served at `GET /api/v1/admin/auth/permissions`). A test keeps the catalog and the constants identical. Roles are bundles of keys, stored as ASP.NET Identity role claims, and the access token carries the flattened `permissions` claim.
 
+Sign-in, refresh and change-password responses include `user.permissions`; `GET /api/v1/auth/me` includes `permissions` on its top-level user object alongside `role`, `roles`, `mustChangePassword` and `profile`. The list is a distinct, ordinal-sorted array from the same role-claim data as the access token permissions claim. Roles without permissions return `[]`. After a role or permission change, a fresh sign-in is needed to see the changed list. Clients should use this list to decide what to show; the server still enforces every permission.
+
 ## Seeded roles
 Ten built-in roles (plan §3.1) are created on first start with the permissions in `KjRoles.Seed`. After that **the database is the truth**: a restart never re-adds a permission an administrator removed. `SuperAdmin` is the exception: it is re-synced to every catalog key at startup so it can never be locked out and new keys reach it at once. Except for the one-time `DonorIdentity` migration below, existing deployments do not get new keys on other roles automatically; assign them through the API.
 

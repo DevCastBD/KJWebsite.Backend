@@ -6326,6 +6326,10 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
   /api/v1/auth/refresh:
     post:
       tags:
@@ -6342,6 +6346,10 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
   /api/v1/auth/logout:
     post:
       tags:
@@ -6432,6 +6440,10 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUserResponse"
   /.well-known/jwks.json:
     get:
       tags:
@@ -6504,6 +6516,10 @@ paths:
       responses:
         "200":
           description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
   /api/v1/admin/auth/permissions:
     get:
       tags:
@@ -8671,6 +8687,157 @@ components:
           type:
             - "null"
             - "string"
+    AuthProfileResponse:
+      required:
+        - "firstName"
+        - "lastName"
+        - "gender"
+        - "reasonForJoining"
+        - "presentOrganization"
+        - "volunteeingExperience"
+        - "dateOfBirth"
+        - "cityOfResidence"
+        - "countryOfResidence"
+        - "permanentAddress"
+        - "mailingAddress"
+        - "isMailingAddressSameAsPermanentAddress"
+        - "bloodGroup"
+        - "areasOfExpertise"
+        - "highestDegree"
+        - "disabilitiesIfAny"
+        - "nationality"
+        - "personalWebPage"
+        - "socialMediaLink"
+      type: "object"
+      properties:
+        firstName:
+          type:
+            - "null"
+            - "string"
+        lastName:
+          type:
+            - "null"
+            - "string"
+        gender:
+          type:
+            - "null"
+            - "string"
+        reasonForJoining:
+          type:
+            - "null"
+            - "string"
+        presentOrganization:
+          type:
+            - "null"
+            - "string"
+        volunteeingExperience:
+          type:
+            - "null"
+            - "string"
+        dateOfBirth:
+          type:
+            - "null"
+            - "string"
+        cityOfResidence:
+          type:
+            - "null"
+            - "string"
+        countryOfResidence:
+          type:
+            - "null"
+            - "string"
+        permanentAddress:
+          type:
+            - "null"
+            - "string"
+        mailingAddress:
+          type:
+            - "null"
+            - "string"
+        isMailingAddressSameAsPermanentAddress:
+          type: "boolean"
+        bloodGroup:
+          type:
+            - "null"
+            - "string"
+        areasOfExpertise:
+          type:
+            - "null"
+            - "string"
+        highestDegree:
+          type:
+            - "null"
+            - "string"
+        disabilitiesIfAny:
+          type:
+            - "null"
+            - "string"
+        nationality:
+          type:
+            - "null"
+            - "string"
+        personalWebPage:
+          type:
+            - "null"
+            - "string"
+        socialMediaLink:
+          type:
+            - "null"
+            - "string"
+    AuthTokenResponse:
+      required:
+        - "access_token"
+        - "refresh_token"
+        - "expires_in"
+        - "token_type"
+        - "mustChangePassword"
+        - "user"
+      type: "object"
+      properties:
+        access_token:
+          type: "string"
+        refresh_token:
+          type: "string"
+        expires_in:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        token_type:
+          type: "string"
+        mustChangePassword:
+          type: "boolean"
+        user:
+          $ref: "#/components/schemas/AuthUserResponse"
+    AuthUserResponse:
+      required:
+        - "id"
+        - "email"
+        - "role"
+        - "roles"
+        - "mustChangePassword"
+        - "permissions"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        role:
+          type: "string"
+        roles:
+          type: "array"
+          items:
+            type: "string"
+        mustChangePassword:
+          type: "boolean"
+        permissions:
+          type: "array"
+          items:
+            type: "string"
     ChangePasswordRequest:
       required:
         - "currentPassword"
@@ -8709,6 +8876,37 @@ components:
           type:
             - "null"
             - "array"
+          items:
+            type: "string"
+    CurrentUserResponse:
+      required:
+        - "profile"
+        - "id"
+        - "email"
+        - "role"
+        - "roles"
+        - "mustChangePassword"
+        - "permissions"
+      type: "object"
+      properties:
+        profile:
+          $ref: "#/components/schemas/AuthProfileResponse"
+        id:
+          type: "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        role:
+          type: "string"
+        roles:
+          type: "array"
+          items:
+            type: "string"
+        mustChangePassword:
+          type: "boolean"
+        permissions:
+          type: "array"
           items:
             type: "string"
     DonorAccountStatusRequest:

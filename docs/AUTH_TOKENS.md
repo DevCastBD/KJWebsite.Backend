@@ -23,6 +23,8 @@ A role change (`PUT /api/v1/admin/auth/users/{id}/roles`), role permission edit,
 
 ## Sign-in and password changes
 
+Sign-in, refresh and change-password responses include `user.permissions`; `GET /api/v1/auth/me` includes `permissions` on its top-level user object alongside `role`, `roles`, `mustChangePassword` and `profile`. The list is a distinct, ordinal-sorted array from the same role-claim data as the access token permissions claim. Roles without permissions return `[]`. After a role or permission change, a fresh sign-in is needed to see the changed list. Clients should use this list to decide what to show; the server still enforces every permission.
+
 BE-103 (#210; decisions #209 D6, D7, D9) adds:
 - Sign-in and `GET /api/v1/auth/me` report `mustChangePassword` and `roles` (a list); the single `role` field stays.
 - Sign-in on a disabled account returns `403 ACCOUNT_DISABLED` only after the correct password. A wrong password or an unknown email always returns the same `401`. Wrong guesses against a disabled account do not count toward the lockout.
