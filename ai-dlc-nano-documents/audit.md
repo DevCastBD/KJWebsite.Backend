@@ -423,3 +423,4 @@
 - 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions DECISION @211118f: backend publishes permissions in the auth responses (user, FE#361 plan)
 - 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions BRANCH @211118f: Feature/issue-235-publish-permissions off origin/develop (user approved plan)
 - 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions PHASE PLAN→CONSTRUCT @211118f: plan approved by user via plan mode
+- 2026-11-18T18:19Z [claude] 079-issue-235-publish-permissions SIDE-EFFECT @295fd0d: pushed branch, opened PR #236 against develop (user yes)
