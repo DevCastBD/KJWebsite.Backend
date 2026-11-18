@@ -100,6 +100,7 @@ public sealed class DonationEventEntity
 public sealed class RecurringPlanEntity
 {
     public string Id { get; set; } = string.Empty;
+    public string? DonorId { get; set; }
     public string Interval { get; set; } = RecurringIntervals.Monthly;
     public decimal Amount { get; set; }
     public decimal FeeAmount { get; set; }

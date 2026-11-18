@@ -412,3 +412,9 @@
 - 2026-11-17T12:17Z [claude] 077-issue-229-session-check-everywhere BRANCH @2bdf47c: Feature/issue-229-session-check-everywhere off origin/develop (user approved plan)
 - 2026-11-17T12:17Z [claude] 077-issue-229-session-check-everywhere PHASE PLAN→CONSTRUCT @2bdf47c: plan approved by user via plan mode
 - 2026-11-18T08:35Z [claude] 077-issue-229-session-check-everywhere SIDE-EFFECT @dc92014: pushed branch and opened PR #233 (user said Open PR); not merged
+- 2026-11-18T08:58Z [claude] 078-issue-226-gift-donor-id-attribution CREATED @a00e162: issue #226 (BE-112)
+- 2026-11-18T08:58Z [claude] 078-issue-226-gift-donor-id-attribution SIDE-EFFECT @a00e162: assigned tahmidsparrow, board status In progress on #226 (verified)
+- 2026-11-18T08:58Z [claude] 078-issue-226-gift-donor-id-attribution DECISION @a00e162: token plus pin at recording; old rows unchanged (user)
+- 2026-11-18T08:58Z [claude] 078-issue-226-gift-donor-id-attribution BRANCH @a00e162: Feature/issue-226-gift-donor-id-attribution off origin/develop (user approved plan)
+- 2026-11-18T08:58Z [claude] 078-issue-226-gift-donor-id-attribution PHASE PLAN→CONSTRUCT @a00e162: plan approved by user via plan mode
+- 2026-11-18T10:30Z [claude] 078-issue-226-gift-donor-id-attribution SIDE-EFFECT @6e31539: pushed branch and opened PR #234 (user said Open PR); not merged

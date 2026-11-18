@@ -1,14 +1,14 @@
 # AI-DLC Nano State
-- Active work item: work-items/077-issue-229-session-check-everywhere
+- Active work item: work-items/078-issue-226-gift-donor-id-attribution
 - Phase: WRAP-UP
-- Branch: Feature/issue-229-session-check-everywhere  (off origin/develop at 2bdf47c)
-- Base SHA: 2bdf47c
-- Next step: ask the user before push and PR for #229 (never merge)
+- Branch: Feature/issue-226-gift-donor-id-attribution  (off origin/develop at a00e162)
+- Base SHA: a00e162
+- Next step: ask the user before push and PR for #226 (never merge)
 - Paused work items:
+  - work-items/077-issue-229-session-check-everywhere (DONE, PR #233 merged)
   - work-items/076-issue-227-staff-donor-reversed-gifts (DONE, PR #232 merged)
   - work-items/075-issue-225-donor-gift-student-name (DONE, PR #231 merged)
   - work-items/074-issue-216-privacy-test-suite (DONE, PR #230 merged)
   - work-items/073-issue-215-student-designation (DONE, PR #228 merged)
-  - work-items/072-issue-214-student-donor-links (DONE, PR #224 merged)
 - Uncommitted code: no
-- Last updated: 2026-11-17 by claude
+- Last updated: 2026-11-18 by claude

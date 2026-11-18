@@ -2012,6 +2012,10 @@ namespace FinanceService.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("DonorId")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<string>("DonorNameProtected")
                         .IsRequired()
                         .HasColumnType("text");
@@ -2040,6 +2044,8 @@ namespace FinanceService.Migrations
                         .HasColumnType("date");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DonorId");
 
                     b.ToTable("recurring_plans", "finance");
                 });

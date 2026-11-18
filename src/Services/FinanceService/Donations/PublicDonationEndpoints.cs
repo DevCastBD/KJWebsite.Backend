@@ -1,6 +1,7 @@
 using FinanceService.Campaigns;
 using FinanceService.Data;
 using FinanceService.Data.Entities;
+using FinanceService.Donors;
 using FinanceService.Payments;
 using FinanceService.Receipts;
 using KJWebsite.BuildingBlocks;
@@ -32,7 +33,7 @@ public static class PublicDonationEndpoints
         .WithTags("Donations")
         .AllowAnonymous();
 
-        app.MapPost(Route, async (HttpContext context, DonationRequest payload, FinanceDbContext db, IDonorProtector protector, IOptions<DonationOptions> options, PaymentGatewayRegistry gateways, IOptions<PaymentOptions> payments, ILogger<DonationRequest> logger, TimeProvider clock) =>
+        app.MapPost(Route, async (HttpContext context, DonationRequest payload, FinanceDbContext db, IDonorProtector protector, IOptions<DonationOptions> options, PaymentGatewayRegistry gateways, IOptions<PaymentOptions> payments, ILogger<DonationRequest> logger, TimeProvider clock, DonorKeyHasher keys) =>
         {
             var (donation, invalid) = DonationValidator.Validate(payload, options.Value, gateways.KnownIds);
             if (donation is null)
@@ -49,6 +50,18 @@ public static class PublicDonationEndpoints
                 return ApiError.Create(context, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", "Invalid fields: designation.id.");
             }
 
+            string? donorId = null;
+            if (!donation.Anonymous)
+            {
+                donorId = (await DonorAccess.EligibleAsync(context, db))?.Id;
+                if (donorId is null)
+                {
+                    var emailKey = keys.ForEmail(donation.DonorEmail);
+                    donorId = await db.Donors.AsNoTracking().Where(d => d.EmailKey == emailKey)
+                        .Select(d => d.Id).FirstOrDefaultAsync(context.RequestAborted);
+                }
+            }
+
             var name = protector.Protect(donation.DonorName);
             var email = protector.Protect(donation.DonorEmail);
             var phone = donation.DonorPhone is null ? null : protector.Protect(donation.DonorPhone);
@@ -60,6 +73,7 @@ public static class PublicDonationEndpoints
                 db.RecurringPlans.Add(new RecurringPlanEntity
                 {
                     Id = planId,
+                    DonorId = donorId,
                     Interval = donation.RecurringInterval,
                     Amount = donation.Amount.Amount,
                     FeeAmount = donation.Fee.Amount,
@@ -81,6 +95,7 @@ public static class PublicDonationEndpoints
             var entity = new DonationEntity
             {
                 Id = NewId("don"),
+                DonorId = donorId,
                 Reference = reference,
                 Kind = planId is null ? DonationKinds.OneTime : DonationKinds.Recurring,
                 Amount = donation.Amount.Amount,
@@ -114,7 +129,7 @@ public static class PublicDonationEndpoints
         .RequireIdempotency()
         .WithName("CreateDonation")
         .WithSummary("Start a donation")
-        .WithDescription("Records the intent as `pending` and starts a hosted checkout: the response carries `gateway` and `checkoutUrl` to send the donor to. Pass `gateway` (bkash, nagad, sslcommerz) to choose one; otherwise the first enabled gateway that supports the currency is used. When no checkout can be started (no gateway switched on, or it is down) the donation is still recorded and the response has `fallback: offline` instead. A return from the gateway never confirms payment. Amounts are decimal strings with at most two decimals and must sit inside the currency's limits (see presets). With `coverFees` the response carries `fee` and `total`, and `amount` stays the designated gift. A `monthly` or `yearly` frequency also creates a recurring plan. Anonymous gifts are never attributed in any public response.")
+        .WithDescription("Records the intent as `pending` and starts a hosted checkout: the response carries `gateway` and `checkoutUrl` to send the donor to. Pass `gateway` (bkash, nagad, sslcommerz) to choose one; otherwise the first enabled gateway that supports the currency is used. When no checkout can be started (no gateway switched on, or it is down) the donation is still recorded and the response has `fallback: offline` instead. A return from the gateway never confirms payment. Amounts are decimal strings with at most two decimals and must sit inside the currency's limits (see presets). With `coverFees` the response carries `fee` and `total`, and `amount` stays the designated gift. A `monthly` or `yearly` frequency also creates a recurring plan. Anonymous gifts are never attributed in any public response. A bearer token is optional: a signed-in donor's gift is stored with their donor id, otherwise a non-anonymous gift whose email already belongs to a donor is stored with that donor's id when it is recorded, so a later email change never moves it; a missing or invalid token never refuses the gift.")
         .WithTags("Donations")
         .AllowAnonymous();
 

@@ -787,6 +787,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             entity.ToTable("recurring_plans");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.DonorId).HasMaxLength(40);
+            entity.HasIndex(x => x.DonorId);
             entity.Property(x => x.Interval).HasMaxLength(16).IsRequired();
             entity.Property(x => x.Amount).HasPrecision(18, 2);
             entity.Property(x => x.FeeAmount).HasPrecision(18, 2);
