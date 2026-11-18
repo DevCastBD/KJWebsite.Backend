@@ -118,7 +118,7 @@ if (app.Environment.IsDevelopment())
     }).AllowAnonymous();
 }
 
-app.UsePrivateResponses("/api/v1/admin/auth/donors", "/api/v1/admin/auth/members", "/api/v1/auth/me");
+app.UsePrivateResponses("/api/v1/admin/auth/donors", "/api/v1/admin/auth/members", "/api/v1/auth/me", "/api/v1/auth/sessions/current");
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -413,6 +413,21 @@ app.MapGet("/.well-known/jwks.json", (AuthSigningKey signingKey) => Results.Json
     .WithDescription("The public keys that verify access tokens (JSON Web Key Set). Contains no secrets.")
     .WithTags("System")
 .AllowAnonymous();
+
+app.MapGet("/api/v1/auth/sessions/current", async (HttpContext context, ClaimsPrincipal principal, UserManager<AuthUserEntity> users) =>
+{
+    var user = await users.FindByIdAsync(principal.FindFirstValue(KjClaims.Subject) ?? string.Empty);
+    if (user is null || user.Status != "active")
+    {
+        return ApiError.Create(context, StatusCodes.Status403Forbidden, "ACCOUNT_DISABLED", "This account has been switched off.");
+    }
+
+    return Results.NoContent();
+})
+.WithName("GetCurrentSessionState")
+.WithDescription("Answers 204 while the caller's session is live and the account is active; 401 once the session is revoked")
+.WithTags("Auth")
+.RequireAuthorization(KjPolicies.AuthenticatedAllowingPasswordChange);
 
 app.MapGet("/api/v1/auth/sessions", async (ClaimsPrincipal principal, RefreshTokenService sessions) =>
 {

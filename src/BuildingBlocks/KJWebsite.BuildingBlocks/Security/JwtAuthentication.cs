@@ -99,16 +99,23 @@ public static class JwtAuthenticationExtensions
         Func<IServiceProvider, IEnumerable<SecurityKey>>? keys = null,
         Func<TokenValidatedContext, Task>? onTokenValidated = null)
     {
+        // A redirect would drop the Authorization header and turn every user into a fake logout; a 3xx must fail closed as 503 instead.
+        services.AddHttpClient(SessionCheck.ClientName).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
         {
             options.MapInboundClaims = false;
             options.Events = new JwtBearerEvents
             {
-                OnTokenValidated = onTokenValidated ?? (_ => Task.CompletedTask),
+                OnTokenValidated = onTokenValidated ?? SessionCheck.ValidateAsync,
                 OnChallenge = async context =>
                 {
                     context.HandleResponse();
-                    await ApiError.Create(context.HttpContext, StatusCodes.Status401Unauthorized, "UNAUTHORIZED", "Authentication is required.")
+                    if (context.HttpContext.RequestAborted.IsCancellationRequested) return;
+                    var unavailable = context.HttpContext.Items.ContainsKey(SessionCheck.UnavailableKey);
+                    await ApiError.Create(context.HttpContext,
+                            unavailable ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status401Unauthorized,
+                            unavailable ? "AUTH_UNAVAILABLE" : "UNAUTHORIZED",
+                            unavailable ? "Sign-in service is unavailable." : "Authentication is required.")
                         .ExecuteAsync(context.HttpContext);
                 },
                 OnForbidden = context =>

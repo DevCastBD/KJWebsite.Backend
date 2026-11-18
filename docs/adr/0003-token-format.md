@@ -22,5 +22,5 @@ Issue access tokens as asymmetric JWTs (RS256 or ES256), 15-minute lifetime, car
 ## Consequences
 
 - AuthIdentityService needs a signing key pair and a rotation strategy for it.
-- Every service behind the gateway validates JWTs locally using the public key, with no dependency on AuthIdentityService being reachable per request.
+- Every service behind the gateway validates JWTs locally using the public key. Since #229 / BE-114, Finance, Sponsorship, Membership, Content and CTA also re-check the caller's session with Identity on every bearer-token request and fail closed with `503 AUTH_UNAVAILABLE` if Identity cannot answer. See [Session check](../AUTH_TOKENS.md#session-check) for configuration, cost and deployment requirements.
 - The existing refresh-token rotation logic and its regression tests carry over unchanged; only access-token issuance and validation change.

@@ -8,8 +8,18 @@ Implements ADR-003 (issues #23, #16). The Auth service issues the tokens; every 
 - Claims: `sub` (user id), `email`, `role` (one per role), `permissions` (one per permission key), `sid` (session id), `jti`, `iss`, `aud`, `iat`, `nbf`, `exp`. While the account must change its password, the token also carries `pwd_change` with the value `true`.
 - Issuer `Jwt:Issuer` (default `kjwebsite-auth`), audience `Jwt:Audience` (default `kjwebsite-api`).
 - Verified locally with the public key, so a restart or a second replica needs no shared state.
-- Within the Auth service a revoked session stops working at once. Other services accept a revoked session's token until it expires (at most 15 minutes).
+- A revoked session stops working at once in Identity and every other service; see Session check below.
 - Every permission policy and the default policy include a shared requirement that refuses a token carrying `pwd_change=true` with `403 PASSWORD_CHANGE_REQUIRED` in every service. Only `POST /api/v1/auth/change-password`, `POST /api/v1/auth/logout-all` and `GET /api/v1/auth/me` accept it. The logout endpoint takes a refresh token and needs no access token.
+
+## Session check
+
+Finance, Sponsorship, Membership, Content and CTA re-check the caller's session on every request carrying a bearer token. They call Identity `GET /api/v1/auth/sessions/current` with the caller's own `Authorization` header. Identity returns `204` for a live session of an active account, `401` for a revoked session and `403 ACCOUNT_DISABLED` for an inactive account. The calling service turns both `401` and `403` into `401 UNAUTHORIZED`. Unreachable Identity, a timeout or any other status fails closed with `503 AUTH_UNAVAILABLE`.
+
+`Auth:SessionCheck:Enabled` defaults to `true`. Setting it to `false` is honoured only in Development (local runs and the test factories). Outside Development, the setting is ignored, the check stays on and a warning is logged: "Auth:SessionCheck:Enabled=false is ignored outside Development; the session check stays on." Do not rely on this switch in a deployment; one stray setting cannot bring back the stale-session window. `Auth:SessionCheck:Timeout` defaults to 2 seconds. `Services:Auth:Url` defaults to `http://localhost:7003/`. Every deployed service needs this URL pointing at Identity's final address, with no redirect: the HTTP client does not follow redirects, so a redirect (for example HTTP to HTTPS at an ingress) makes authenticated calls return `503 AUTH_UNAVAILABLE`. The URL's path is ignored, as with the other service clients; the check always calls `/api/v1/auth/sessions/current` on the host root. A missing deployment value that leaves the local default, or a wrong value, also makes authenticated calls return `503 AUTH_UNAVAILABLE`.
+
+There is no cache: each authenticated request costs one extra Identity call per service. Requests without a token make no session-check call. An anonymous endpoint called with a dead token answers as anonymous. If Identity is down, authenticated calls return `503`; public pages still answer, though a public endpoint called with a live token can wait up to the 2 second check timeout when Identity is slow.
+
+A role change (`PUT /api/v1/admin/auth/users/{id}/roles`), role permission edit, staff account disable, staff password reset, logout-all, member erase or granting the Donor role to an existing member ends that person's sessions on every device across every service. Startup seeding also revokes every SuperAdmin session when it adds a new permission key shipped in code to the existing SuperAdmin role, so holders sign in again, and revokes the development admin account's sessions when a non-Development start disables it. Logout ends only the presented session. The person signs in again to get the new role and permissions. Before #229 / BE-114, other services accepted the old 15-minute access token with its old permissions until it expired.
 
 ## Sign-in and password changes
 

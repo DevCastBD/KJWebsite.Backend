@@ -92,7 +92,7 @@ public sealed class RoleManagementTests : IDisposable
         (await Send(HttpMethod.Put, $"{Base}/users/{second}/roles", token, new { roles = new[] { KjRoles.SuperAdmin } })).StatusCode.Should().Be(HttpStatusCode.OK);
         var secondToken = await Login("second@example.org", Password);
 
-        // With two, either can step down — but not both.
+        // With two, either can step down, but not both.
         (await Send(HttpMethod.Put, $"{Base}/users/usr_admin/roles", secondToken, new { roles = new[] { "Admin" } })).StatusCode.Should().Be(HttpStatusCode.OK);
         await AssertProblem(await Send(HttpMethod.Put, $"{Base}/users/{second}/roles", secondToken, new { roles = Array.Empty<string>() }), HttpStatusCode.Conflict, "LAST_SUPERADMIN");
     }
@@ -210,6 +210,40 @@ public sealed class RoleManagementTests : IDisposable
         }
 
         (await Role("Moderator", token)).GetProperty("permissions").GetArrayLength().Should().Be(1, "the edit survives the reseed");
+    }
+
+    [Fact]
+    public async Task AStartupThatAddsPermissionsToSuperAdminEndsItsSessions()
+    {
+        var token = await SuperAdminToken();
+        (await Send(HttpMethod.Get, $"{Base}/roles", token)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var roles = scope.ServiceProvider.GetRequiredService<RoleManager<AuthRoleEntity>>();
+            var superAdmin = (await roles.FindByNameAsync(KjRoles.SuperAdmin))!;
+            await roles.RemoveClaimAsync(superAdmin, (await roles.GetClaimsAsync(superAdmin)).First(c => c.Value == Permissions.AuditView));
+
+            await AuthSeeder.SeedAsync(scope.ServiceProvider, isDevelopment: true);
+
+            (await roles.GetClaimsAsync(superAdmin)).Select(c => c.Value).Should().Contain(Permissions.AuditView);
+        }
+
+        (await Send(HttpMethod.Get, $"{Base}/roles", token)).StatusCode.Should().Be(HttpStatusCode.Unauthorized, "the permission change ends the SuperAdmin session");
+    }
+
+    [Fact]
+    public async Task DisablingTheDevelopmentAdminOutsideDevelopmentEndsItsSessions()
+    {
+        var token = await SuperAdminToken();
+        (await Send(HttpMethod.Get, $"{Base}/roles", token)).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            await AuthSeeder.SeedAsync(scope.ServiceProvider, isDevelopment: false);
+        }
+
+        (await Send(HttpMethod.Get, $"{Base}/roles", token)).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

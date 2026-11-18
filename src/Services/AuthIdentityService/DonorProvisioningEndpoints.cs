@@ -38,7 +38,7 @@ public static class DonorProvisioningEndpoints
 
     public static void MapDonorProvisioning(this WebApplication app)
     {
-        app.MapPost("/api/v1/admin/auth/donors", async (HttpContext context, ProvisionDonorRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users) =>
+        app.MapPost("/api/v1/admin/auth/donors", async (HttpContext context, ProvisionDonorRequest payload, AuthDbContext db, UserManager<AuthUserEntity> users, RefreshTokenService sessions) =>
         {
             var invalid = new List<string>();
             if (string.IsNullOrWhiteSpace(payload.DonorId) || payload.DonorId.Length > 56)
@@ -69,7 +69,7 @@ public static class DonorProvisioningEndpoints
             var existing = await users.FindByEmailAsync(email);
             if (existing is not null)
             {
-                // One person, one sign-in (D7): a member who becomes a donor keeps their password, sessions and account; they only gain the role.
+                // One person, one sign-in: a member keeps their password and account; sessions end when the role is added so the new role takes effect.
                 if (!await users.IsInRoleAsync(existing, KjRoles.Member))
                 {
                     return ApiError.Create(context, StatusCodes.Status409Conflict, "EMAIL_TAKEN", "An account with this email already exists.");
@@ -82,6 +82,8 @@ public static class DonorProvisioningEndpoints
                     {
                         return ApiError.Create(context, StatusCodes.Status500InternalServerError, "PROVISIONING_FAILED", "The Donor role could not be assigned.");
                     }
+
+                    await sessions.RevokeAllAsync(existing.Id);
                 }
 
                 return Results.Ok(new ProvisionedDonor(existing.Id, false, true, existing.MustChangePassword));
@@ -124,7 +126,7 @@ public static class DonorProvisioningEndpoints
         })
         .WithName("ProvisionDonor")
         .WithSummary("Create the sign-in account for a donor")
-        .WithDescription("Creates an email-confirmed Donor account with the initial password staff choose (the platform password rules apply) and the must-change flag set. Never returns the password. Idempotent per `donorId`. When the email already belongs to a member account the Donor role is added to it and nothing else changes; any other existing account gives 409 EMAIL_TAKEN.")
+        .WithDescription("Creates an email-confirmed Donor account with the initial password staff choose (the platform password rules apply) and the must-change flag set. Never returns the password. Idempotent per `donorId`. When the email already belongs to a member account the Donor role is added and existing sessions end so the new role takes effect; any other existing account gives 409 EMAIL_TAKEN.")
         .WithTags(AdminTag)
         .RequirePermission(Permissions.FinanceDonorProvision);
 

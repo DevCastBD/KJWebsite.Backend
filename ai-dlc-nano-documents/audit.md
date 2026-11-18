@@ -406,3 +406,9 @@
 - 2026-11-17T06:55Z [claude] 076-issue-227-staff-donor-reversed-gifts BRANCH @8509ee0: Feature/issue-227-staff-donor-gift-list-reversed off origin/develop (user approved plan)
 - 2026-11-17T06:55Z [claude] 076-issue-227-staff-donor-reversed-gifts PHASE PLAN→CONSTRUCT @8509ee0: plan approved by user via plan mode
 - 2026-11-17T07:57Z [claude] 076-issue-227-staff-donor-reversed-gifts SIDE-EFFECT @45dfcd4: pushed branch and opened PR #232 (user said Open PR); not merged
+- 2026-11-17T12:17Z [claude] 077-issue-229-session-check-everywhere CREATED @2bdf47c: issue #229 (BE-114)
+- 2026-11-17T12:17Z [claude] 077-issue-229-session-check-everywhere SIDE-EFFECT @2bdf47c: assigned tahmidsparrow, board status In progress on #229 (verified)
+- 2026-11-17T12:17Z [claude] 077-issue-229-session-check-everywhere DECISION @2bdf47c: shared per-request session check in every service; role change forces logout (user)
+- 2026-11-17T12:17Z [claude] 077-issue-229-session-check-everywhere BRANCH @2bdf47c: Feature/issue-229-session-check-everywhere off origin/develop (user approved plan)
+- 2026-11-17T12:17Z [claude] 077-issue-229-session-check-everywhere PHASE PLAN→CONSTRUCT @2bdf47c: plan approved by user via plan mode
+- 2026-11-18T08:35Z [claude] 077-issue-229-session-check-everywhere SIDE-EFFECT @dc92014: pushed branch and opened PR #233 (user said Open PR); not merged
