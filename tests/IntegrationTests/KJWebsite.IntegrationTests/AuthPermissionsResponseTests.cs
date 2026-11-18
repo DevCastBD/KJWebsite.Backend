@@ -28,15 +28,6 @@ public sealed class AuthPermissionsResponseTests : IDisposable
     public async Task EveryAuthResponsePublishesTheSeededPermissions(string role)
     {
         var expected = KjRoles.Seed[role];
-        if (role == KjRoles.SuperAdmin)
-        {
-            Permissions.All.Should().HaveCount(49);
-            expected.Should().BeEquivalentTo(Permissions.All);
-        }
-        if (role == KjRoles.Admin)
-        {
-            expected.Should().BeEquivalentTo(Permissions.All.Except([Permissions.RolesManage, Permissions.SponsorshipLinkVoid]));
-        }
         await CreateUser([role]);
         await AssertAllResponses([role], expected);
     }

@@ -12,8 +12,8 @@ public sealed record AuthTokenResponse(
 
 public record AuthUserResponse(string Id, string? Email, string Role, IList<string> Roles, bool MustChangePassword, string[] Permissions);
 
-public sealed record CurrentUserResponse(string Id, string? Email, string Role, IList<string> Roles, bool MustChangePassword, string[] Permissions, AuthProfileResponse Profile)
-    : AuthUserResponse(Id, Email, Role, Roles, MustChangePassword, Permissions);
+/// <summary>`GET /api/v1/auth/me`: the same user fields as sign-in, then the profile. A flat record keeps the JSON keys in this order (a derived record would write `profile` first).</summary>
+public sealed record CurrentUserResponse(string Id, string? Email, string Role, IList<string> Roles, bool MustChangePassword, string[] Permissions, AuthProfileResponse Profile);
 
 public sealed record AuthProfileResponse(
     string? FirstName,

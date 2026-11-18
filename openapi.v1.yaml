@@ -8880,17 +8880,15 @@ components:
             type: "string"
     CurrentUserResponse:
       required:
-        - "profile"
         - "id"
         - "email"
         - "role"
         - "roles"
         - "mustChangePassword"
         - "permissions"
+        - "profile"
       type: "object"
       properties:
-        profile:
-          $ref: "#/components/schemas/AuthProfileResponse"
         id:
           type: "string"
         email:
@@ -8909,6 +8907,8 @@ components:
           type: "array"
           items:
             type: "string"
+        profile:
+          $ref: "#/components/schemas/AuthProfileResponse"
     DonorAccountStatusRequest:
       required:
         - "status"
