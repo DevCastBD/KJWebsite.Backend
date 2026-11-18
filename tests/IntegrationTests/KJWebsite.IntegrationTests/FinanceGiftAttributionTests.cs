@@ -191,15 +191,38 @@ public sealed class FinanceGiftAttributionTests : IDisposable
         (await read.ServiceProvider.GetRequiredService<FinanceDbContext>().Donations.SingleAsync(d => d.Id == id)).DonorId.Should().Be("dnr_email");
     }
 
-    [Fact]
-    public async Task IdempotentReplayKeepsOriginalDonationAndDonorId()
+    [Theory]
+    [InlineData("same")]
+    [InlineData("none")]
+    [InlineData("other")]
+    public async Task IdempotentReplayKeepsOriginalDonationAndDonorId(string replayer)
     {
         var a = await Donor("owner@example.org", "usr_owner");
+        await Donor("someone@example.org", "usr_someone");
         var key = Guid.NewGuid().ToString("N");
         var id = await Gift("typed@example.org", DonorToken("usr_owner"), key: key);
         await Edit(a, d => d.Status = DonorStatuses.Inactive);
-        (await Gift("typed@example.org", DonorToken("usr_owner"), key: key)).Should().Be(id);
-        (await Db(db => db.Donations.SingleAsync())).DonorId.Should().Be(a);
+        var token = replayer switch { "same" => DonorToken("usr_owner"), "other" => DonorToken("usr_someone"), _ => null };
+        (await Gift("typed@example.org", token, key: key)).Should().Be(id);
+        var donations = await Db(db => db.Donations.ToListAsync());
+        donations.Should().ContainSingle().Which.DonorId.Should().Be(a);
+    }
+
+    [Fact]
+    public async Task OnlineGiftWithTheDonorsEmailRefreshesTheProfileOnlyWhenSomethingDiffers()
+    {
+        var a = await Donor("same@example.org");
+        var first = await Gift("same@example.org");
+        (await Db(db => db.Donations.SingleAsync(d => d.Id == first))).DonorId.Should().Be(a);
+        var start = await Db(db => db.Donors.AsNoTracking().SingleAsync(d => d.Id == a));
+        await Confirm(first);
+        var refreshed = await Db(db => db.Donors.AsNoTracking().SingleAsync(d => d.Id == a));
+        using (var scope = _factory.Services.CreateScope())
+            scope.ServiceProvider.GetRequiredService<IDonorProtector>().Unprotect(refreshed.NameProtected).Should().Be("Typed Name", "contact details follow the latest gift with the donor's email");
+        refreshed.Version.Should().Be(start.Version + 1);
+        var second = await Gift("same@example.org");
+        await Confirm(second);
+        (await Db(db => db.Donors.AsNoTracking().SingleAsync(d => d.Id == a))).Version.Should().Be(refreshed.Version, "an identical copy changes nothing");
     }
 
     [Theory]

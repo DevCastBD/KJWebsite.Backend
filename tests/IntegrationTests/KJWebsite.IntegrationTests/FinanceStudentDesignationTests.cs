@@ -197,6 +197,18 @@ public sealed class FinanceStudentDesignationTests : IDisposable
     }
 
     [Fact]
+    public async Task OfflineGiftNeverRewritesTheDonorEvenWhenTheProfileWasCorrectedBetweenRecordingAndApproval()
+    {
+        var donor = await Donor();
+        var id = await Record(Gift(donor));
+        await Edit(donor, (d, s) => { d.NameProtected = s.GetRequiredService<IDonorProtector>().Protect("Corrected Name"); d.Language = "bn"; d.Version = 9; });
+        var before = await Db(db => db.Donors.SingleAsync(d => d.Id == donor));
+        await Approve(id);
+        AssertDonorUnchanged(await Db(db => db.Donors.SingleAsync(d => d.Id == donor)), before);
+        (await Db(db => db.Receipts.SingleAsync())).DonorKey.Should().Be(before.DonorKey);
+    }
+
+    [Fact]
     public async Task CorrectedContactsAtApprovalAppearOnReceiptAndNotificationWithoutCreatingDonor()
     {
         var donor = await Donor();
