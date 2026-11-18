@@ -186,19 +186,19 @@ public static class DonorSelfEndpoints
     /// <summary>Finds the donor from the token's subject and refuses an inactive donor or a disabled sign-in before any data is read.</summary>
     private static async Task<IResult> WithDonor(HttpContext context, FinanceDbContext db, Func<DonorEntity, Task<IResult>> action)
     {
-        var subject = context.User.FindFirst(KjClaims.Subject)?.Value;
-        var donor = string.IsNullOrEmpty(subject) ? null : await db.Donors.AsNoTracking().FirstOrDefaultAsync(d => d.AccountSubject == subject, context.RequestAborted);
+        var donor = await DonorAccess.FindAsync(context, db);
         if (donor is null)
         {
             return ApiError.Create(context, StatusCodes.Status404NotFound, "NOT_A_DONOR", "The signed-in account has no donor record.");
         }
 
-        if (donor.Status == DonorStatuses.Inactive)
+        var refusal = DonorAccess.RefusalCode(donor);
+        if (refusal == "DONOR_INACTIVE")
         {
             return ApiError.Create(context, StatusCodes.Status403Forbidden, "DONOR_INACTIVE", "This donor record is inactive.");
         }
 
-        return donor.AccountStatus == AccountStatuses.Disabled
+        return refusal == "ACCOUNT_DISABLED"
             ? ApiError.Create(context, StatusCodes.Status403Forbidden, "ACCOUNT_DISABLED", "This sign-in has been disabled.")
             : await action(donor);
     }

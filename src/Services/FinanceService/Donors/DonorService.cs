@@ -71,6 +71,12 @@ public sealed class DonorService(FinanceDbContext db, IDonorProtector protector,
     /// Creates or refreshes the donor for a confirmed gift. An anonymous gift, or one with no email to recognise the donor by, creates and touches nothing. Consent is only ever
     /// recorded from what the donor actually ticked, and only for thanks and updates. A thank-you is queued through the consent gate: the first gift gets the welcome variant.
     /// </summary>
+    private bool ContactDiffers(DonorEntity donor, DonationEntity donation) =>
+        protector.Unprotect(donor.NameProtected) != protector.Unprotect(donation.DonorNameProtected)
+        || protector.Unprotect(donor.EmailProtected) != protector.Unprotect(donation.DonorEmailProtected)
+        || (donation.DonorPhoneProtected is not null && (donor.PhoneProtected is null || protector.Unprotect(donor.PhoneProtected) != protector.Unprotect(donation.DonorPhoneProtected)))
+        || donor.Language != donation.Language;
+
     public async Task StageAsync(DonationEntity donation, ReceiptEntity receipt, CancellationToken cancellationToken)
     {
         // A gift tied to its donor by id needs no email to be recognised; an anonymous gift is never tied.
@@ -104,9 +110,19 @@ public sealed class DonorService(FinanceDbContext db, IDonorProtector protector,
         }
         else
         {
-            // Contact details follow the latest gift matched by email. A gift tied to its donor by id never changes the donor record: staff correct the
-            // donor's contact details through the donor profile, so an old copy on a gift can never overwrite a newer correction.
+            // Contact details follow the latest gift whose email is the donor's current email, as they always have, whether or not the gift also carries the donor id
+            // (an online gift is tied by id when its email already belonged to the donor, or when the donor was signed in). A gift tied by id whose email is NOT the donor's
+            // current email (a signed-in donor typing another address, or an old copy confirmed after an email change) never rewrites the donor: staff correct contact
+            // details through the donor profile, so an old copy on a gift can never overwrite a newer correction.
             if (donation.DonorId is null)
+            {
+                donor.NameProtected = donation.DonorNameProtected;
+                donor.EmailProtected = donation.DonorEmailProtected;
+                donor.PhoneProtected = donation.DonorPhoneProtected ?? donor.PhoneProtected;
+                donor.Language = donation.Language;
+                donor.Version++;
+            }
+            else if (keys.ForEmail(protector.Unprotect(donation.DonorEmailProtected)) == donor.EmailKey && ContactDiffers(donor, donation))
             {
                 donor.NameProtected = donation.DonorNameProtected;
                 donor.EmailProtected = donation.DonorEmailProtected;
