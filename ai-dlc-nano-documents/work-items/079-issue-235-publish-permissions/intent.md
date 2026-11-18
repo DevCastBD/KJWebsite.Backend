@@ -10,4 +10,5 @@
 ## Out of scope
 - Frontend changes (FE#361), new endpoints, changing the token.
 ## Follow-ups
-- (none yet)
+- Not fixed: sign-in, refresh and change-password return tokens without Cache-Control: no-store (RFC 6749 5.1); add them to UsePrivateResponses.
+- Not fixed: `role` is the first of GetRolesAsync, whose order is not guaranteed; clients should use `roles` and `permissions`.
