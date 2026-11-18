@@ -82,6 +82,25 @@ public sealed class FinanceGiftAttributionTests : IDisposable
         (await Json(original)).GetProperty("gifts").GetArrayLength().Should().Be(1);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnOnlineGiftAttachedByIdKeepsTheNameAndEmailTypedForItOnItsReceipt(bool byToken)
+    {
+        var a = await Donor("profile@example.org", "usr_profile");
+        var typedEmail = byToken ? "typed-elsewhere@example.org" : "profile@example.org";
+        var id = await Gift(typedEmail, byToken ? DonorToken("usr_profile") : null);
+        (await Db(db => db.Donations.SingleAsync(d => d.Id == id))).DonorId.Should().Be(a);
+        await Confirm(id);
+        var receipt = await Db(db => db.Receipts.AsNoTracking().SingleAsync(r => r.DonationId == id));
+        var donor = await Db(db => db.Donors.AsNoTracking().SingleAsync(d => d.Id == a));
+        receipt.DonorKey.Should().Be(donor.DonorKey);
+        using var scope = _factory.Services.CreateScope();
+        var protector = scope.ServiceProvider.GetRequiredService<IDonorProtector>();
+        protector.Unprotect(receipt.DonorNameProtected).Should().Be("Typed Name", "the receipt shows what the donor typed for this gift");
+        protector.Unprotect(receipt.DonorEmailProtected).Should().Be(typedEmail);
+    }
+
     [Fact]
     public async Task FirstTimeEmailRemainsNullAndCreatesDonorAtConfirmation()
     {

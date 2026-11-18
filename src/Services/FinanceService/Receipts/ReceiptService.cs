@@ -102,14 +102,16 @@ public sealed class ReceiptService(FinanceDbContext db, IDonorProtector protecto
         var last = await db.Receipts.AsNoTracking().Where(r => r.Series == series).OrderByDescending(r => r.Seq).Select(r => new { r.Seq, r.Hash }).FirstOrDefaultAsync(cancellationToken);
         var seq = (last?.Seq ?? 0) + 1;
 
-        // A gift tied to its donor by id takes that donor's CURRENT name and email (the gift's own copy was taken when it was recorded and may be older), and is
-        // never matched by email. A donor id that no longer resolves is a fault, not a reason to guess by email.
+        // A gift tied to its donor by id is never matched by email, and its receipt carries that donor's key. A donor id that no longer resolves is a fault, not a
+        // reason to guess by email. An OFFLINE gift tied by id also takes the donor's CURRENT name and email (the gift's own copy was taken when it was recorded and may be
+        // older). An ONLINE gift keeps the name and email the donor typed for it, exactly as before the donor id was stored on it: only its attribution changed.
         var tied = donation.DonorId is null ? null : await db.Donors.AsNoTracking().FirstOrDefaultAsync(d => d.Id == donation.DonorId, cancellationToken)
             ?? throw new InvalidOperationException($"Donation {donation.Id} is tied to a donor that does not exist.");
-        var nameProtected = tied?.NameProtected ?? donation.DonorNameProtected;
-        var emailProtected = tied?.EmailProtected ?? donation.DonorEmailProtected;
-        var email = protector.Unprotect(emailProtected).Trim();
         var offline = await db.OfflineRecords.AsNoTracking().FirstOrDefaultAsync(o => o.DonationId == donation.Id, cancellationToken);
+        var profile = offline is null ? null : tied;
+        var nameProtected = profile?.NameProtected ?? donation.DonorNameProtected;
+        var emailProtected = profile?.EmailProtected ?? donation.DonorEmailProtected;
+        var email = protector.Unprotect(emailProtected).Trim();
         var now = clock.GetUtcNow();
 
         var receipt = new ReceiptEntity
