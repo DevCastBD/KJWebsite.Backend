@@ -238,6 +238,7 @@ app.MapPost("/api/v1/auth/login", async (HttpContext context, LoginRequest paylo
     return await TokenResponse(users, roleManager, issuer, user, row.FamilyId, refresh);
 })
 .WithName("Login")
+.Produces<AuthTokenResponse>()
 .WithSummary("Login and receive tokens")
 .WithDescription("Authenticates a user and returns an `access_token` (RS256 JWT, 15 min) and a `refresh_token` (opaque, stored hashed, 30 days). Repeated failures lock the account (423). Unconfirmed emails are rejected (403) unless `Identity:RequireConfirmedEmail` is off.")
 .WithTags("Auth")
@@ -262,6 +263,7 @@ app.MapPost("/api/v1/auth/refresh", async (HttpContext context, RefreshTokenRequ
     return await TokenResponse(users, roleManager, issuer, user, rotation.Row.FamilyId, rotation.Token!);
 })
 .WithName("RefreshToken")
+.Produces<AuthTokenResponse>()
 .WithSummary("Refresh an expired access token")
 .WithDescription("Rotates the refresh token and issues a new access token. The old refresh token is single-use; presenting it again ends the whole session.")
 .WithTags("Auth")
@@ -360,7 +362,7 @@ app.MapPost("/api/v1/auth/reset-password", async (HttpContext context, ResetPass
 .WithTags("Auth")
 .AllowAnonymous();
 
-app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db, UserManager<AuthUserEntity> users) =>
+app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db, UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager) =>
 {
     var userId = principal.FindFirstValue(KjClaims.Subject);
     var user = await db.Users.Include(u => u.Profile).FirstOrDefaultAsync(u => u.Id == userId);
@@ -369,16 +371,12 @@ app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db
         return Results.Unauthorized();
     }
 
+    var roles = await users.GetRolesAsync(user);
+    var permissions = await PermissionsOf(roleManager, roles);
     var profile = user.Profile ?? new MemberProfileEntity();
-    return Results.Ok(new
-    {
-        id = user.Id,
-        email = user.Email,
-        role = await RoleOf(users, user),
-        roles = await users.GetRolesAsync(user),
-        mustChangePassword = user.MustChangePassword,
-        profile = new
-        {
+    return Results.Ok(new CurrentUserResponse(
+        user.Id, user.Email, roles.FirstOrDefault() ?? "Member", roles, user.MustChangePassword, permissions,
+        new AuthProfileResponse(
             profile.FirstName,
             profile.LastName,
             profile.Gender,
@@ -397,11 +395,10 @@ app.MapGet("/api/v1/auth/me", async (ClaimsPrincipal principal, AuthDbContext db
             profile.DisabilitiesIfAny,
             profile.Nationality,
             profile.PersonalWebPage,
-            profile.SocialMediaLink
-        }
-    });
+            profile.SocialMediaLink)));
 })
 .WithName("GetCurrentUser")
+.Produces<CurrentUserResponse>()
 .WithSummary("Get the authenticated user's profile")
 .WithDescription("Returns the full profile of the currently authenticated user. Requires `Authorization: Bearer <access_token>` obtained from the login endpoint.")
 .WithTags("Auth")
@@ -534,6 +531,7 @@ app.MapPost("/api/v1/auth/change-password", async (HttpContext context, ClaimsPr
     return await TokenResponse(users, roleManager, issuer, user, row.FamilyId, refresh);
 })
 .WithName("ChangePassword")
+.Produces<AuthTokenResponse>()
 .WithSummary("Change the signed-in user's password")
 .WithDescription("Needs the current password. Clears the must-change flag, ends every session and returns a fresh token pair. Allowed while the flag is set: it is how the flag is cleared. Wrong current passwords count toward the sign-in lockout (423).")
 .WithTags("Auth")
@@ -542,6 +540,14 @@ app.MapPost("/api/v1/auth/change-password", async (HttpContext context, ClaimsPr
 static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, RoleManager<AuthRoleEntity> roleManager, AccessTokenIssuer issuer, AuthUserEntity user, string sessionId, string refreshToken)
 {
     var roles = await users.GetRolesAsync(user);
+    var permissions = await PermissionsOf(roleManager, roles);
+    return Results.Ok(new AuthTokenResponse(
+        issuer.Issue(user, sessionId, roles, permissions), refreshToken, 900, "Bearer", user.MustChangePassword,
+        new AuthUserResponse(user.Id, user.Email, roles.FirstOrDefault() ?? "Member", roles, user.MustChangePassword, permissions)));
+}
+
+static async Task<string[]> PermissionsOf(RoleManager<AuthRoleEntity> roleManager, IEnumerable<string> roles)
+{
     var permissions = new List<string>();
     foreach (var name in roles)
     {
@@ -552,19 +558,8 @@ static async Task<IResult> TokenResponse(UserManager<AuthUserEntity> users, Role
         }
     }
 
-    return Results.Ok(new
-    {
-        access_token = issuer.Issue(user, sessionId, roles, permissions),
-        refresh_token = refreshToken,
-        expires_in = 900,
-        token_type = "Bearer",
-        mustChangePassword = user.MustChangePassword,
-        user = new { id = user.Id, email = user.Email, role = roles.FirstOrDefault() ?? "Member", roles, mustChangePassword = user.MustChangePassword }
-    });
+    return permissions.Distinct(StringComparer.Ordinal).OrderBy(p => p, StringComparer.Ordinal).ToArray();
 }
-
-static async Task<string> RoleOf(UserManager<AuthUserEntity> users, AuthUserEntity user) =>
-    (await users.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
 
 app.MapAdminAuth();
 app.MapMemberProvisioning();

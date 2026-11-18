@@ -418,3 +418,9 @@
 - 2026-11-18T08:58Z [claude] 078-issue-226-gift-donor-id-attribution BRANCH @a00e162: Feature/issue-226-gift-donor-id-attribution off origin/develop (user approved plan)
 - 2026-11-18T08:58Z [claude] 078-issue-226-gift-donor-id-attribution PHASE PLAN→CONSTRUCT @a00e162: plan approved by user via plan mode
 - 2026-11-18T10:30Z [claude] 078-issue-226-gift-donor-id-attribution SIDE-EFFECT @6e31539: pushed branch and opened PR #234 (user said Open PR); not merged
+- 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions CREATED @211118f: issue #235 (BE-115) created with the user approval for FE#361
+- 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions SIDE-EFFECT @211118f: issue created, labelled, assigned tahmidsparrow, board In progress (verified)
+- 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions DECISION @211118f: backend publishes permissions in the auth responses (user, FE#361 plan)
+- 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions BRANCH @211118f: Feature/issue-235-publish-permissions off origin/develop (user approved plan)
+- 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions PHASE PLAN→CONSTRUCT @211118f: plan approved by user via plan mode
+- 2026-11-18T18:19Z [claude] 079-issue-235-publish-permissions SIDE-EFFECT @295fd0d: pushed branch, opened PR #236 against develop (user yes)
