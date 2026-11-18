@@ -1,5 +1,5 @@
 <!-- phase: CONSTRUCT | branch: Feature/issue-235-publish-permissions | tasks: 0/5
-     base: a00e162 | updated: 2026-11-18
+     base: 211118f | updated: 2026-11-18
      next: Codex: permissions in TokenResponse and /me, tests, openapi, docs -->
 # Plan: Publish permissions (BE-115, #235)
 ## Tasks

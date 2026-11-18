@@ -1,8 +1,8 @@
 # AI-DLC Nano State
 - Active work item: work-items/079-issue-235-publish-permissions
 - Phase: CONSTRUCT
-- Branch: Feature/issue-235-publish-permissions  (off origin/develop at a00e162)
-- Base SHA: a00e162
+- Branch: Feature/issue-235-publish-permissions  (off origin/develop at 211118f)
+- Base SHA: 211118f
 - Next step: Codex task: permissions in the auth responses, tests, openapi, docs
 - Paused work items:
   - work-items/078-issue-226-gift-donor-id-attribution (DONE, PR #234 open)
