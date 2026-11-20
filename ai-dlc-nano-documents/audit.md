@@ -424,3 +424,8 @@
 - 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions BRANCH @211118f: Feature/issue-235-publish-permissions off origin/develop (user approved plan)
 - 2026-11-18T12:17Z [claude] 079-issue-235-publish-permissions PHASE PLAN→CONSTRUCT @211118f: plan approved by user via plan mode
 - 2026-11-18T18:19Z [claude] 079-issue-235-publish-permissions SIDE-EFFECT @295fd0d: pushed branch, opened PR #236 against develop (user yes)
+- 2026-11-20T00:55Z [claude] 080-issue-237-cors-if-match-etag CREATED @40d4c25: BE#237 gateway CORS If-Match and ETag
+- 2026-11-20T00:55Z [claude] 080-issue-237-cors-if-match-etag SIDE-EFFECT @40d4c25: assigned tahmidsparrow, board Backlog to In progress (verified)
+- 2026-11-20T00:55Z [claude] 080-issue-237-cors-if-match-etag BRANCH @40d4c25: Feature/issue-237-cors-if-match-etag off origin/develop (plan approved)
+- 2026-11-20T00:55Z [claude] 080-issue-237-cors-if-match-etag PHASE PLAN→CONSTRUCT @40d4c25: plan approved by user
+- 2026-11-20T01:07Z [claude] 080-issue-237-cors-if-match-etag PHASE CONSTRUCT→WRAP-UP @40d4c25: tests, mutations, live proof done; review fixes in
