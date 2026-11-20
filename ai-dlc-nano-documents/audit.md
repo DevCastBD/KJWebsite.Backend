@@ -429,3 +429,6 @@
 - 2026-11-20T00:55Z [claude] 080-issue-237-cors-if-match-etag BRANCH @40d4c25: Feature/issue-237-cors-if-match-etag off origin/develop (plan approved)
 - 2026-11-20T00:55Z [claude] 080-issue-237-cors-if-match-etag PHASE PLAN→CONSTRUCT @40d4c25: plan approved by user
 - 2026-11-20T01:07Z [claude] 080-issue-237-cors-if-match-etag PHASE CONSTRUCT→WRAP-UP @40d4c25: tests, mutations, live proof done; review fixes in
+- 2026-11-20T11:32Z [claude] 080-issue-237-cors-if-match-etag SIDE-EFFECT @5a89b04: pushed branch, opened PR #238 against develop (user yes)
+- 2026-11-20T11:32Z [claude] 080-issue-237-cors-if-match-etag DECISION @5a89b04: final doc fix made by claude after 3 Codex hangs (flagged to user)
+- 2026-11-20T11:32Z [claude] 080-issue-237-cors-if-match-etag DONE @5a89b04: PR #238 open, never merged by claude; FE PR #366 depends on it
