@@ -1,4 +1,6 @@
 # Backlog
+- [2026-11-20] backend/gateway: Retry-After and X-Correlation-ID not exposed; media X-Image-* and X-Alt-* request headers not allowed (found: 080)
+- [2026-11-20] backend/docs: MASTER_PLAN lines 23 and 30 still say the gateway has no CORS (found: 080)
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
 - [2026-11-15] finance/offline: date is checked against UTC today; Dhaka 00:00-06:00 refuses today (found: 073)
 - [2026-11-15] donors/self: the General gift label stays English for bn donors (found: 073)

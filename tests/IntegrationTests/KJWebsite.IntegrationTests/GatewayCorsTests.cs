@@ -109,6 +109,109 @@ public sealed class GatewayCorsTests : IDisposable
         response.Headers.Contains("Access-Control-Allow-Origin").Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(SiteOrigin)]
+    [InlineData(AdminOrigin)]
+    public async Task PreflightAllowsIfMatchForOptimisticConcurrencyEdits(string origin)
+    {
+        using var client = _factory.CreateClient();
+        var request = Request(HttpMethod.Options, "/api/v1/admin/sponsorship/students/stu_1", origin);
+        request.Headers.Add("Access-Control-Request-Method", "PATCH");
+        request.Headers.Add("Access-Control-Request-Headers", "content-type,if-match,authorization,idempotency-key");
+
+        using var response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        response.Headers.GetValues("Access-Control-Allow-Origin").Should().Equal(origin);
+        string.Join(",", response.Headers.GetValues("Access-Control-Allow-Headers")).Should().ContainEquivalentOf("If-Match");
+        string.Join(",", response.Headers.GetValues("Access-Control-Allow-Methods")).Should().ContainEquivalentOf("PATCH");
+        response.Headers.GetValues("Access-Control-Max-Age").Should().Equal("3600");
+    }
+
+    [Fact]
+    public async Task PreflightStillRefusesAHeaderThatIsNotOnTheAllowList()
+    {
+        using var client = _factory.CreateClient();
+        var request = Request(HttpMethod.Options, "/api/v1/admin/sponsorship/students/stu_1", SiteOrigin);
+        request.Headers.Add("Access-Control-Request-Method", "PATCH");
+        request.Headers.Add("Access-Control-Request-Headers", "if-match,x-not-allowed");
+
+        using var response = await client.SendAsync(request);
+
+        // The browser enforces the preflight by looking for every requested header in Allow-Headers.
+        var allowed = string.Join(",", response.Headers.GetValues("Access-Control-Allow-Headers"));
+        allowed.Should().ContainEquivalentOf("If-Match").And.NotContainEquivalentOf("x-not-allowed");
+    }
+
+    [Fact]
+    public async Task ETagFromAProxiedServiceReachesAListedOriginReadableByScripts()
+    {
+        var clusters = new[] { "auth", "content", "cta", "membership", "finance", "sponsorship" };
+        using var factory = new GatewayApiFactory { ClusterHandlers = clusters.ToDictionary(c => c, c => (Func<HttpMessageHandler>)(() => new EtagHandler())) }
+            .WithWebHostBuilder(builder =>
+            {
+                builder.UseSetting("Cors:SiteOrigins:0", SiteOrigin);
+                builder.UseSetting("Cors:AdminOrigins:0", AdminOrigin);
+            });
+        using var client = factory.CreateClient();
+
+        foreach (var origin in new[] { SiteOrigin, AdminOrigin })
+        {
+            using var response = await client.SendAsync(Request(HttpMethod.Get, "/api/v1/admin/sponsorship/students/stu_1", origin));
+
+            response.Headers.ETag!.Tag.Should().Be("\"3\"");
+            string.Join(",", response.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag");
+            response.Headers.GetValues("Access-Control-Allow-Origin").Should().Equal(origin);
+        }
+    }
+
+    private sealed class EtagHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent("{}") };
+            response.Headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"3\"");
+            return Task.FromResult(response);
+        }
+    }
+
+    [Fact]
+    public async Task PreflightForIfMatchFromUnlistedOriginIsNotApproved()
+    {
+        using var client = _factory.CreateClient();
+        var request = Request(HttpMethod.Options, "/api/v1/admin/sponsorship/students/stu_1", "https://evil.example.com");
+        request.Headers.Add("Access-Control-Request-Method", "PATCH");
+        request.Headers.Add("Access-Control-Request-Headers", "if-match");
+
+        using var response = await client.SendAsync(request);
+
+        response.Headers.Contains("Access-Control-Allow-Origin").Should().BeFalse();
+        response.Headers.Contains("Access-Control-Allow-Headers").Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ListedOriginsCanReadTheETagResponseHeader()
+    {
+        using var client = _factory.CreateClient();
+        using var site = await client.SendAsync(Request(HttpMethod.Get, "/health", SiteOrigin));
+        using var admin = await client.SendAsync(Request(HttpMethod.Get, "/health", AdminOrigin));
+
+        string.Join(",", site.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag");
+        string.Join(",", admin.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag");
+        site.Headers.Contains("Access-Control-Allow-Credentials").Should().BeFalse();
+        admin.Headers.GetValues("Access-Control-Allow-Credentials").Should().Equal("true");
+    }
+
+    [Fact]
+    public async Task UnlistedOriginDoesNotLearnWhichHeadersAreExposed()
+    {
+        using var client = _factory.CreateClient();
+        using var response = await client.SendAsync(Request(HttpMethod.Get, "/health", "https://evil.example.com"));
+
+        response.Headers.Contains("Access-Control-Allow-Origin").Should().BeFalse();
+        response.Headers.Contains("Access-Control-Expose-Headers").Should().BeFalse();
+    }
+
     [Fact]
     public async Task ResponsesCarrySecurityHeaders()
     {

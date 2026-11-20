@@ -19,7 +19,8 @@ public sealed class CorsOptions
 internal sealed class OriginCorsPolicyProvider : ICorsPolicyProvider
 {
     private static readonly string[] Methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
-    private static readonly string[] Headers = ["Content-Type", "Idempotency-Key", "Authorization", "X-Filename", "X-Correlation-ID"];
+    private static readonly string[] Headers = ["Content-Type", "Idempotency-Key", "Authorization", "X-Filename", "X-Correlation-ID", "If-Match"];
+    private static readonly string[] ExposedHeaders = ["ETag"];
 
     private readonly CorsPolicy _site;
     private readonly CorsPolicy _admin;
@@ -46,6 +47,7 @@ internal sealed class OriginCorsPolicyProvider : ICorsPolicyProvider
         var builder = new CorsPolicyBuilder()
             .WithMethods(Methods)
             .WithHeaders(Headers)
+            .WithExposedHeaders(ExposedHeaders)
             .SetPreflightMaxAge(TimeSpan.FromHours(1));
 
         // An empty origin list must reject everything, not fall through to "any".

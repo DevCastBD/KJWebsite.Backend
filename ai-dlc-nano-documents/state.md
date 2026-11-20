@@ -1,14 +1,11 @@
 # AI-DLC Nano State
-- Active work item: work-items/079-issue-235-publish-permissions
-- Phase: WRAP-UP
-- Branch: Feature/issue-235-publish-permissions  (off origin/develop at 211118f)
-- Base SHA: 211118f
-- Next step: ask the user before push and PR for #235 (never merge); frontend FE#361 branch depends on it
-- Paused work items:
-  - work-items/078-issue-226-gift-donor-id-attribution (DONE, PR #234 open)
-  - work-items/077-issue-229-session-check-everywhere (DONE, PR #233 merged)
-  - work-items/076-issue-227-staff-donor-reversed-gifts (DONE, PR #232 merged)
-  - work-items/075-issue-225-donor-gift-student-name (DONE, PR #231 merged)
-  - work-items/074-issue-216-privacy-test-suite (DONE, PR #230 merged)
+- Active work item: none
+- Phase: —
+- Branch: Feature/issue-237-cors-if-match-etag  (off origin/develop at 40d4c25)
+- Base SHA: 40d4c25
+- Next step: wait for PR #238 review; frontend PR #366 depends on it; backlog is over its cap
+- Paused work items:  (newest first)
+  - work-items/079-issue-235-publish-permissions (DONE, PR #236 merged)
+  - work-items/078-issue-226-gift-donor-id-attribution (DONE, PR #234 merged)
 - Uncommitted code: no
-- Last updated: 2026-11-18 by claude
+- Last updated: 2026-11-20 by claude
