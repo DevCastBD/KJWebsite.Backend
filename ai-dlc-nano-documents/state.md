@@ -1,11 +1,12 @@
 # AI-DLC Nano State
 - Active work item: none
 - Phase: —
-- Branch: Feature/issue-237-cors-if-match-etag  (off origin/develop at 40d4c25)
-- Base SHA: 40d4c25
-- Next step: wait for PR #238 review; frontend PR #366 depends on it; backlog is over its cap
+- Branch: —
+- Base SHA: b32dc56
+- Next step: wait for PR #240 and frontend PR #367 review; next candidates #350 consent, #352 delete photo, #351 remainder
 - Paused work items:  (newest first)
+  - work-items/080-issue-237-cors-if-match-etag (DONE, PR #238 merged)
   - work-items/079-issue-235-publish-permissions (DONE, PR #236 merged)
   - work-items/078-issue-226-gift-donor-id-attribution (DONE, PR #234 merged)
 - Uncommitted code: no
-- Last updated: 2026-11-20 by claude
+- Last updated: 2026-11-21 by claude

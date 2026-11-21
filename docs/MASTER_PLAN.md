@@ -20,14 +20,14 @@ Four services behind a YARP gateway, runnable with `dotnet run` (Auth and CTA ne
 
 | Service | Port | State |
 |---|---|---|
-| ApiGateway | 7000 | Routes hard-coded in `Program.cs`; `/health`; no CORS, auth or rate limiting |
+| ApiGateway | 7000 | Routes hard-coded in `Program.cs`; `/health`; CORS origin allow-list; per-client rate limits; no gateway authentication |
 | ContentService | 7001 | Projects + news read/admin; **in-memory**; admin auth is the literal `dev-admin-token` |
 | CtaSubmissionService | 7002 | `POST /api/v1/cta/submissions`; PostgreSQL (Npgsql, own schema); allow-list validation, 32 KB cap |
 | AuthIdentityService | 7003 | Register/login/refresh/logout/me; **plain-text passwords**, GUID tokens in a process dictionary |
 
 Done in P0: README with security notice, PROJECT_CONTEXT, central build config, BuildingBlocks (Problem Details, `Result`, paging, language), test projects, legacy snapshots moved to `legacy/`, legacy email template, ADR-001.
 
-**Gaps that block a public deployment** (all still present): G1 plain-text passwords · G2 opaque tokens in memory · G3 `dev-admin-token` · G4 content not persisted · G5 no CORS · G6 no rate limiting · G7 no production database · G25 content response shape ≠ what the frontend expects, and no `/content/bootstrap`. Plus: no email delivery (G11), no outbox (G28), CTA submissions write-only (G15), no backups (G29).
+**Gaps that block a public deployment** (G5, CORS, and G6, rate limiting, are implemented in the gateway; the other gaps listed are the P0 snapshot, and their current state is tracked by BE-005 to BE-019): G1 plain-text passwords · G2 opaque tokens in memory · G3 `dev-admin-token` · G4 content not persisted · G7 no production database · G25 content response shape ≠ what the frontend expects, and no `/content/bootstrap`. Plus: no email delivery (G11), no outbox (G28), CTA submissions write-only (G15), no backups (G29).
 
 > **Do not deploy the current `develop` publicly.** G1–G3 make it trivially compromisable.
 
