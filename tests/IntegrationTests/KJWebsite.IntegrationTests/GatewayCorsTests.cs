@@ -160,7 +160,7 @@ public sealed class GatewayCorsTests : IDisposable
             using var response = await client.SendAsync(Request(HttpMethod.Get, "/api/v1/admin/sponsorship/students/stu_1", origin));
 
             response.Headers.ETag!.Tag.Should().Be("\"3\"");
-            string.Join(",", response.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag");
+            string.Join(",", response.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag,Retry-After");
             response.Headers.GetValues("Access-Control-Allow-Origin").Should().Equal(origin);
         }
     }
@@ -196,10 +196,61 @@ public sealed class GatewayCorsTests : IDisposable
         using var site = await client.SendAsync(Request(HttpMethod.Get, "/health", SiteOrigin));
         using var admin = await client.SendAsync(Request(HttpMethod.Get, "/health", AdminOrigin));
 
-        string.Join(",", site.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag");
-        string.Join(",", admin.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag");
+        string.Join(",", site.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag,Retry-After");
+        string.Join(",", admin.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag,Retry-After");
         site.Headers.Contains("Access-Control-Allow-Credentials").Should().BeFalse();
         admin.Headers.GetValues("Access-Control-Allow-Credentials").Should().Equal("true");
+    }
+
+    private static async Task<HttpResponseMessage> LimitedLogin(HttpClient client, string origin)
+    {
+        using var request = Request(HttpMethod.Post, "/api/v1/auth/login", origin);
+        request.Headers.Add("X-Forwarded-For", "203.0.113.201");
+        request.Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json");
+        return await client.SendAsync(request);
+    }
+
+    private static WebApplicationFactory<ApiGateway.ApiGatewayTestEntryPoint> LimitedGateway() =>
+        new GatewayApiFactory().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("Cors:SiteOrigins:0", SiteOrigin);
+            builder.UseSetting("Cors:AdminOrigins:0", AdminOrigin);
+            builder.UseSetting("RateLimiting:Login:PermitLimit", "1");
+            builder.UseSetting("ForwardedHeaders:TrustAnyProxy", "true");
+        });
+
+    [Theory]
+    [InlineData(SiteOrigin)]
+    [InlineData(AdminOrigin)]
+    public async Task AGatewayRateLimitAnswerLetsAListedOriginReadRetryAfter(string origin)
+    {
+        using var factory = LimitedGateway();
+        using var client = factory.CreateClient();
+
+        using var first = await LimitedLogin(client, origin);
+        using var limited = await LimitedLogin(client, origin);
+
+        first.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
+        limited.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        limited.Headers.GetValues("Retry-After").Single().Should().MatchRegex("^[1-9][0-9]*$");
+        limited.Headers.GetValues("Access-Control-Allow-Origin").Should().Equal(origin);
+        string.Join(",", limited.Headers.GetValues("Access-Control-Expose-Headers")).Should().Be("ETag,Retry-After");
+    }
+
+    [Fact]
+    public async Task AGatewayRateLimitAnswerGivesAnUnlistedOriginNoCorsHeaders()
+    {
+        using var factory = LimitedGateway();
+        using var client = factory.CreateClient();
+        const string unlisted = "https://evil.example.com";
+
+        using var first = await LimitedLogin(client, unlisted);
+        using var limited = await LimitedLogin(client, unlisted);
+
+        first.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
+        limited.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+        limited.Headers.Contains("Access-Control-Allow-Origin").Should().BeFalse();
+        limited.Headers.Contains("Access-Control-Expose-Headers").Should().BeFalse();
     }
 
     [Fact]
