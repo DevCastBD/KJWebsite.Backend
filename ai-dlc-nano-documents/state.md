@@ -1,9 +1,9 @@
 # AI-DLC Nano State
-- Active work item: work-items/081-issue-239-expose-retry-after
-- Phase: WRAP-UP
-- Branch: Feature/issue-239-expose-retry-after  (off origin/develop at b32dc56)
+- Active work item: none
+- Phase: —
+- Branch: —
 - Base SHA: b32dc56
-- Next step: push and open the PR for #239 on the user yes (never merge)
+- Next step: wait for PR #240 and frontend PR #367 review; next candidates #350 consent, #352 delete photo, #351 remainder
 - Paused work items:  (newest first)
   - work-items/080-issue-237-cors-if-match-etag (DONE, PR #238 merged)
   - work-items/079-issue-235-publish-permissions (DONE, PR #236 merged)

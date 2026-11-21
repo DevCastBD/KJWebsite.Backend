@@ -439,3 +439,5 @@
 - 2026-11-21T03:39Z [claude] 081-issue-239-expose-retry-after PHASE PLAN→CONSTRUCT @b32dc56: plan approved by user
 - 2026-11-21T03:58Z [claude] 081-issue-239-expose-retry-after DECISION @b32dc56: Codex stalled on the issue text; subagent wrote it; docs and PR text by Codex (flagged to user)
 - 2026-11-21T03:58Z [claude] 081-issue-239-expose-retry-after PHASE CONSTRUCT→WRAP-UP @b32dc56: tests, mutations, review fixes and live check done
+- 2026-11-21T06:24Z [claude] 081-issue-239-expose-retry-after SIDE-EFFECT @486b855: pushed branch, opened PR #240 against develop (user yes)
+- 2026-11-21T06:24Z [claude] 081-issue-239-expose-retry-after DONE @486b855: PR #240 open, never merged by claude
