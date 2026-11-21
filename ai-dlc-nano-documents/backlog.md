@@ -1,4 +1,5 @@
 # Backlog
+- [2026-11-21] backend/docs: MASTER_PLAN section 1 (service table, Four services, do-not-deploy note) still describes P0 (found: 081)
 - [2026-11-20] backend/gateway: Retry-After and X-Correlation-ID not exposed; media X-Image-* and X-Alt-* request headers not allowed (found: 080)
 - [2026-11-20] backend/docs: MASTER_PLAN lines 23 and 30 still say the gateway has no CORS (found: 080)
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->
