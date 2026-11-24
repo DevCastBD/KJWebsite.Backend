@@ -1,5 +1,8 @@
 # Backlog
 - [2026-11-21] backend/docs: MASTER_PLAN section 1 (service table, Four services, do-not-deploy note) still describes P0 (found: 081)
+- [2026-11-24] content: projects and news POST still overwrite or revive an existing slug; Conflict returns 201 null body (found: 082-issue-242)
+- [2026-11-24] content: same-slug create or rename race ends in a 500 DbUpdateException, not 409 SLUG_TAKEN (found: 082-issue-242)
+- [2026-11-24] content docs: bn tag name vs en name rule and "slugs never change" do not match the code (found: 082-issue-242)
 - [2026-11-20] backend/gateway: Retry-After and X-Correlation-ID not exposed; media X-Image-* and X-Alt-* request headers not allowed (found: 080)
 - [2026-11-20] backend/docs: MASTER_PLAN lines 23 and 30 still say the gateway has no CORS (found: 080)
 <!-- Out-of-scope findings, newest first. Delete a line when it is resolved. -->

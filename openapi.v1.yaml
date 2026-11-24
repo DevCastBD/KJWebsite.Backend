@@ -440,8 +440,8 @@ paths:
     post:
       tags:
         - "Admin \u2014 Content"
-      summary: "Create or replace one of pages"
-      description: "Replaces (or restores) any existing item with the same slug."
+      summary: "Create one of pages"
+      description: "Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash."
       operationId: "CreatePageItem"
       requestBody:
         content:
@@ -473,7 +473,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update one of pages"
-      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT (a stale edit)."
       operationId: "UpdatePageItem"
       parameters:
         -
@@ -599,8 +599,8 @@ paths:
     post:
       tags:
         - "Admin \u2014 Content"
-      summary: "Create or replace one of faqs"
-      description: "Replaces (or restores) any existing item with the same slug."
+      summary: "Create one of faqs"
+      description: "Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash."
       operationId: "CreateFaqItem"
       requestBody:
         content:
@@ -632,7 +632,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update one of faqs"
-      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT (a stale edit)."
       operationId: "UpdateFaqItem"
       parameters:
         -
@@ -758,8 +758,8 @@ paths:
     post:
       tags:
         - "Admin \u2014 Content"
-      summary: "Create or replace one of team-members"
-      description: "Replaces (or restores) any existing item with the same slug."
+      summary: "Create one of team-members"
+      description: "Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash."
       operationId: "CreateTeamMemberItem"
       requestBody:
         content:
@@ -791,7 +791,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update one of team-members"
-      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT (a stale edit)."
       operationId: "UpdateTeamMemberItem"
       parameters:
         -
@@ -917,8 +917,8 @@ paths:
     post:
       tags:
         - "Admin \u2014 Content"
-      summary: "Create or replace one of testimonials"
-      description: "Replaces (or restores) any existing item with the same slug."
+      summary: "Create one of testimonials"
+      description: "Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash."
       operationId: "CreateTestimonialItem"
       requestBody:
         content:
@@ -950,7 +950,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update one of testimonials"
-      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT (a stale edit)."
       operationId: "UpdateTestimonialItem"
       parameters:
         -
@@ -1076,8 +1076,8 @@ paths:
     post:
       tags:
         - "Admin \u2014 Content"
-      summary: "Create or replace one of partners"
-      description: "Replaces (or restores) any existing item with the same slug."
+      summary: "Create one of partners"
+      description: "Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash."
       operationId: "CreatePartnerItem"
       requestBody:
         content:
@@ -1109,7 +1109,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update one of partners"
-      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT (a stale edit)."
       operationId: "UpdatePartnerItem"
       parameters:
         -
@@ -1235,8 +1235,8 @@ paths:
     post:
       tags:
         - "Admin \u2014 Content"
-      summary: "Create or replace one of press"
-      description: "Replaces (or restores) any existing item with the same slug."
+      summary: "Create one of press"
+      description: "Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash."
       operationId: "CreatePressItem"
       requestBody:
         content:
@@ -1268,7 +1268,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Update one of press"
-      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT."
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT (a stale edit)."
       operationId: "UpdatePressItem"
       parameters:
         -
@@ -1393,7 +1393,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Change the slug of any content item"
-      description: "Creates a 301 redirect from the old public path (\u0060/{segment}/{old}\u0060) to the new one in the same transaction."
+      description: "Creates a 301 redirect from the old public path (\u0060/{segment}/{old}\u0060) to the new one in the same transaction. If the new slug is already used, by a live item or by a deleted one (which keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed."
       operationId: "RenameItem"
       parameters:
         -
@@ -1762,7 +1762,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Create a tag"
-      description: "One tag carries a name per language. A name that matches an existing tag after Bengali-aware normalisation is a 409."
+      description: "One tag carries a name per language. A slug that is already used is a 409 SLUG_TAKEN; a name that matches another tag after Bengali-aware normalisation is a 409 TAG_NAME_TAKEN. Nothing is changed in either case."
       operationId: "CreateTag"
       requestBody:
         content:
@@ -1778,6 +1778,7 @@ paths:
       tags:
         - "Admin \u2014 Content"
       summary: "Replace the names of a tag"
+      description: "A name that matches another tag after Bengali-aware normalisation is a 409 TAG_NAME_TAKEN and nothing is changed."
       operationId: "UpdateTag"
       parameters:
         -
@@ -2051,7 +2052,7 @@ paths:
       tags:
         - "Admin \u2014 Back office"
       summary: "Apply one action to up to 100 items"
-      description: "Actions: \u0060workflow:draft|in_review|scheduled|published|archived\u0060 (scheduled needs \u0060publishAt\u0060), \u0060delete\u0060, \u0060restore\u0060, \u0060tag-add\u0060, \u0060tag-remove\u0060 (with \u0060tag\u0060). Always 200: read \u0060results\u0060 for each item\u0027s \u0060ok\u0060 or \u0060failed\u0060 with a code. Each item is checked against the caller\u0027s permissions and audited like a single change, and a failure never stops the rest."
+      description: "Actions: \u0060workflow:draft|in_review|scheduled|published|archived\u0060 (scheduled needs \u0060publishAt\u0060), \u0060delete\u0060, \u0060restore\u0060, \u0060tag-add\u0060, \u0060tag-remove\u0060 (with \u0060tag\u0060). Always 200: read \u0060results\u0060 for each item\u0027s \u0060ok\u0060 or \u0060failed\u0060 with a code (\u0060NOT_FOUND\u0060, \u0060INVALID\u0060, \u0060FORBIDDEN\u0060, \u0060CONFLICT\u0060 for a stale edit, \u0060ERROR\u0060). Each item is checked against the caller\u0027s permissions and audited like a single change, and a failure never stops the rest."
       operationId: "BulkAction"
       requestBody:
         content:

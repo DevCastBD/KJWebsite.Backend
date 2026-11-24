@@ -80,8 +80,8 @@ public static class GenericContentEndpoints
             SetETag(request, result.ETag);
             return Respond(request, result, created: $"{Public}/{kind.Segment}/{payload.Slug}");
         })
-        .WithName($"Create{kind.Pascal}Item").WithSummary($"Create or replace one of {kind.Segment}")
-        .WithDescription("Replaces (or restores) any existing item with the same slug.")
+        .WithName($"Create{kind.Pascal}Item").WithSummary($"Create one of {kind.Segment}")
+        .WithDescription("Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash.")
         .WithTags(adminTag).EvictsContentCache().RequirePermission(Permissions.ContentCreate);
 
         app.MapPut($"{Admin}/{kind.Segment}/{{slug}}", async (HttpRequest request, GenericContentStore store, ClaimsPrincipal user, string slug, ContentUpsertRequest payload) =>
@@ -91,7 +91,7 @@ public static class GenericContentEndpoints
             return Respond(request, result, created: null);
         })
         .WithName($"Update{kind.Pascal}Item").WithSummary($"Update one of {kind.Segment}")
-        .WithDescription("Replaces all translations, tags and related items. Send the `ETag` from the last read as `If-Match`: if the item changed since, the response is 409 CONFLICT.")
+        .WithDescription("Replaces all translations, tags and related items. Send the `ETag` from the last read as `If-Match`: if the item changed since, the response is 409 CONFLICT (a stale edit).")
         .WithTags(adminTag).EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
 
         app.MapDelete($"{Admin}/{kind.Segment}/{{slug}}", async (HttpRequest request, GenericContentStore store, string slug) =>
@@ -139,7 +139,7 @@ public static class GenericContentEndpoints
                 ? NotFound(request, "Unknown content type.")
                 : Respond(request, await store.RenameAsync(type, slug, payload.NewSlug), created: null))
         .WithName("RenameItem").WithSummary("Change the slug of any content item")
-        .WithDescription("Creates a 301 redirect from the old public path (`/{segment}/{old}`) to the new one in the same transaction.")
+        .WithDescription("Creates a 301 redirect from the old public path (`/{segment}/{old}`) to the new one in the same transaction. If the new slug is already used, by a live item or by a deleted one (which keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed.")
         .WithTags("Admin — Content").EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
     }
 
@@ -157,7 +157,7 @@ public static class GenericContentEndpoints
 
             var result = await workflow.TransitionAsync(type, slug, payload.To, payload.PublishAt, user.HasPermission(Permissions.ContentPublish), request.Headers.IfMatch.ToArray()!);
             SetETag(request, result.ETag);
-            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result.Outcome, result.Error);
+            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result);
         })
         .WithName("MoveItemThroughWorkflow").WithSummary("Move an item to draft, in_review, scheduled, published or archived")
         .WithDescription("draft → in_review / scheduled / published; in_review → draft / scheduled / published; scheduled → draft / scheduled (reschedule) / published; published → draft / archived; archived → draft. `scheduled` needs `publishAt` (a future time); the item then goes live by itself. Sending to review and pulling back to draft need content.update; everything into or out of scheduled, published and archived needs content.publish.")
@@ -181,7 +181,7 @@ public static class GenericContentEndpoints
         {
             var result = await store.RestoreRevisionAsync(type, slug, number, request.Headers.IfMatch.ToArray()!);
             SetETag(request, result.ETag);
-            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result.Outcome, result.Error);
+            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result);
         })
         .WithName("RestoreRevision").WithSummary("Restore an earlier revision as a new revision")
         .WithDescription("Restores translations, images, tags and related items. The slug, status and publication date are not rolled back.")
@@ -229,7 +229,7 @@ public static class GenericContentEndpoints
         app.MapPost($"{items}/restore", async (HttpRequest request, GenericContentStore store, string type, string slug) =>
         {
             var result = await store.UndeleteAsync(type, slug);
-            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result.Outcome, result.Error);
+            return result.Outcome == UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result);
         })
         .WithName("RestoreDeletedItem").WithSummary("Bring a soft-deleted item back")
         .WithDescription("The item returns as a draft; restoring never publishes by itself.")
@@ -297,11 +297,12 @@ public static class GenericContentEndpoints
         app.MapPost($"{Admin}/tags", async (HttpRequest request, TaxonomyStore store, TagUpsertRequest payload) =>
             Respond(request, await store.CreateAsync(payload), created: $"{Admin}/tags"))
         .WithName("CreateTag").WithSummary("Create a tag")
-        .WithDescription("One tag carries a name per language. A name that matches an existing tag after Bengali-aware normalisation is a 409.")
+        .WithDescription("One tag carries a name per language. A slug that is already used is a 409 SLUG_TAKEN; a name that matches another tag after Bengali-aware normalisation is a 409 TAG_NAME_TAKEN. Nothing is changed in either case.")
         .WithTags("Admin — Content").EvictsContentCache().RequirePermission(Permissions.ContentCreate);
 
         app.MapPut($"{Admin}/tags/{{slug}}", async (HttpRequest request, TaxonomyStore store, string slug, TagUpsertRequest payload) =>
             Respond(request, await store.ReplaceAsync(slug, payload), created: null))
+        .WithDescription("A name that matches another tag after Bengali-aware normalisation is a 409 TAG_NAME_TAKEN and nothing is changed.")
         .WithName("UpdateTag").WithSummary("Replace the names of a tag").WithTags("Admin — Content").EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
 
         app.MapDelete($"{Admin}/tags/{{slug}}", async (HttpRequest request, TaxonomyStore store, string slug) =>
@@ -367,8 +368,8 @@ public static class GenericContentEndpoints
 
     private static IResult Respond<T>(HttpRequest request, UpsertResult<T> result, string? created) => result.Outcome switch
     {
-        UpsertOutcome.NotFound or UpsertOutcome.Invalid or UpsertOutcome.Conflict or UpsertOutcome.Forbidden => Failure(request, result.Outcome, result.Error),
-        // POST creates or restores (replacing), so both outcomes are a 201, as for projects and news.
+        UpsertOutcome.NotFound or UpsertOutcome.Invalid or UpsertOutcome.Conflict or UpsertOutcome.Forbidden => Failure(request, result),
+        // POST only creates (an existing slug is a 409 SLUG_TAKEN), so a created item is a 201; the old project and news endpoints still replace.
         UpsertOutcome.Created or UpsertOutcome.Updated when created is not null => Results.Created(created, result.Value),
         _ => Results.Ok(result.Value)
     };

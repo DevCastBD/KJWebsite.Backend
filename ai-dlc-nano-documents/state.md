@@ -1,12 +1,12 @@
 # AI-DLC Nano State
-- Active work item: none
-- Phase: —
-- Branch: —
-- Base SHA: b32dc56
-- Next step: wait for PR #240 and frontend PR #367 review; next candidates #350 consent, #352 delete photo, #351 remainder
+- Active work item: work-items/082-issue-242-content-conflict-codes
+- Phase: WRAP-UP
+- Branch: Feature/issue-242-content-conflict-codes  (off origin/develop at 00a82e6)
+- Base SHA: 00a82e6
+- Next step: ask the user about push and PR (text in the scratchpad), then post-merge comment on #242
 - Paused work items:  (newest first)
-  - work-items/080-issue-237-cors-if-match-etag (DONE, PR #238 merged)
+  - work-items/081-issue-239-expose-retry-after (DONE, PR #240 merged)
   - work-items/079-issue-235-publish-permissions (DONE, PR #236 merged)
   - work-items/078-issue-226-gift-donor-id-attribution (DONE, PR #234 merged)
-- Uncommitted code: no
-- Last updated: 2026-11-21 by claude
+- Uncommitted code: yes (commit pending)
+- Last updated: 2026-11-24 by claude

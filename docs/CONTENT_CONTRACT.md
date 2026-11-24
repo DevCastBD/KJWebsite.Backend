@@ -41,7 +41,7 @@ For lazy loading, call `/bootstrap` once for the active language and the other o
 
 Content lives in PostgreSQL (`content` schema; `ContentItem` + `ContentTranslation` with `Project` and `NewsArticle` extension tables, `ContentService/Data`). Notes that affect clients:
 
-- **Slugs** are lowercase letters, digits and hyphens, unique per type and never change. Deleting is soft: the item disappears from reads but its slug stays reserved, and `POST` with that slug restores it.
+- **Slugs** are lowercase letters, digits and hyphens, unique per type and never change. Deleting is soft: the item disappears from reads but its slug stays reserved. On the dedicated projects and news endpoints `POST` with that slug restores it; on the other content types `POST` answers `409 SLUG_TAKEN` and the item is restored from the trash instead (see `CONTENT_MODEL.md`, "Conflict codes").
 - **News** is public only while `status` is `published` (`draft` and `archived` are admin-only); projects are public while `active` (`status=all` on the list also returns drafts/archived). News is ordered newest first, projects in curated order.
 - **Translations** are `en` and `bn`, at most one of each. An update replaces the whole translation set.
 - **Additive fields** (existing fields are unchanged): `tags` on public news; `category` and `year` per project translation, `date` and `tags` per news translation in admin views and inputs. The frontend snapshot keeps these per language (Bengali numerals in `year`).
