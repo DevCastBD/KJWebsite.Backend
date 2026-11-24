@@ -1,12 +1,13 @@
 # AI-DLC Nano State
-- Active work item: work-items/082-issue-242-content-conflict-codes
-- Phase: WRAP-UP
-- Branch: Feature/issue-242-content-conflict-codes  (off origin/develop at 00a82e6)
+- Active work item: none
+- Phase: —
+- Branch: —
 - Base SHA: 00a82e6
-- Next step: ask the user about push and PR (text in the scratchpad), then post-merge comment on #242
+- Next step: wait for PR #243 review; then a post-merge comment on #242 (ask first)
 - Paused work items:  (newest first)
+  - work-items/082-issue-242-content-conflict-codes (DONE, PR #243 open)
   - work-items/081-issue-239-expose-retry-after (DONE, PR #240 merged)
   - work-items/079-issue-235-publish-permissions (DONE, PR #236 merged)
   - work-items/078-issue-226-gift-donor-id-attribution (DONE, PR #234 merged)
-- Uncommitted code: yes (commit pending)
+- Uncommitted code: no
 - Last updated: 2026-11-24 by claude

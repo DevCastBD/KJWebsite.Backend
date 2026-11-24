@@ -1,4 +1,4 @@
-<!-- phase: CONSTRUCT | branch: Feature/issue-242-content-conflict-codes | tasks: 6/6
+<!-- phase: DONE | branch: Feature/issue-242-content-conflict-codes | tasks: 6/6
      base: 00a82e6 | updated: 2026-11-24
      next: commit locally, ask the user before push and PR -->
 # Plan: Content distinct 409 codes (Backend#242)
