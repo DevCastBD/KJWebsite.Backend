@@ -58,7 +58,7 @@ public sealed class TaxonomyStore(ContentDbContext db, TimeProvider time)
 
         if (await db.Tags.AnyAsync(t => t.Slug == request.Slug))
         {
-            return new UpsertResult<TagView>(UpsertOutcome.Conflict, Error: $"Tag '{request.Slug}' already exists.");
+            return new UpsertResult<TagView>(UpsertOutcome.Conflict, Error: $"Tag '{request.Slug}' already exists.", Code: ContentErrorCodes.SlugTaken);
         }
 
         var tag = new TagEntity { Id = $"tag_{Guid.NewGuid():N}", Slug = request.Slug, CreatedAt = time.GetUtcNow() };
@@ -126,7 +126,7 @@ public sealed class TaxonomyStore(ContentDbContext db, TimeProvider time)
             if (clash is not null)
             {
                 var existing = await db.Tags.Where(t => t.Id == clash).Select(t => t.Slug).FirstAsync();
-                return new UpsertResult<TagView>(UpsertOutcome.Conflict, Error: $"The {lang} name already belongs to tag '{existing}'.");
+                return new UpsertResult<TagView>(UpsertOutcome.Conflict, Error: $"The {lang} name already belongs to tag '{existing}'.", Code: ContentErrorCodes.TagNameTaken);
             }
         }
 

@@ -80,6 +80,15 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         }
 
         var item = await Full().FirstOrDefaultAsync(i => i.Type == type && i.Slug == slug);
+        if (item is not null && !mustExist)
+        {
+            // Creating never overwrites or revives: the slug of a deleted item stays reserved until it is restored from the trash.
+            var reserved = item.DeletedAt is null
+                ? $"The slug '{slug}' is already used. Use PUT to edit that item, or pick another slug."
+                : $"The slug '{slug}' belongs to a deleted item and stays reserved. Restore it from the trash, or pick another slug.";
+            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict, Error: reserved, Code: ContentErrorCodes.SlugTaken);
+        }
+
         var created = false;
         if (item is null || (item.DeletedAt is not null && mustExist))
         {
@@ -184,7 +193,7 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
 
         if (await db.Items.AnyAsync(i => i.Type == type && i.Slug == newSlug))
         {
-            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict, Error: $"The slug '{newSlug}' is already used (a deleted item keeps its slug reserved).");
+            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Conflict, Error: $"The slug '{newSlug}' is already used (a deleted item keeps its slug reserved).", Code: ContentErrorCodes.SlugTaken);
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync();

@@ -45,7 +45,7 @@ public static class SettingsEndpoints
         {
             var result = await store.SetAsync(key, payload, request.Headers.IfMatch.ToArray()!);
             SetETag(request, result.ETag);
-            return result.Outcome is UpsertOutcome.Created or UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result.Outcome, result.Error);
+            return result.Outcome is UpsertOutcome.Created or UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result);
         })
         .WithName("SetSetting").WithSummary("Create or replace a setting")
         .WithDescription("Catalog keys: navigation.main, navigation.footer, contact, social, footer.text, homepage.sections, maintenance; plus custom.<name> (one bilingual text, optionally secret). Every visible text needs both bn and en or the save is a 400. Honours `If-Match`.")
@@ -66,7 +66,7 @@ public static class SettingsEndpoints
         app.MapPut($"{Admin}/flags/{{key}}", async (HttpRequest request, SettingsStore store, string key, FlagWrite payload) =>
         {
             var result = await store.SetFlagAsync(key, payload);
-            return result.Outcome is UpsertOutcome.Created or UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result.Outcome, result.Error);
+            return result.Outcome is UpsertOutcome.Created or UpsertOutcome.Updated ? Results.Ok(result.Value) : Failure(request, result);
         })
         .WithName("SetFlag").WithSummary("Create or change a runtime feature flag")
         .WithDescription("Takes effect for the public site as soon as the cache is evicted (immediately). Runtime flags are separate from the frontend's build-time VITE_ENABLE_* capability flags.")

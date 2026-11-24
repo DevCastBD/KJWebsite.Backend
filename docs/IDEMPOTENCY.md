@@ -22,5 +22,5 @@ Public `GET /api/v1/content/*` responses are cached for 60 s in the `public-cont
 
 ## ETag / If-Match (admin content)
 - Admin `GET .../{id}` and every admin write return an `ETag` (the item's `UpdatedAt` at microsecond precision).
-- `PUT .../{id}` with `If-Match` that does not match answers `409 CONFLICT` and saves nothing. `UpdatedAt` is also the EF concurrency token, so two saves racing on the same version cannot both win.
+- `PUT .../{id}` with `If-Match` that does not match answers `409 CONFLICT` and saves nothing. `UpdatedAt` is also the EF concurrency token, so two saves racing on the same version cannot both win. `CONFLICT` always means a stale edit: a taken slug (`409 SLUG_TAKEN`) and a taken tag name (`409 TAG_NAME_TAKEN`) are different cases with their own codes, see `CONTENT_MODEL.md`.
 - `If-Match` is optional: without it the last write wins, so existing clients keep working. `*` always matches.

@@ -9,7 +9,18 @@ Every kind of content is a `content_items` row with a `Type`: `project`, `news`,
 | page, faq, team-member, testimonial, partner, press | `pages`, `faqs`, `team-members`, `testimonials`, `partners`, `press` |
 
 Public: `GET /api/v1/content/{segment}` (`lang`, `tag`, `limit`, `offset`) and `/{segment}/{slug}`; `GET /api/v1/content/items/{type}/{slug}` serves **all eight** in the generic shape. Only published items with a translation in the requested language are listed.
-Admin (`content.*` permissions): `GET/POST /api/v1/admin/content/{segment}`, `GET/PUT/DELETE .../{slug}`. POST creates or restores; PUT replaces translations, tags and related items.
+Admin (`content.*` permissions): `GET/POST /api/v1/admin/content/{segment}`, `GET/PUT/DELETE .../{slug}`. POST only creates: a slug that is already used, by a live item or by a deleted one, is a `409 SLUG_TAKEN` and nothing is overwritten or revived (restore a deleted item from the trash). PUT replaces translations, tags and related items. The dedicated `projects` and `news` endpoints keep their create-or-replace POST.
+
+## Conflict codes (409)
+A `409` from the content admin API carries one of three codes, in `error.code` and in the problem `type`. Clients branch on the code, not on the message:
+
+| Code | Case | Where |
+|---|---|---|
+| `CONFLICT` | A stale edit: `If-Match` no longer matches, or another editor saved first. Reload and apply the edit again. | Every item `PUT`, revision restore, workflow move, settings write, and the project and news endpoints |
+| `SLUG_TAKEN` | The slug is already used. A deleted item keeps its slug reserved. | `POST .../{segment}` (create), `POST .../items/{type}/{slug}/rename`, `POST .../tags` |
+| `TAG_NAME_TAKEN` | A tag name (en or bn, after normalisation) already belongs to another tag. | `POST .../tags`, `PUT .../tags/{slug}` |
+
+Nothing is saved in any of the three cases. A tag created with a taken slug is `SLUG_TAKEN`, even if its names also clash.
 
 ## Tags
 One `Tag` per concept (slug) with a name per language (`tag_names`). `(lang, normalised name)` is unique, so "শিক্ষা" and "শিক্ষা " cannot be two tags and a bn name cannot shadow an en one. Normalisation (`TagNormalizer`): Unicode NFC (so precomposed য়/ড়/ঢ় equal their decomposed forms), zero-width characters removed, Bengali digits to ASCII, case-folded, whitespace collapsed, leading `#` dropped.

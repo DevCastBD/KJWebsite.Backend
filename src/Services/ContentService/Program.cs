@@ -261,7 +261,7 @@ app.MapPost("/api/v1/admin/content/projects", async (HttpRequest request, System
     var result = await store.UpsertProjectAsync(payload.Slug, payload, mustExist: false, canPublish: user.HasPermission(Permissions.ContentPublish));
     SetETag(request, result.ETag);
     return result.Outcome is UpsertOutcome.Invalid or UpsertOutcome.Forbidden
-        ? Failure(request, result.Outcome, result.Error)
+        ? Failure(request, result)
         : Results.Created($"/api/v1/content/projects/{payload.Slug}", result.Value);
 })
 .WithName("CreateProject")
@@ -278,7 +278,7 @@ app.MapPut("/api/v1/admin/content/projects/{id}", async (HttpRequest request, Sy
     return result.Outcome switch
     {
         UpsertOutcome.Conflict => ConflictResponse(request),
-        UpsertOutcome.Forbidden => Failure(request, result.Outcome, result.Error),
+        UpsertOutcome.Forbidden => Failure(request, result),
         UpsertOutcome.NotFound => ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "Project not found."),
         UpsertOutcome.Invalid => ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!),
         _ => Results.Ok(result.Value)
@@ -307,7 +307,7 @@ app.MapPost("/api/v1/admin/content/news", async (HttpRequest request, System.Sec
     var result = await store.UpsertNewsAsync(payload.Slug, payload, mustExist: false, canPublish: user.HasPermission(Permissions.ContentPublish));
     SetETag(request, result.ETag);
     return result.Outcome is UpsertOutcome.Invalid or UpsertOutcome.Forbidden
-        ? Failure(request, result.Outcome, result.Error)
+        ? Failure(request, result)
         : Results.Created($"/api/v1/content/news/{payload.Slug}", result.Value);
 })
 .WithName("CreateNews")
@@ -324,7 +324,7 @@ app.MapPut("/api/v1/admin/content/news/{id}", async (HttpRequest request, System
     return result.Outcome switch
     {
         UpsertOutcome.Conflict => ConflictResponse(request),
-        UpsertOutcome.Forbidden => Failure(request, result.Outcome, result.Error),
+        UpsertOutcome.Forbidden => Failure(request, result),
         UpsertOutcome.NotFound => ApiError.Create(request.HttpContext, StatusCodes.Status404NotFound, "NOT_FOUND", "News item not found."),
         UpsertOutcome.Invalid => ApiError.Create(request.HttpContext, StatusCodes.Status400BadRequest, "VALIDATION_ERROR", result.Error!),
         _ => Results.Ok(result.Value)

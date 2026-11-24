@@ -441,3 +441,12 @@
 - 2026-11-21T03:58Z [claude] 081-issue-239-expose-retry-after PHASE CONSTRUCT→WRAP-UP @b32dc56: tests, mutations, review fixes and live check done
 - 2026-11-21T06:24Z [claude] 081-issue-239-expose-retry-after SIDE-EFFECT @486b855: pushed branch, opened PR #240 against develop (user yes)
 - 2026-11-21T06:24Z [claude] 081-issue-239-expose-retry-after DONE @486b855: PR #240 open, never merged by claude
+- 2026-11-24T11:00Z [claude] 082-issue-242-content-conflict-codes CREATED @00a82e6: distinct 409 codes in Content (Backend#242)
+- 2026-11-24T11:00Z [claude] 082-issue-242-content-conflict-codes SIDE-EFFECT @00a82e6: Backend#242 claimed, board In progress verified, assignee tahmidsparrow already set
+- 2026-11-24T11:00Z [claude] 082-issue-242-content-conflict-codes DECISION @00a82e6: keep CONFLICT for stale edit; POST create refuses existing slug (user)
+- 2026-11-24T11:00Z [claude] 082-issue-242-content-conflict-codes BRANCH @00a82e6: Feature/issue-242-content-conflict-codes off origin/develop (plan approved)
+- 2026-11-24T11:00Z [claude] 082-issue-242-content-conflict-codes PHASE PLAN→CONSTRUCT @00a82e6: plan approved by user
+- 2026-11-24T13:00Z [claude] 082-issue-242-content-conflict-codes DECISION @00a82e6: bulk passthrough removed (dead code); projects/news POST left as is (follow-up)
+- 2026-11-24T13:00Z [claude] 082-issue-242-content-conflict-codes PHASE CONSTRUCT→WRAP-UP @00a82e6: 7/8 mutations caught then fixed, review done, live proof ok (subagent built; Codex stalls)
+- 2026-11-24T14:00Z [claude] 082-issue-242-content-conflict-codes SIDE-EFFECT @a0ebcb0: pushed branch, PR #243 opened; FE#381 comment posted; Backend#244 created (assigned, on board); user approved
+- 2026-11-24T14:00Z [claude] 082-issue-242-content-conflict-codes DONE @a0ebcb0: PR #243 open, never merged by claude

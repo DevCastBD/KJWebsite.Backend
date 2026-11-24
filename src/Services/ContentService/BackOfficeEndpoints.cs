@@ -82,7 +82,7 @@ public static class BackOfficeEndpoints
             return Results.Ok(new BulkResponse(payload.Action, results.Count, results.Count - failed, failed, results));
         })
         .WithName("BulkAction").WithSummary("Apply one action to up to 100 items")
-        .WithDescription("Actions: `workflow:draft|in_review|scheduled|published|archived` (scheduled needs `publishAt`), `delete`, `restore`, `tag-add`, `tag-remove` (with `tag`). Always 200: read `results` for each item's `ok` or `failed` with a code. Each item is checked against the caller's permissions and audited like a single change, and a failure never stops the rest.")
+        .WithDescription("Actions: `workflow:draft|in_review|scheduled|published|archived` (scheduled needs `publishAt`), `delete`, `restore`, `tag-add`, `tag-remove` (with `tag`). Always 200: read `results` for each item's `ok` or `failed` with a code (`NOT_FOUND`, `INVALID`, `FORBIDDEN`, `CONFLICT` for a stale edit, `ERROR`). Each item is checked against the caller's permissions and audited like a single change, and a failure never stops the rest.")
         .WithTags(Tag).EvictsContentCache().RequirePermission(Permissions.ContentView);
     }
 
@@ -94,7 +94,7 @@ public static class BackOfficeEndpoints
         {
             UpsertOutcome.NotFound => Fail("NOT_FOUND", "Item not found."),
             UpsertOutcome.Forbidden => Fail("FORBIDDEN", error ?? "Not allowed."),
-            UpsertOutcome.Conflict => Fail("CONFLICT", error ?? "The item was changed by someone else."),
+            UpsertOutcome.Conflict => Fail(ContentErrorCodes.Conflict, error ?? "The item was changed by someone else."),
             UpsertOutcome.Invalid => Fail("INVALID", error ?? "Invalid."),
             _ => Ok()
         };

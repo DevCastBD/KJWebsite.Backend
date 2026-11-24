@@ -40,7 +40,8 @@ public sealed class ContentModelTests : IDisposable
         (await Send(HttpMethod.Put, $"{Admin}/{segment}/hello", Item("hello", "published", "Hello again"))).StatusCode.Should().Be(HttpStatusCode.OK);
         (await Send(HttpMethod.Delete, $"{Admin}/{segment}/hello", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
         (await _client.GetAsync($"{Public}/{segment}/hello")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await Send(HttpMethod.Post, $"{Admin}/{segment}", Item("hello", "published", "Restored"))).StatusCode.Should().Be(HttpStatusCode.Created);
+        (await Send(HttpMethod.Post, $"{Admin}/items/{type}/hello/restore", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await Send(HttpMethod.Put, $"{Admin}/{segment}/hello", Item("hello", "published", "Restored"))).StatusCode.Should().Be(HttpStatusCode.OK);
         using var restored = await Public_Get($"{Public}/{segment}/hello");
         restored.RootElement.GetProperty("title").GetString().Should().Be("Restored");
     }
@@ -64,6 +65,7 @@ public sealed class ContentModelTests : IDisposable
         using var stale = await Send(HttpMethod.Put, $"{Admin}/pages/about", Item("about", "published", "Two"), ifMatch: tag);
 
         stale.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        await AssertProblem(stale, "CONFLICT");
     }
 
     [Theory]
@@ -83,6 +85,7 @@ public sealed class ContentModelTests : IDisposable
         using var clash = await Send(HttpMethod.Post, $"{Admin}/tags", new { slug = "learning", names = new { en = "Learning", bn = "শিক্ষা " } });
         clash.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await clash.Content.ReadAsStringAsync()).Should().Contain("education");
+        await AssertProblem(clash, "TAG_NAME_TAKEN");
 
         await Send(HttpMethod.Post, $"{Admin}/pages", Item("school", "published", "School", "স্কুল"));
         await Send(HttpMethod.Post, $"{Admin}/pages", Item("plain", "published", "Plain"));
@@ -191,7 +194,9 @@ public sealed class ContentModelTests : IDisposable
         await Send(HttpMethod.Post, $"{Admin}/pages", Item("one", "published", "One"));
         await Send(HttpMethod.Post, $"{Admin}/pages", Item("two", "published", "Two"));
 
-        (await Send(HttpMethod.Post, $"{Admin}/items/page/one/rename", new { newSlug = "two" })).StatusCode.Should().Be(HttpStatusCode.Conflict);
+        using var taken = await Send(HttpMethod.Post, $"{Admin}/items/page/one/rename", new { newSlug = "two" });
+        taken.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        await AssertProblem(taken, "SLUG_TAKEN");
         (await Send(HttpMethod.Post, $"{Admin}/items/page/one/rename", new { newSlug = "Not A Slug" })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await Send(HttpMethod.Post, $"{Admin}/items/page/ghost/rename", new { newSlug = "x" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await Send(HttpMethod.Post, $"{Admin}/items/widget/one/rename", new { newSlug = "x" })).StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -228,12 +233,128 @@ public sealed class ContentModelTests : IDisposable
     }
 
     [Fact]
+    public async Task RenameToADeletedItemsSlugAnswersSlugTaken()
+    {
+        await Send(HttpMethod.Post, $"{Admin}/pages", Item("gone", "published", "Gone"));
+        await Send(HttpMethod.Post, $"{Admin}/pages", Item("alive", "published", "Alive"));
+        (await Send(HttpMethod.Delete, $"{Admin}/pages/gone", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var response = await Send(HttpMethod.Post, $"{Admin}/items/page/alive/rename", new { newSlug = "gone" });
+
+        await AssertProblem(response, "SLUG_TAKEN");
+        (await _client.GetAsync($"{Public}/pages/alive")).StatusCode.Should().Be(HttpStatusCode.OK, "the failed rename changed nothing");
+        (await Resolve("/pages/alive")).Should().BeNull("a refused rename stages no redirect");
+        using var trash = await Send(HttpMethod.Get, $"{Admin}/trash?type=page", null);
+        JsonDocument.Parse(await trash.Content.ReadAsStringAsync()).RootElement.GetProperty("items").EnumerateArray()
+            .Select(i => i.GetProperty("slug").GetString()).Should().Contain("gone", "the deleted item is still in the trash");
+    }
+
+    [Fact]
+    public async Task ATagCreatedWithAnExistingSlugAnswersSlugTaken()
+    {
+        await Send(HttpMethod.Post, $"{Admin}/tags", new { slug = "education", names = new { en = "Education" } });
+
+        using var response = await Send(HttpMethod.Post, $"{Admin}/tags", new { slug = "education", names = new { en = "Schooling" } });
+
+        await AssertProblem(response, "SLUG_TAKEN");
+    }
+
+    [Fact]
+    public async Task ATagNameThatBelongsToAnotherTagAnswersTagNameTakenOnCreateAndUpdate()
+    {
+        await Send(HttpMethod.Post, $"{Admin}/tags", new { slug = "education", names = new { en = "Education", bn = "\u09B6\u09BF\u0995\u09CD\u09B7\u09BE" } });
+        await Send(HttpMethod.Post, $"{Admin}/tags", new { slug = "health", names = new { en = "Health" } });
+
+        using var enClash = await Send(HttpMethod.Post, $"{Admin}/tags", new { slug = "learning", names = new { en = " education " } });
+        using var bnClash = await Send(HttpMethod.Post, $"{Admin}/tags", new { slug = "study", names = new { en = "Study", bn = "\u09B6\u09BF\u0995\u09CD\u09B7\u09BE" } });
+        using var update = await Send(HttpMethod.Put, $"{Admin}/tags/health", new { slug = "health", names = new { en = "Education" } });
+
+        await AssertProblem(enClash, "TAG_NAME_TAKEN");
+        await AssertProblem(bnClash, "TAG_NAME_TAKEN");
+        await AssertProblem(update, "TAG_NAME_TAKEN");
+
+        using var list = await Send(HttpMethod.Get, $"{Admin}/tags", null);
+        var tags = JsonDocument.Parse(await list.Content.ReadAsStringAsync()).RootElement.EnumerateArray().ToList();
+        tags.Select(t => t.GetProperty("slug").GetString()).Should().Equal("education", "health");
+        tags.Single(t => t.GetProperty("slug").GetString() == "health").GetProperty("names").GetProperty("en").GetString().Should().Be("Health", "a refused update changed nothing");
+    }
+
+    [Fact]
+    public async Task CreatingWithALiveSlugIsRefusedAndOverwritesNothing()
+    {
+        (await Send(HttpMethod.Post, $"{Admin}/pages", Item("about", "published", "Original"))).StatusCode.Should().Be(HttpStatusCode.Created);
+        var before = await AdminState("pages", "about");
+
+        using var again = await Send(HttpMethod.Post, $"{Admin}/pages", Item("about", "draft", "Overwritten"));
+
+        await AssertProblem(again, "SLUG_TAKEN");
+        again.Headers.ETag.Should().BeNull("a refused create sets no version");
+        (await AdminState("pages", "about")).Should().Be(before, "version, status and title are unchanged");
+        using var publicView = await Public_Get($"{Public}/pages/about");
+        publicView.RootElement.GetProperty("title").GetString().Should().Be("Original");
+    }
+
+    [Fact]
+    public async Task CreatingWithADeletedSlugIsRefusedAndTheItemStaysInTheTrash()
+    {
+        await Send(HttpMethod.Post, $"{Admin}/pages", Item("old", "published", "Original"));
+        (await Send(HttpMethod.Delete, $"{Admin}/pages/old", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        using var again = await Send(HttpMethod.Post, $"{Admin}/pages", Item("old", "published", "Overwritten"));
+
+        await AssertProblem(again, "SLUG_TAKEN");
+        (await Problem(again)).GetProperty("detail").GetString().Should().Contain("trash", "the message points to restoring it");
+        (await _client.GetAsync($"{Public}/pages/old")).StatusCode.Should().Be(HttpStatusCode.NotFound, "the item was not revived");
+        (await Send(HttpMethod.Get, $"{Admin}/pages/old", null)).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        using var trash = await Send(HttpMethod.Get, $"{Admin}/trash?type=page", null);
+        JsonDocument.Parse(await trash.Content.ReadAsStringAsync()).RootElement.GetProperty("items").EnumerateArray()
+            .Select(i => i.GetProperty("slug").GetString()).Should().Contain("old");
+
+        (await Send(HttpMethod.Post, $"{Admin}/items/page/old/restore", null)).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await AdminState("pages", "old")).Should().EndWith("|Original", "the restored content is the original");
+    }
+
+    [Fact]
+    public async Task CreatingWithANewSlugStillAnswersCreated()
+    {
+        using var created = await Send(HttpMethod.Post, $"{Admin}/pages", Item("fresh", "published", "Fresh"));
+
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        created.Headers.ETag.Should().NotBeNull();
+        created.Headers.Location!.ToString().Should().EndWith("/pages/fresh");
+    }
+
+    [Fact]
     public async Task ValidationRejectsBadItems()
     {
         (await Send(HttpMethod.Post, $"{Admin}/pages", Item("Bad Slug", "published", "X"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await Send(HttpMethod.Post, $"{Admin}/pages", Item("ok", "live", "X"))).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await Send(HttpMethod.Post, $"{Admin}/pages", new { slug = "ok", status = "draft", translations = Array.Empty<object>() })).StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await Send(HttpMethod.Put, $"{Admin}/pages/ghost", Item("ghost", "draft", "X"))).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    /// <summary>The ETag, the status and the English title of an item as the admin API shows them.</summary>
+    private async Task<string> AdminState(string segment, string slug)
+    {
+        using var response = await Send(HttpMethod.Get, $"{Admin}/{segment}/{slug}", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        return $"{response.Headers.ETag!.Tag}|{body.GetProperty("status").GetString()}|{body.GetProperty("translations")[0].GetProperty("title").GetString()}";
+    }
+
+    private static async Task<JsonElement> Problem(HttpResponseMessage response) => JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+
+    /// <summary>A 409 keeps the problem body shape: status, title, detail, the type URN and the legacy `error` with the same code and message.</summary>
+    private static async Task AssertProblem(HttpResponseMessage response, string code)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var body = await Problem(response);
+        body.GetProperty("status").GetInt32().Should().Be(409);
+        body.GetProperty("title").GetString().Should().Be("Conflict");
+        body.GetProperty("detail").GetString().Should().NotBeNullOrWhiteSpace();
+        body.GetProperty("type").GetString().Should().Be($"urn:kjwebsite:error:{code.Replace('_', '-').ToLowerInvariant()}");
+        body.GetProperty("error").GetProperty("code").GetString().Should().Be(code);
+        body.GetProperty("error").GetProperty("message").GetString().Should().Be(body.GetProperty("detail").GetString());
     }
 
     private async Task<string?> Resolve(string path)

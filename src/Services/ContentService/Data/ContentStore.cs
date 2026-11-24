@@ -20,7 +20,21 @@ public enum UpsertOutcome
     Forbidden
 }
 
-public sealed record UpsertResult<T>(UpsertOutcome Outcome, T? Value = default, string? Error = null, string? ETag = null);
+/// <summary>The outcome of a write. `Code` names the problem for a <see cref="UpsertOutcome.Conflict"/>; null means the default, <see cref="ContentErrorCodes.Conflict"/>.</summary>
+public sealed record UpsertResult<T>(UpsertOutcome Outcome, T? Value = default, string? Error = null, string? ETag = null, string? Code = null);
+
+/// <summary>The `code` of a 409 from the content admin API, so clients can tell the cases apart without reading the message.</summary>
+public static class ContentErrorCodes
+{
+    /// <summary>A stale edit: `If-Match` did not match, or another editor saved first.</summary>
+    public const string Conflict = "CONFLICT";
+
+    /// <summary>The slug is already used by an item (live or deleted) or a tag.</summary>
+    public const string SlugTaken = "SLUG_TAKEN";
+
+    /// <summary>A tag name already belongs to another tag.</summary>
+    public const string TagNameTaken = "TAG_NAME_TAKEN";
+}
 
 /// <summary>Admin entity tags. The version of an item is its `UpdatedAt` (microsecond precision, the database's own), also the EF concurrency token.</summary>
 public static class ContentETag

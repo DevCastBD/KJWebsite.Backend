@@ -30,6 +30,7 @@ public sealed class ContentConcurrencyAndCacheTests : IDisposable
         firstEditor.Headers.ETag!.Tag.Should().NotBe(tag, "a save changes the version");
         secondEditor.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await secondEditor.Content.ReadAsStringAsync()).Should().Contain("CONFLICT");
+        await AssertConflictCode(secondEditor);
         (await AdminTitle("edit-me")).Should().Be("Editor one");
     }
 
@@ -64,6 +65,10 @@ public sealed class ContentConcurrencyAndCacheTests : IDisposable
 
         results.Count(r => r.StatusCode == HttpStatusCode.OK).Should().Be(1, "only one editor can save against a given version");
         results.Where(r => r.StatusCode != HttpStatusCode.OK).Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Conflict);
+        foreach (var loser in results.Where(r => r.StatusCode != HttpStatusCode.OK))
+        {
+            await AssertConflictCode(loser);
+        }
     }
 
     [Fact]
@@ -100,6 +105,17 @@ public sealed class ContentConcurrencyAndCacheTests : IDisposable
 
         en.RootElement.GetProperty("title").GetString().Should().Be("Hello");
         bn.RootElement.GetProperty("title").GetString().Should().Be("হ্যালো");
+    }
+
+    /// <summary>A stale edit keeps the code `CONFLICT`, in the problem body and in its legacy `error` extension.</summary>
+    private static async Task AssertConflictCode(HttpResponseMessage response)
+    {
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        body.GetProperty("status").GetInt32().Should().Be(409);
+        body.GetProperty("title").GetString().Should().Be("Conflict");
+        body.GetProperty("detail").GetString().Should().NotBeNullOrWhiteSpace();
+        body.GetProperty("type").GetString().Should().Be("urn:kjwebsite:error:conflict");
+        body.GetProperty("error").GetProperty("code").GetString().Should().Be("CONFLICT");
     }
 
     private async Task Create(string slug, string en, string? bn = null)
