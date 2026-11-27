@@ -1455,6 +1455,42 @@ namespace MembershipService.Migrations
                     b.ToTable("volunteer_signups", "membership");
                 });
 
+            modelBuilder.Entity("MembershipService.DataQuality.MemberDuplicateDecisionEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecidedBy")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("PairKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PairKey")
+                        .IsUnique();
+
+                    b.ToTable("member_duplicate_decisions", "membership");
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.ApplicationNoteEntity", b =>
                 {
                     b.HasOne("MembershipService.Data.Entities.ApplicationEntity", null)

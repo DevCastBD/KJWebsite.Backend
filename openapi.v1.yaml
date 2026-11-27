@@ -6162,6 +6162,54 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/membership/data-quality/completeness:
+    get:
+      tags:
+        - "Data quality"
+      summary: "How complete member and beneficiary records are, by entity and field"
+      description: "Per entity and field: how many records have it filled, how many do not, and up to 10 ids of the ones that do not. Members (not terminated): \u0060nameBn\u0060, \u0060expertise\u0060, \u0060phone\u0060, \u0060address\u0060, \u0060dateOfBirth\u0060, \u0060bloodGroup\u0060, \u0060photo\u0060. Beneficiaries (not archived): \u0060nameBn\u0060, \u0060address\u0060, \u0060district\u0060, \u0060mou\u0060, \u0060enrolment\u0060. Ids only, no personal data. Requires \u0060membership.manage\u0060."
+      operationId: "MemberCompletenessReport"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompletenessView"
+  /api/v1/admin/membership/data-quality/duplicates/members:
+    get:
+      tags:
+        - "Data quality"
+      summary: "Member records that may be the same person"
+      description: "Each pair has \u0060confidence\u0060 (\u0060high\u0060 for a shared phone, \u0060low\u0060 for the same full name only) and \u0060evidence\u0060 kinds, never the values. Pairs already ruled on are left out. Nothing is merged. Requires \u0060membership.manage\u0060."
+      operationId: "ListMemberDuplicateCandidates"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateListView"
+  /api/v1/admin/membership/data-quality/duplicates/members/decisions:
+    post:
+      tags:
+        - "Data quality"
+      summary: "Rule on a possible duplicate: not the same member, or confirmed the same"
+      description: "\u0060{leftId, rightId, decision: not_duplicate|confirmed_duplicate, note}\u0060. The note is required and the decision is audited with who made it. It changes no member record: combining two members is a separate, deliberate step that acts on a confirmed pair. Requires \u0060membership.manage\u0060."
+      operationId: "DecideMemberDuplicate"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateDecisionRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateDecisionView"
   /api/v1/admin/membership/audit:
     get:
       tags:
@@ -8226,6 +8274,124 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/finance/data-quality/anomalies:
+    get:
+      tags:
+        - "Data quality"
+      summary: "Donations flagged for review"
+      description: "Rules: \u0060large_amount\u0060, \u0060rapid_repeat\u0060, \u0060confirmed_without_posting\u0060, \u0060gateway_failure_spike\u0060. A flag never changes the donation; \u0060status\u0060 is \u0060open\u0060 until a person reviews it. Requires \u0060finance.view\u0060."
+      operationId: "ListDonationAnomalies"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "rule"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnomalyListView"
+  /api/v1/admin/finance/data-quality/anomalies/scan:
+    post:
+      tags:
+        - "Data quality"
+      summary: "Look for anomalous donations now"
+      description: "Writes new flags only (each flag once, however often this runs) and returns \u0060{checked, flagged}\u0060. Requires \u0060finance.reconcile\u0060."
+      operationId: "ScanDonationAnomalies"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanResult"
+  "/api/v1/admin/finance/data-quality/anomalies/{id}/review":
+    post:
+      tags:
+        - "Data quality"
+      summary: "Record what was found when a flagged donation was looked at"
+      description: "\u0060{outcome: confirmed|dismissed, note}\u0060. \u0060confirmed\u0060 means the flag was right and follow-up is needed; \u0060dismissed\u0060 means it was fine. Either way the donation is untouched (corrections are reversing entries) and the decision is audited. 409 if already reviewed. Requires \u0060finance.donation.approve\u0060."
+      operationId: "ReviewDonationAnomaly"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnomalyReviewRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnomalyView"
+  /api/v1/admin/finance/data-quality/duplicates/donors:
+    get:
+      tags:
+        - "Data quality"
+      summary: "Donor records that may be the same person"
+      description: "Each pair has its \u0060confidence\u0060 (\u0060high\u0060 for a shared email or phone, \u0060low\u0060 for the same full name only) and \u0060evidence\u0060 kinds, never the values. Pairs already ruled on are left out. Nothing is merged. Requires \u0060finance.view\u0060."
+      operationId: "ListDonorDuplicateCandidates"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateListView"
+  /api/v1/admin/finance/data-quality/duplicates/donors/decisions:
+    post:
+      tags:
+        - "Data quality"
+      summary: "Rule on a possible duplicate: not the same donor, or confirmed the same"
+      description: "\u0060{leftId, rightId, decision: not_duplicate|confirmed_duplicate, note}\u0060. The note is required and the decision is audited with who made it. It changes no donor and no donation: donation records are append-only, so combining two donors is a separate, deliberate step that acts on a confirmed pair. Requires \u0060finance.donor.manage\u0060."
+      operationId: "DecideDonorDuplicate"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateDecisionRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DuplicateDecisionView"
   /api/v1/admin/finance/ledger:
     get:
       tags:
@@ -10652,6 +10818,8 @@ tags:
   -
     name: "Task assignment"
   -
+    name: "Data quality"
+  -
     name: "Donations"
   -
     name: "Finance"
@@ -12158,6 +12326,19 @@ components:
           type:
             - "null"
             - "string"
+    CompletenessView:
+      required:
+        - "asOf"
+        - "entities"
+      type: "object"
+      properties:
+        asOf:
+          type: "string"
+          format: "date-time"
+        entities:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/EntityCompleteness"
     Consents:
       required:
         - "name"
@@ -12198,6 +12379,27 @@ components:
           type:
             - "null"
             - "string"
+    DuplicateCandidate:
+      required:
+        - "pairKey"
+        - "leftId"
+        - "rightId"
+        - "confidence"
+        - "evidence"
+      type: "object"
+      properties:
+        pairKey:
+          type: "string"
+        leftId:
+          type: "string"
+        rightId:
+          type: "string"
+        confidence:
+          type: "string"
+        evidence:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/DuplicateEvidence"
     DuplicateCheckRequest:
       required:
         - "email"
@@ -12212,6 +12414,81 @@ components:
           type:
             - "null"
             - "string"
+    DuplicateDecisionRequest:
+      required:
+        - "leftId"
+        - "rightId"
+        - "decision"
+        - "note"
+      type: "object"
+      properties:
+        leftId:
+          type:
+            - "null"
+            - "string"
+        rightId:
+          type:
+            - "null"
+            - "string"
+        decision:
+          type:
+            - "null"
+            - "string"
+        note:
+          type:
+            - "null"
+            - "string"
+    DuplicateDecisionView:
+      required:
+        - "id"
+        - "pairKey"
+        - "decision"
+        - "note"
+        - "decidedBy"
+        - "decidedAt"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        pairKey:
+          type: "string"
+        decision:
+          type: "string"
+        note:
+          type: "string"
+        decidedBy:
+          type:
+            - "null"
+            - "string"
+        decidedAt:
+          type: "string"
+          format: "date-time"
+    DuplicateEvidence:
+      required:
+        - "kind"
+        - "detail"
+      type: "object"
+      properties:
+        kind:
+          type: "string"
+        detail:
+          type: "string"
+    DuplicateListView:
+      required:
+        - "items"
+        - "total"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/DuplicateCandidate"
+        total:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
     EndTermRequest:
       required:
         - "endsOn"
@@ -12234,6 +12511,64 @@ components:
             - "integer"
             - "string"
           format: "int32"
+    EntityCompleteness:
+      required:
+        - "entity"
+        - "total"
+        - "completePercent"
+        - "completeRecords"
+        - "fields"
+      type: "object"
+      properties:
+        entity:
+          type: "string"
+        total:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        completePercent:
+          type: "string"
+        completeRecords:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        fields:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/FieldCompleteness"
+    FieldCompleteness:
+      required:
+        - "field"
+        - "filled"
+        - "missing"
+        - "filledPercent"
+        - "sampleMissingIds"
+      type: "object"
+      properties:
+        field:
+          type: "string"
+        filled:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        missing:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        filledPercent:
+          type: "string"
+        sampleMissingIds:
+          type: "array"
+          items:
+            type: "string"
     HourRequest:
       required:
         - "projectSlug"
@@ -12733,6 +13068,92 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/AdjustmentLineRequest"
+    AnomalyListView:
+      required:
+        - "items"
+        - "total"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/AnomalyView"
+        total:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+    AnomalyReviewRequest:
+      required:
+        - "outcome"
+        - "note"
+      type: "object"
+      properties:
+        outcome:
+          type:
+            - "null"
+            - "string"
+        note:
+          type:
+            - "null"
+            - "string"
+    AnomalyView:
+      required:
+        - "id"
+        - "rule"
+        - "donationId"
+        - "reference"
+        - "amount"
+        - "currency"
+        - "detail"
+        - "status"
+        - "detectedAt"
+        - "reviewedBy"
+        - "reviewedAt"
+        - "reviewNote"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        rule:
+          type: "string"
+        donationId:
+          type:
+            - "null"
+            - "string"
+        reference:
+          type:
+            - "null"
+            - "string"
+        amount:
+          type:
+            - "null"
+            - "string"
+        currency:
+          type:
+            - "null"
+            - "string"
+        detail:
+          type: "string"
+        status:
+          type: "string"
+        detectedAt:
+          type: "string"
+          format: "date-time"
+        reviewedBy:
+          type:
+            - "null"
+            - "string"
+        reviewedAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        reviewNote:
+          type:
+            - "null"
+            - "string"
     BankAccountChange:
       required:
         - "name"
@@ -13460,6 +13881,24 @@ components:
           type:
             - "null"
             - "string"
+    ScanResult:
+      required:
+        - "checked"
+        - "flagged"
+      type: "object"
+      properties:
+        checked:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        flagged:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
     StatementSendRequest:
       required:
         - "fiscalYear"

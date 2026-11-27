@@ -3,6 +3,7 @@ using FinanceService.Budgets;
 using FinanceService.Campaigns;
 using FinanceService.Controls;
 using FinanceService.Data;
+using FinanceService.DataQuality;
 using FinanceService.Data.Entities;
 using FinanceService.Donations;
 using FinanceService.Donors;
@@ -85,6 +86,8 @@ builder.Services.AddKjAuditing("finance", audit => audit
     .Audit<FiscalYearCloseEntity>()
     .Audit<BudgetEntity>()
     .Audit<BudgetAlertEntity>()
+    .Audit<DonationAnomalyEntity>()
+    .Audit<DonorDuplicateDecisionEntity>()
     .Audit<BankAccountEntity>(nameof(BankAccountEntity.NumberProtected))
     .Audit<BankStatementEntity>()
     .Audit<BankLineEntity>()
@@ -147,6 +150,9 @@ builder.Services.AddScoped<ControlService>();
 builder.Services.Configure<ReportOptions>(builder.Configuration.GetSection(ReportOptions.SectionName));
 builder.Services.AddScoped<ReportBuilder>();
 builder.Services.AddScoped<FinanceAggregateSource>();
+builder.Services.Configure<DataQualityOptions>(builder.Configuration.GetSection(DataQualityOptions.SectionName));
+builder.Services.AddScoped<AnomalyDetector>();
+builder.Services.AddScoped<DonorDuplicates>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<BudgetMath>();
 builder.Services.AddScoped<BudgetAlertService>();
@@ -170,6 +176,7 @@ if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
 {
     builder.Services.AddHostedService<ReconciliationWorker>();
     builder.Services.AddHostedService<BudgetAlertWorker>();
+    builder.Services.AddHostedService<DataQualityWorker>();
 }
 builder.Services.AddKjJwtAuthentication();
 builder.Services.AddKjIdempotency(builder.Configuration);
@@ -229,6 +236,7 @@ app.MapBudgets();
 app.MapBanking();
 app.MapControls();
 app.MapReports();
+app.MapDataQuality();
 app.MapAggregateFeed(FinanceAggregateSource.Source, ctx => ctx.RequestServices.GetRequiredService<FinanceAggregateSource>().CollectAsync(ctx.RequestAborted));
 app.MapLedger();
 app.MapWebhooks();

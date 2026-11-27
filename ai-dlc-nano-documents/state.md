@@ -1,14 +1,14 @@
 # AI-DLC Nano State
 - Active work item: none
 - Phase: —
-- Branch: feat/issue-87-engagement-inbox
+- Branch: feat/issue-93-data-quality
 - Base SHA: stacked
-- Next step: user reviews stacked branches #80..#87 (nothing pushed); then push/PRs on request
+- Next step: user reviews stacked branches #94, #88, #89, #90, #92, #93 (nothing pushed); then push/PRs on request
 - Paused work items:  (newest first)
-  - work-items/097-issue-87-engagement-inbox (DONE, local, stacked)
-  - work-items/096-issue-86-social-og (DONE, local, stacked)
-  - work-items/095-issue-85-testimonials-consent (DONE, local, stacked)
-  - work-items/094-issue-84-press-coverage (DONE, local, stacked)
-  - work-items/093-issue-83-notification-channels (DONE, local, stacked)
+  - work-items/103-issue-93-data-quality (DONE, local, stacked)
+  - work-items/102-issue-92-server-analytics (DONE, local, stacked)
+  - work-items/101-issue-90-reporting-engine (DONE, local, stacked)
+  - work-items/100-issue-89-impact-metrics (DONE, local, stacked)
+  - work-items/099-issue-88-backoffice-dashboards (DONE, local, stacked)
 - Uncommitted code: no
 - Last updated: 2026-11-27 by claude

@@ -33,6 +33,7 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<ProgrammeOutcomeEntity> ProgrammeOutcomes => Set<ProgrammeOutcomeEntity>();
     public DbSet<TaskAssignmentEntity> Tasks => Set<TaskAssignmentEntity>();
     public DbSet<MemberNotificationEntity> MemberNotifications => Set<MemberNotificationEntity>();
+    public DbSet<MembershipService.DataQuality.MemberDuplicateDecisionEntity> MemberDuplicateDecisions => Set<MembershipService.DataQuality.MemberDuplicateDecisionEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -276,6 +277,18 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.Note).HasMaxLength(500);
             entity.Property(x => x.RecordedBy).HasMaxLength(64).IsRequired();
             entity.HasIndex(x => new { x.ProjectSlug, x.MetricKey, x.PeriodStart, x.PeriodEnd }).IsUnique();
+        });
+
+        modelBuilder.Entity<MembershipService.DataQuality.MemberDuplicateDecisionEntity>(entity =>
+        {
+            entity.ToTable("member_duplicate_decisions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.PairKey).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Decision).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.DecidedBy).HasMaxLength(64);
+            entity.HasIndex(x => x.PairKey).IsUnique();
         });
 
         modelBuilder.Entity<TaskAssignmentEntity>(entity =>
