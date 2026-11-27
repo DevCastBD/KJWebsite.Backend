@@ -280,11 +280,13 @@ public sealed class PostgresCtaApiFactory(string connectionString)
 
 public sealed class ContentApiFactory : SqliteWebApplicationFactory<ContentService.ContentServiceTestEntryPoint, ContentDbContext>
 {
+    public const string NewsletterWebhookSecret = "test-newsletter-webhook-secret";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
         builder.ConfigureAppConfiguration((_, configuration) =>
-            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary), ["Newsletter:WebhookSecret"] = NewsletterWebhookSecret }));
     }
 }
 

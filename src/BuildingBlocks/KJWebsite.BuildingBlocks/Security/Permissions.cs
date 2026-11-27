@@ -25,6 +25,8 @@ public static class Permissions
     /// <summary>Run retention purges and carry out erasure requests: deletion of personal data, so held back from day-to-day officers.</summary>
     public const string MembershipPrivacy = "membership.privacy";
     public const string EventsManage = "events.manage";
+    /// <summary>Newsletter subscribers, segments and (later) campaigns: sending to the audience is irreversible, so it is its own key.</summary>
+    public const string CommsManage = "comms.manage";
     /// <summary>Beneficiary institutions, MoUs and their documents, outcome metrics: institution data is sensitive (signatories, where children are present).</summary>
     public const string ProgrammeManage = "programme.manage";
     /// <summary>Log delivered sessions in the field. Sees no MoU or address.</summary>
@@ -119,6 +121,7 @@ public static class PermissionCatalog
         new("membership", Permissions.MemberProfileView, "View member profiles"),
         new("membership", Permissions.MemberProfileEdit, "Edit a member profile (members: their own only)"),
         new("events", Permissions.EventsManage, "Manage events"),
+        new("comms", Permissions.CommsManage, "Manage newsletter subscribers, segments and campaigns"),
         new("programme", Permissions.ProgrammeManage, "Manage beneficiary institutions, MoUs and outcome metrics"),
         new("programme", Permissions.ProgrammeLog, "Log delivered programme sessions"),
         new("finance", Permissions.FinanceView, "View finance records"),
