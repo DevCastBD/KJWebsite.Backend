@@ -41,7 +41,7 @@ public sealed record PressCoverageView(string Slug, string Outlet, string? Outle
     string ReproductionPermission, string? PermissionNote, bool Featured, int FeaturedOrder);
 
 public sealed record PressListItem(string Slug, string Title, string Summary, string Outlet, string? OutletLogoUrl, DateOnly PublishedOn, string ExternalUrl, string? ClippingUrl, string Language, bool Featured, int FeaturedOrder);
-public sealed record PressOrderRequest(string[]? Slugs);
+public sealed record ContentPressOrderRequest(string[]? Slugs);
 
 public sealed class PressStore(ContentDbContext db, TimeProvider time, RevisionStore revisions)
 {

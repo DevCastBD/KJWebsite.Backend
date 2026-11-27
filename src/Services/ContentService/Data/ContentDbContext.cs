@@ -117,6 +117,38 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.RegistrationVersion).IsConcurrencyToken();
         });
 
+        modelBuilder.Entity<ConsentRecordEntity>(entity =>
+        {
+            entity.ToTable("consent_records");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ContentItemId).HasMaxLength(64).IsRequired();
+            entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(x => x.SubjectName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.GuardianName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Basis).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.Scope).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.Evidence).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.RecordedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.WithdrawnBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.WithdrawalNote).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => x.ContentItemId);
+        });
+
+        modelBuilder.Entity<PartnerDetailEntity>(entity =>
+        {
+            entity.ToTable("partner_details");
+            entity.HasKey(x => x.ContentItemId);
+            entity.Property(x => x.ContentItemId).HasMaxLength(64);
+            entity.HasOne<ContentItemEntity>().WithOne().HasForeignKey<PartnerDetailEntity>(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(x => x.Tier).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.WebsiteUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.LogoUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.LogoRights).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.LogoConditions).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.LogoEvidence).HasMaxLength(500).IsRequired();
+        });
+
         modelBuilder.Entity<PressCoverageEntity>(entity =>
         {
             entity.ToTable("press_coverage");

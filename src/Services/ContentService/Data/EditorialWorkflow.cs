@@ -9,7 +9,7 @@ namespace ContentService.Data;
 /// The status machine: draft, in_review, scheduled, published, archived. Anyone who may edit can send an item to review or pull it back to
 /// draft; every move into or out of scheduled, published and archived needs content.publish. Applies to all eight content types.
 /// </summary>
-public sealed class EditorialWorkflow(ContentDbContext db, TimeProvider time, RevisionStore revisions, IConfiguration configuration)
+public sealed class EditorialWorkflow(ContentDbContext db, TimeProvider time, RevisionStore revisions, IConfiguration configuration, ConsentStore consent)
 {
     private static readonly Dictionary<string, string[]> Allowed = new()
     {
@@ -42,6 +42,11 @@ public sealed class EditorialWorkflow(ContentDbContext db, TimeProvider time, Re
         if (!Allowed.TryGetValue(from, out var next) || !next.Contains(to))
         {
             return new UpsertResult<WorkflowView>(UpsertOutcome.Invalid, Error: $"An item cannot move from {from} to {to}.");
+        }
+
+        if (to is StatusRules.Published or StatusRules.Scheduled && await consent.PublishBlockAsync(type, item.Id) is { } consentBlock)
+        {
+            return new UpsertResult<WorkflowView>(UpsertOutcome.Invalid, Error: consentBlock);
         }
 
         var needsPermission = StatusRules.NeedsPublishPermission(from) || StatusRules.NeedsPublishPermission(to);
@@ -188,6 +193,11 @@ public sealed partial class ScheduledPublisher(IServiceScopeFactory scopes, Time
         if (item is null)
         {
             return false;
+        }
+
+        if (await scope.ServiceProvider.GetRequiredService<ConsentStore>().PublishBlockAsync(item.Type, item.Id) is not null)
+        {
+            return false; // consent was withdrawn or expired since scheduling: it stays scheduled, not live
         }
 
         var now = time.GetUtcNow();
