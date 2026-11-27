@@ -16,6 +16,10 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<EventNotificationEntity> EventNotifications => Set<EventNotificationEntity>();
     public DbSet<EventCertificateEntity> EventCertificates => Set<EventCertificateEntity>();
     public DbSet<EventFeedTokenEntity> EventFeedTokens => Set<EventFeedTokenEntity>();
+    public DbSet<NewsletterSubscriberEntity> NewsletterSubscribers => Set<NewsletterSubscriberEntity>();
+    public DbSet<NewsletterEventEntity> NewsletterEvents => Set<NewsletterEventEntity>();
+    public DbSet<NewsletterMessageEntity> NewsletterMessages => Set<NewsletterMessageEntity>();
+    public DbSet<NewsletterSegmentEntity> NewsletterSegments => Set<NewsletterSegmentEntity>();
     public DbSet<EventFeedbackFormEntity> EventFeedbackForms => Set<EventFeedbackFormEntity>();
     public DbSet<EventFeedbackResponseEntity> EventFeedbackResponses => Set<EventFeedbackResponseEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
@@ -150,6 +154,55 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.RecipientProtected).IsRequired();
             entity.Property(x => x.PayloadJson).IsRequired();
             entity.HasIndex(x => x.SentAt);
+        });
+
+        modelBuilder.Entity<NewsletterSubscriberEntity>(entity =>
+        {
+            entity.ToTable("newsletter_subscribers");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Email).HasMaxLength(254).IsRequired();
+            entity.Property(x => x.Lang).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.TopicsJson).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Source).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.SuppressionReason).HasMaxLength(40);
+            entity.HasIndex(x => x.Email).IsUnique();
+            entity.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<NewsletterEventEntity>(entity =>
+        {
+            entity.ToTable("newsletter_events");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.SubscriberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Type).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Detail).HasMaxLength(500);
+            entity.HasIndex(x => x.SubscriberId);
+        });
+
+        modelBuilder.Entity<NewsletterMessageEntity>(entity =>
+        {
+            entity.ToTable("newsletter_messages");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.SubscriberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ToEmail).HasMaxLength(254).IsRequired();
+            entity.Property(x => x.Kind).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.Lang).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Subject).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Body).IsRequired();
+            entity.Property(x => x.ListUnsubscribeUrl).HasMaxLength(500);
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.HasIndex(x => x.Status);
+        });
+
+        modelBuilder.Entity<NewsletterSegmentEntity>(entity =>
+        {
+            entity.ToTable("newsletter_segments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.FilterJson).IsRequired();
         });
 
         modelBuilder.Entity<EventFeedTokenEntity>(entity =>

@@ -966,6 +966,222 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/newsletter/subscribe:
+    post:
+      tags:
+        - "Newsletter"
+      summary: "Ask to subscribe (double opt-in)"
+      description: "Always answers 202 for a valid address, whether or not it is already known, so the endpoint cannot be used to find out who is subscribed. Nothing is sent to the address except a confirmation email until the owner confirms it. \u0060website\u0060 is a honeypot: leave it empty. \u0060lang\u0060 is bn (default) or en."
+      operationId: "SubscribeNewsletter"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscribeRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/newsletter/confirm:
+    post:
+      tags:
+        - "Newsletter"
+      summary: "Confirm a subscription with the token from the email"
+      description: "POST, not GET, so a mail scanner that opens links cannot confirm on the owner\u0027s behalf. Idempotent."
+      operationId: "ConfirmNewsletter"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/newsletter/unsubscribe/{token}":
+    post:
+      tags:
+        - "Newsletter"
+      summary: "One-click unsubscribe (RFC 8058)"
+      description: "The URL sent in \u0060List-Unsubscribe\u0060, called with \u0060List-Unsubscribe=One-Click\u0060 by mail clients. No login, no confirmation step, no body is read. Idempotent."
+      operationId: "UnsubscribeNewsletter"
+      parameters:
+        -
+          name: "token"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/newsletter/preferences/{token}":
+    get:
+      tags:
+        - "Newsletter"
+      summary: "Preference centre: current language and topics (address masked)"
+      operationId: "GetNewsletterPreferences"
+      parameters:
+        -
+          name: "token"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Newsletter"
+      summary: "Preference centre: change language and topics"
+      operationId: "UpdateNewsletterPreferences"
+      parameters:
+        -
+          name: "token"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreferencesRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/newsletter/provider-events:
+    post:
+      tags:
+        - "Newsletter"
+      summary: "Bounce and complaint events from the email provider"
+      description: "Authenticated by the \u0060X-Webhook-Secret\u0060 header. \u0060bounce\u0060 (permanent) and \u0060complaint\u0060 suppress the address at once; \u0060soft-bounce\u0060 suppresses on the third. 404 while \u0060Newsletter:WebhookSecret\u0060 is not configured."
+      operationId: "NewsletterProviderEvents"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: "array"
+              items:
+                $ref: "#/components/schemas/ProviderEvent"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/newsletter/subscribers:
+    get:
+      tags:
+        - "Newsletter \u2014 back office"
+      summary: "Subscribers, filterable by status and address"
+      operationId: "ListNewsletterSubscribers"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "q"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/newsletter/segments:
+    get:
+      tags:
+        - "Newsletter \u2014 back office"
+      summary: "Saved segments"
+      operationId: "ListNewsletterSegments"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Newsletter \u2014 back office"
+      summary: "Save a segment (languages, sources, topics, event attendees)"
+      operationId: "CreateNewsletterSegment"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SegmentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/newsletter/segments/{id}/subscribers":
+    get:
+      tags:
+        - "Newsletter \u2014 back office"
+      summary: "Who a segment currently contains"
+      description: "Confirmed subscribers only, in a fixed order: the same data always resolves to the same list, and an unconfirmed, unsubscribed or suppressed address never appears."
+      operationId: "ResolveNewsletterSegment"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/newsletter/segments/{id}":
+    delete:
+      tags:
+        - "Newsletter \u2014 back office"
+      summary: "Delete a saved segment"
+      operationId: "DeleteNewsletterSegment"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/content/pages:
     get:
       tags:
@@ -8450,6 +8666,10 @@ tags:
   -
     name: "Content \u2014 Event calendar"
   -
+    name: "Newsletter"
+  -
+    name: "Newsletter \u2014 back office"
+  -
     name: "Content \u2014 Page"
   -
     name: "Content \u2014 Faq"
@@ -8949,6 +9169,22 @@ components:
           type:
             - "null"
             - "string"
+    PreferencesRequest:
+      required:
+        - "lang"
+        - "topics"
+      type: "object"
+      properties:
+        lang:
+          type:
+            - "null"
+            - "string"
+        topics:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
     PreviewTokenRequest:
       required:
         - "ttlMinutes"
@@ -9029,6 +9265,20 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/ProjectTranslationInput"
+    ProviderEvent:
+      required:
+        - "email"
+        - "type"
+      type: "object"
+      properties:
+        email:
+          type:
+            - "null"
+            - "string"
+        type:
+          type:
+            - "null"
+            - "string"
     ReasonRequest:
       required:
         - "reason"
@@ -9103,6 +9353,52 @@ components:
       properties:
         newSlug:
           type: "string"
+    SegmentFilter:
+      required:
+        - "langs"
+        - "sources"
+        - "topics"
+        - "attendedEvent"
+      type: "object"
+      properties:
+        langs:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        sources:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        topics:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        attendedEvent:
+          type:
+            - "null"
+            - "boolean"
+    SegmentRequest:
+      required:
+        - "name"
+        - "filter"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        filter:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/SegmentFilter"
     SetRelatedRequest:
       required:
         - "related"
@@ -9133,6 +9429,37 @@ components:
           type:
             - "null"
             - "boolean"
+    SubscribeRequest:
+      required:
+        - "email"
+        - "lang"
+        - "topics"
+        - "source"
+        - "website"
+      type: "object"
+      properties:
+        email:
+          type:
+            - "null"
+            - "string"
+        lang:
+          type:
+            - "null"
+            - "string"
+        topics:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        source:
+          type:
+            - "null"
+            - "string"
+        website:
+          type:
+            - "null"
+            - "string"
     TagUpsertRequest:
       required:
         - "slug"
@@ -9145,6 +9472,15 @@ components:
           type: "object"
           additionalProperties:
             type: "string"
+    TokenRequest:
+      required:
+        - "token"
+      type: "object"
+      properties:
+        token:
+          type:
+            - "null"
+            - "string"
     WorkflowRequest:
       required:
         - "to"
