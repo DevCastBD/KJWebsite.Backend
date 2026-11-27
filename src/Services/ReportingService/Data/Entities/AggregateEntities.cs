@@ -42,3 +42,29 @@ public sealed class AggregateRunEntity
 
     public int Points { get; set; }
 }
+
+/// <summary>
+/// One dated version of an impact metric definition. Append-only: a change is a new version that applies from its effective month onward, so earlier months keep the definition
+/// they were published under. `Methodology` is the plain-language definition shown beside the figure.
+/// </summary>
+public sealed class MetricDefinitionEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public int Version { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Methodology { get; set; } = string.Empty;
+    public string Unit { get; set; } = string.Empty;
+
+    /// <summary>The warehouse metric this definition counts.</summary>
+    public string Metric { get; set; } = string.Empty;
+
+    /// <summary>`monthly` (a month figure adds up) or `snapshot` (a state at a point in time, never summed over months).</summary>
+    public string Kind { get; set; } = "monthly";
+
+    public decimal Scale { get; set; } = 1m;
+    public DateOnly EffectiveFrom { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}

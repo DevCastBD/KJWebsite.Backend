@@ -8867,6 +8867,122 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardView"
+  /api/v1/admin/reporting/metrics:
+    get:
+      tags:
+        - "Metrics"
+      summary: "Impact metric definitions in force now"
+      description: "One entry per metric: its current version, with the plain-language \u0060methodology\u0060 to show beside the figure. Requires \u0060reporting.view\u0060."
+      operationId: "ListImpactMetrics"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricListView"
+    post:
+      tags:
+        - "Metrics"
+      summary: "Define a new impact metric (version 1)"
+      description: "\u0060{key, name, description?, methodology, unit, metric, kind, scale, effectiveFrom?}\u0060. \u0060metric\u0060 is a warehouse metric from the catalogue, \u0060kind\u0060 is \u0060monthly\u0060 or \u0060snapshot\u0060, \u0060scale\u0060 multiplies the stored figure (for example hours from minutes). Requires \u0060reporting.manage\u0060."
+      operationId: "CreateImpactMetric"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetricCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricVersionView"
+  "/api/v1/admin/reporting/metrics/{key}":
+    get:
+      tags:
+        - "Metrics"
+      summary: "Every dated version of a metric definition, oldest first"
+      operationId: "GetImpactMetricVersions"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricListView"
+  "/api/v1/admin/reporting/metrics/{key}/series":
+    get:
+      tags:
+        - "Metrics"
+      summary: "A metric monthly series, organisation-wide or for one project"
+      description: "Without \u0060project\u0060 the figure is the organisation-wide total; with it, that project. Each point carries the \u0060definitionVersion\u0060 that produced it (a month keeps the definition in force for it), and the response carries the definition, every version, a \u0060trace\u0060 to the underlying warehouse metric, \u0060asOf\u0060 and \u0060stale\u0060. \u0060total\u0060 is the sum for monthly metrics and absent for snapshots. Requires \u0060reporting.view\u0060."
+      operationId: "GetImpactMetricSeries"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "project"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricSeriesView"
+  "/api/v1/admin/reporting/metrics/{key}/versions":
+    post:
+      tags:
+        - "Metrics"
+      summary: "Change a metric definition with a new dated version"
+      description: "Fields left out carry over from the current version, except \u0060methodology\u0060, which must be restated. \u0060effectiveFrom\u0060 defaults to the current month and cannot be earlier: earlier months keep the definition they were published under (422 HISTORY_LOCKED). Requires \u0060reporting.manage\u0060."
+      operationId: "AddImpactMetricVersion"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MetricVersionRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricVersionView"
   /api/v1/admin/reporting/audit:
     get:
       tags:
@@ -10247,6 +10363,8 @@ tags:
     name: "Aggregates"
   -
     name: "Dashboards"
+  -
+    name: "Metrics"
   -
     name: "Admin: Sponsorship"
   -
@@ -13273,6 +13391,19 @@ components:
           type: "string"
         drilldown:
           type: "string"
+    DashboardTraceView:
+      required:
+        - "metric"
+        - "source"
+        - "drilldown"
+      type: "object"
+      properties:
+        metric:
+          type: "string"
+        source:
+          type: "string"
+        drilldown:
+          type: "string"
     DashboardView:
       required:
         - "asOf"
@@ -13298,6 +13429,224 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/DashboardSection"
+    MetricCreateRequest:
+      required:
+        - "key"
+        - "name"
+        - "description"
+        - "methodology"
+        - "unit"
+        - "metric"
+        - "kind"
+        - "scale"
+        - "effectiveFrom"
+      type: "object"
+      properties:
+        key:
+          type:
+            - "null"
+            - "string"
+        name:
+          type:
+            - "null"
+            - "string"
+        description:
+          type:
+            - "null"
+            - "string"
+        methodology:
+          type:
+            - "null"
+            - "string"
+        unit:
+          type:
+            - "null"
+            - "string"
+        metric:
+          type:
+            - "null"
+            - "string"
+        kind:
+          type:
+            - "null"
+            - "string"
+        scale:
+          pattern: "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$"
+          type:
+            - "null"
+            - "number"
+            - "string"
+          format: "double"
+        effectiveFrom:
+          type:
+            - "null"
+            - "string"
+    MetricListView:
+      required:
+        - "items"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/MetricVersionView"
+    MetricPointView:
+      required:
+        - "period"
+        - "value"
+        - "definitionVersion"
+      type: "object"
+      properties:
+        period:
+          type: "string"
+        value:
+          type: "string"
+        definitionVersion:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+    MetricSeriesView:
+      required:
+        - "definition"
+        - "versions"
+        - "project"
+        - "points"
+        - "total"
+        - "trace"
+        - "asOf"
+        - "stale"
+      type: "object"
+      properties:
+        definition:
+          $ref: "#/components/schemas/MetricVersionView"
+        versions:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/MetricVersionView"
+        project:
+          type:
+            - "null"
+            - "string"
+        points:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/MetricPointView"
+        total:
+          type:
+            - "null"
+            - "string"
+        trace:
+          $ref: "#/components/schemas/DashboardTraceView"
+        asOf:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        stale:
+          type: "boolean"
+    MetricVersionRequest:
+      required:
+        - "name"
+        - "description"
+        - "methodology"
+        - "unit"
+        - "metric"
+        - "kind"
+        - "scale"
+        - "effectiveFrom"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        description:
+          type:
+            - "null"
+            - "string"
+        methodology:
+          type:
+            - "null"
+            - "string"
+        unit:
+          type:
+            - "null"
+            - "string"
+        metric:
+          type:
+            - "null"
+            - "string"
+        kind:
+          type:
+            - "null"
+            - "string"
+        scale:
+          pattern: "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$"
+          type:
+            - "null"
+            - "number"
+            - "string"
+          format: "double"
+        effectiveFrom:
+          type:
+            - "null"
+            - "string"
+    MetricVersionView:
+      required:
+        - "key"
+        - "version"
+        - "name"
+        - "description"
+        - "methodology"
+        - "unit"
+        - "metric"
+        - "source"
+        - "kind"
+        - "scale"
+        - "effectiveFrom"
+        - "createdAt"
+        - "createdBy"
+      type: "object"
+      properties:
+        key:
+          type: "string"
+        version:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        name:
+          type: "string"
+        description:
+          type: "string"
+        methodology:
+          type: "string"
+        unit:
+          type: "string"
+        metric:
+          type: "string"
+        source:
+          type: "string"
+        kind:
+          type: "string"
+        scale:
+          pattern: "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$"
+          type:
+            - "number"
+            - "string"
+          format: "double"
+        effectiveFrom:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        createdBy:
+          type:
+            - "null"
+            - "string"
     SourceFreshness:
       required:
         - "source"
