@@ -11,6 +11,7 @@ public static class ContentTypes
     public const string Partner = "partner";
     public const string Press = "press";
     public const string Event = "event";
+    public const string SuccessStory = "success-story";
 }
 
 /// <summary>

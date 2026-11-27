@@ -8,7 +8,7 @@ namespace ContentService.Data;
 /// Reads and writes every content type in the one generic shape: translations, tags, related items and slug changes.
 /// Deleting is soft and a deleted slug stays reserved, as for projects and news.
 /// </summary>
-public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, TaxonomyStore taxonomy, RedirectStore redirects, RevisionStore revisions, TranslationPolicy policy)
+public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, TaxonomyStore taxonomy, RedirectStore redirects, RevisionStore revisions, TranslationPolicy policy, ConsentStore consent)
 {
     private static readonly string[] Languages = ["en", "bn"];
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -110,6 +110,11 @@ public sealed class GenericContentStore(ContentDbContext db, TimeProvider time, 
         if (StatusRules.GuardUpsert(created ? null : item.Status, request.Status, canPublish) is { } guard)
         {
             return new UpsertResult<ContentItemAdminView>(guard.Outcome, Error: guard.Error);
+        }
+
+        if (request.Status == StatusRules.Published && (created || item.Status != StatusRules.Published) && await consent.PublishBlockAsync(type, created ? null : item.Id) is { } consentBlock)
+        {
+            return new UpsertResult<ContentItemAdminView>(UpsertOutcome.Invalid, Error: consentBlock);
         }
 
         var related = await ResolveRelatedAsync(item, request.Related ?? []);

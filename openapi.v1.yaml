@@ -499,7 +499,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PressOrderRequest"
+              $ref: "#/components/schemas/ContentPressOrderRequest"
         required: true
       responses:
         "200":
@@ -540,6 +540,188 @@ paths:
             type: "boolean"
         -
           name: "coverageLanguage"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/items/{type}/{slug}/consents":
+    get:
+      tags:
+        - "Admin \u2014 Consent"
+      summary: "Consent records of an item, oldest first (contains personal data)"
+      operationId: "ListItemConsents"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Consent"
+      summary: "Record who agreed, to what, when and on what basis"
+      description: "Required before a testimonial, success story or partner can be published. \u0060basis\u0060: written, recorded-verbal, guardian-written, agreement. \u0060evidence\u0060 says where the signed form or recording is kept, never the file itself. A minor needs basis guardian-written and \u0060guardianName\u0060."
+      operationId: "RecordItemConsent"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentConsentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/consents/{id}/withdraw":
+    post:
+      tags:
+        - "Admin \u2014 Consent"
+      summary: "Withdraw consent: unpublishes the item at once if it was the last active consent"
+      description: "Needs only content.update, deliberately: honouring a withdrawal must not wait for someone with publish rights. The item returns to draft, the public cache is evicted, and its path appears in the withdrawal feed so prerendered copies can be purged."
+      operationId: "WithdrawConsent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentWithdrawRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/consent-withdrawals:
+    get:
+      tags:
+        - "Content \u2014 Consent"
+      summary: "Public paths withdrawn since a time (default 7 days), for purging prerendered pages and CDN copies"
+      description: "Only paths and times; no names or reasons. Poll it from the frontend build or a purge job."
+      operationId: "ListConsentWithdrawals"
+      parameters:
+        -
+          name: "since"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/partners/{slug}/details":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Partner tier, website, logo and logo rights"
+      operationId: "GetAdminPartnerDetails"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Set a partner\u0027s tier, website, logo and how we may use the logo"
+      description: "\u0060logoRights\u0060: unknown, granted, restricted (needs \u0060logoConditions\u0060) or withdrawn. Granted and restricted need \u0060logoEvidence\u0060. A logo URL is stored only while rights are granted or restricted, and the public API shows it only then."
+      operationId: "PutPartnerDetails"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentPartnerDetailRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/partners/{slug}/details":
+    get:
+      tags:
+        - "Content \u2014 Partners"
+      summary: "Tier, website and (when rights allow) logo of a published partner"
+      operationId: "GetPartnerDetails"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/partner-registry:
+    get:
+      tags:
+        - "Content \u2014 Partners"
+      summary: "Published partners with tier, website and logo where rights allow"
+      operationId: "ListPartnerRegistry"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tier"
           in: "query"
           schema:
             type: "string"
@@ -2891,6 +3073,165 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/content/success-stories:
+    get:
+      tags:
+        - "Content \u2014 SuccessStory"
+      summary: "List success-stories (published)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060tag\u0060 filters by tag slug or by a tag name in any language. Items without a translation in \u0060lang\u0060 are left out."
+      operationId: "ListSuccessStoryItems"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tag"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/success-stories/{slug}":
+    get:
+      tags:
+        - "Content \u2014 SuccessStory"
+      summary: "Get one of success-stories by slug"
+      description: "Includes the tags (named in the requested language) and the related items of any type."
+      operationId: "GetSuccessStoryItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/success-stories:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List success-stories with all translations"
+      operationId: "ListAdminSuccessStoryItems"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create one of success-stories"
+      description: "Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash."
+      operationId: "CreateSuccessStoryItem"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/success-stories/{slug}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get one of success-stories with all translations"
+      description: "The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
+      operationId: "GetAdminSuccessStoryItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Update one of success-stories"
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT (a stale edit)."
+      operationId: "UpdateSuccessStoryItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete one of success-stories"
+      description: "Soft-deletes the item (the slug stays reserved)."
+      operationId: "DeleteSuccessStoryItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/content/items/{type}/{slug}":
     get:
       tags:
@@ -3164,7 +3505,7 @@ paths:
       tags:
         - "Admin \u2014 Translations"
       summary: "Translation completeness of one item, per language"
-      description: "A language is complete when every required field is filled. Required fields per type: project: title, summary, body; news: title, summary, body; page: title, body; faq: title, body; team-member: title, summary; testimonial: title, body; partner: title; press: title, summary; event: title, summary, body."
+      description: "A language is complete when every required field is filled. Required fields per type: project: title, summary, body; news: title, summary, body; page: title, body; faq: title, body; team-member: title, summary; testimonial: title, body; partner: title; press: title, summary; event: title, summary, body; success-story: title, summary, body."
       operationId: "GetItemCompleteness"
       parameters:
         -
@@ -9254,6 +9595,12 @@ tags:
   -
     name: "Content \u2014 Press"
   -
+    name: "Admin \u2014 Consent"
+  -
+    name: "Content \u2014 Consent"
+  -
+    name: "Content \u2014 Partners"
+  -
     name: "Content \u2014 Event registration"
   -
     name: "Admin \u2014 Event registration"
@@ -9283,6 +9630,8 @@ tags:
     name: "Content \u2014 Testimonial"
   -
     name: "Content \u2014 Partner"
+  -
+    name: "Content \u2014 SuccessStory"
   -
     name: "Admin \u2014 Editorial workflow"
   -
@@ -9431,6 +9780,91 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/CheckInItem"
+    ContentConsentRequest:
+      required:
+        - "subjectName"
+        - "isMinor"
+        - "guardianName"
+        - "basis"
+        - "scope"
+        - "evidence"
+        - "expiresAt"
+      type: "object"
+      properties:
+        subjectName:
+          type:
+            - "null"
+            - "string"
+        isMinor:
+          type:
+            - "null"
+            - "boolean"
+        guardianName:
+          type:
+            - "null"
+            - "string"
+        basis:
+          type:
+            - "null"
+            - "string"
+        scope:
+          type:
+            - "null"
+            - "string"
+        evidence:
+          type:
+            - "null"
+            - "string"
+        expiresAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+    ContentPartnerDetailRequest:
+      required:
+        - "tier"
+        - "websiteUrl"
+        - "logoUrl"
+        - "logoRights"
+        - "logoConditions"
+        - "logoEvidence"
+      type: "object"
+      properties:
+        tier:
+          type:
+            - "null"
+            - "string"
+        websiteUrl:
+          type:
+            - "null"
+            - "string"
+        logoUrl:
+          type:
+            - "null"
+            - "string"
+        logoRights:
+          type:
+            - "null"
+            - "string"
+        logoConditions:
+          type:
+            - "null"
+            - "string"
+        logoEvidence:
+          type:
+            - "null"
+            - "string"
+    ContentPressOrderRequest:
+      required:
+        - "slugs"
+      type: "object"
+      properties:
+        slugs:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
     ContentTranslationInput:
       required:
         - "lang"
@@ -9504,6 +9938,15 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/RelatedRef"
+    ContentWithdrawRequest:
+      required:
+        - "note"
+      type: "object"
+      properties:
+        note:
+          type:
+            - "null"
+            - "string"
     EventScheduleRequest:
       required:
         - "start"
@@ -10161,17 +10604,6 @@ components:
             - "integer"
             - "string"
           format: "int32"
-    PressOrderRequest:
-      required:
-        - "slugs"
-      type: "object"
-      properties:
-        slugs:
-          type:
-            - "null"
-            - "array"
-          items:
-            type: "string"
     PreviewTokenRequest:
       required:
         - "ttlMinutes"

@@ -20,7 +20,8 @@ public static class ContentKinds
         new(ContentTypes.Testimonial, "testimonials", "Testimonial"),
         new(ContentTypes.Partner, "partners", "Partner"),
         new(ContentTypes.Press, "press", "Press"),
-        new(ContentTypes.Event, "events", "Event")
+        new(ContentTypes.Event, "events", "Event"),
+        new(ContentTypes.SuccessStory, "success-stories", "SuccessStory")
     ];
 
     /// <summary>The types served by the generic API; projects and news keep their dedicated endpoints.</summary>

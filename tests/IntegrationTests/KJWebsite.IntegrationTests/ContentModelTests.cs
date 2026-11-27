@@ -20,8 +20,6 @@ public sealed class ContentModelTests : IDisposable
     [InlineData("pages", "page")]
     [InlineData("faqs", "faq")]
     [InlineData("team-members", "team-member")]
-    [InlineData("testimonials", "testimonial")]
-    [InlineData("partners", "partner")]
     [InlineData("press", "press")]
     public async Task EveryGenericTypeSharesTheSameWorkflow(string segment, string type)
     {

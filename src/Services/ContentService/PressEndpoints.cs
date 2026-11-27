@@ -47,7 +47,7 @@ public static class PressEndpoints
         .WithDescription("`externalUrl` (https) is always safe. A hosted `clippingUrl` is only accepted when `reproductionPermission` is `granted` (with a `permissionNote` saying who agreed); the permission values are unknown, linked-only, pending and granted. The public API never shows a clipping unless it is granted.")
         .WithTags("Admin — Content").EvictsContentCache().RequirePermission(Permissions.ContentUpdate);
 
-        app.MapPut($"{Admin}/press-featured-order", async (HttpRequest request, PressStore store, PressOrderRequest payload) =>
+        app.MapPut($"{Admin}/press-featured-order", async (HttpRequest request, PressStore store, ContentPressOrderRequest payload) =>
         {
             var (ok, error) = await store.SetFeaturedOrderAsync(payload.Slugs ?? []);
             return ok ? Results.NoContent() : Invalid(request, error!);

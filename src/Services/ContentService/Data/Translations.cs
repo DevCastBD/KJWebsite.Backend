@@ -24,7 +24,8 @@ public static class TranslationCompleteness
         [ContentTypes.Testimonial] = ["title", "body"],
         [ContentTypes.Partner] = ["title"],
         [ContentTypes.Press] = ["title", "summary"],
-        [ContentTypes.Event] = ["title", "summary", "body"]
+        [ContentTypes.Event] = ["title", "summary", "body"],
+        [ContentTypes.SuccessStory] = ["title", "summary", "body"]
     };
 
     public static string[] RequiredFields(string type) => Required.TryGetValue(type, out var fields) ? fields : ["title"];
