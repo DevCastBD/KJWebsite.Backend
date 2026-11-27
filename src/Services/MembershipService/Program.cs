@@ -12,6 +12,7 @@ using MembershipService.Intake;
 using MembershipService.Lifecycle;
 using MembershipService.MemberDirectory;
 using MembershipService.Privacy;
+using MembershipService.Programme;
 using MembershipService.Volunteering;
 using MembershipService.Review;
 using MembershipService.Self;
@@ -280,6 +281,7 @@ app.MapLifecycle();
 app.MapPrivacy();
 app.MapPublicCommittees();
 app.MapVolunteering();
+app.MapProgramme();
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 
 app.MapPut("/api/v1/membership/applications/{id}/attachments/{kind}", async (HttpContext context, string id, string kind, MembershipDbContext db, IAttachmentStore store) =>

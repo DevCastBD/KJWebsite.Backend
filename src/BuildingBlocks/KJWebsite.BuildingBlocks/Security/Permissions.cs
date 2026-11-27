@@ -25,6 +25,10 @@ public static class Permissions
     /// <summary>Run retention purges and carry out erasure requests: deletion of personal data, so held back from day-to-day officers.</summary>
     public const string MembershipPrivacy = "membership.privacy";
     public const string EventsManage = "events.manage";
+    /// <summary>Beneficiary institutions, MoUs and their documents, outcome metrics: institution data is sensitive (signatories, where children are present).</summary>
+    public const string ProgrammeManage = "programme.manage";
+    /// <summary>Log delivered sessions in the field. Sees no MoU or address.</summary>
+    public const string ProgrammeLog = "programme.log";
     public const string FinanceView = "finance.view";
     public const string FinanceExpenseSubmit = "finance.expense.submit";
     public const string FinanceExpenseApprove = "finance.expense.approve";
@@ -115,6 +119,8 @@ public static class PermissionCatalog
         new("membership", Permissions.MemberProfileView, "View member profiles"),
         new("membership", Permissions.MemberProfileEdit, "Edit a member profile (members: their own only)"),
         new("events", Permissions.EventsManage, "Manage events"),
+        new("programme", Permissions.ProgrammeManage, "Manage beneficiary institutions, MoUs and outcome metrics"),
+        new("programme", Permissions.ProgrammeLog, "Log delivered programme sessions"),
         new("finance", Permissions.FinanceView, "View finance records"),
         new("finance", Permissions.FinanceExpenseSubmit, "Submit expenses"),
         new("finance", Permissions.FinanceExpenseApprove, "Approve expenses (separate from submitting)"),
@@ -168,7 +174,7 @@ public static class KjRoles
         [Moderator] = [Permissions.ContentView, Permissions.ContentUpdate, Permissions.CtaView, Permissions.CtaManage, Permissions.DashboardView],
         [FinanceOfficer] = [Permissions.FinanceView, Permissions.FinanceExpenseApprove, Permissions.FinanceExpensePay, Permissions.FinanceDonationRecord, Permissions.FinanceDonationApprove, Permissions.FinanceReceiptManage, Permissions.FinanceDonorManage, Permissions.FinanceCampaignManage, Permissions.FinanceBudgetManage, Permissions.FinanceReconcile, Permissions.FinanceBankManage, Permissions.FinanceReportGenerate, Permissions.FinanceLedgerAdjust, Permissions.FinanceDonationReverse, Permissions.FinancePeriodClose, Permissions.FinanceControlApprove],
         [ContentEditor] = [Permissions.ContentView, Permissions.ContentCreate, Permissions.ContentUpdate, Permissions.MediaView, Permissions.MediaUpload, Permissions.DashboardView],
-        [EventManager] = [Permissions.EventsManage, Permissions.FinanceExpenseSubmit],
+        [EventManager] = [Permissions.EventsManage, Permissions.ProgrammeManage, Permissions.ProgrammeLog, Permissions.FinanceExpenseSubmit],
         [MembershipOfficer] = [Permissions.MembershipManage, Permissions.MembershipProvision, Permissions.MembershipLifecycle, Permissions.MemberProfileView, Permissions.UsersView],
         [Member] = [Permissions.MemberProfileEdit],
         [Volunteer] = [],

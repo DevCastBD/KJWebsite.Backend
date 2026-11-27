@@ -457,3 +457,4 @@
 - 2026-11-27T00:00Z [claude] 084-issue-74-event-registration DONE @b3ff850: targeted tests pass; paid-event Finance link left as follow-up
 - 2026-11-27T00:00Z [claude] 085-issue-75-event-attendance DONE @b3ff850: branch feat/issue-75-event-attendance stacked on #74; targeted tests pass
 - 2026-11-27T00:00Z [claude] 086-issue-76-volunteer-hours DONE @11ae9fb: feat/issue-76-volunteer-hours stacked on #75; 6 targeted tests pass
+- 2026-11-27T00:00Z [claude] 087-issue-77-programme-delivery DONE @5e84df0: feat/issue-77-programme-delivery stacked on #76; 5 targeted tests pass
