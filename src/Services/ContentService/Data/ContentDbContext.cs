@@ -117,6 +117,22 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.RegistrationVersion).IsConcurrencyToken();
         });
 
+        modelBuilder.Entity<PressCoverageEntity>(entity =>
+        {
+            entity.ToTable("press_coverage");
+            entity.HasKey(x => x.ContentItemId);
+            entity.Property(x => x.ContentItemId).HasMaxLength(64);
+            entity.HasOne<ContentItemEntity>().WithOne().HasForeignKey<PressCoverageEntity>(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(x => x.Outlet).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.OutletLogoUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.ExternalUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.ClippingUrl).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.ReproductionPermission).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.PermissionNote).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => new { x.Featured, x.FeaturedOrder });
+        });
+
         modelBuilder.Entity<EventSessionEntity>(entity =>
         {
             entity.ToTable("event_sessions");

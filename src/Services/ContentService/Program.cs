@@ -50,6 +50,7 @@ builder.Services.AddScoped<TaxonomyStore>();
 builder.Services.AddScoped<RedirectStore>();
 builder.Services.AddScoped<GenericContentStore>();
 builder.Services.AddScoped<EventStore>();
+builder.Services.AddScoped<PressStore>();
 builder.Services.Configure<EventOptions>(builder.Configuration.GetSection(EventOptions.SectionName));
 builder.Services.AddSingleton<RegistrationPrivacy>();
 builder.Services.AddScoped<EventRegistrationStore>();
@@ -368,6 +369,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 .RequirePermission(Permissions.ContentDelete);
 
 app.MapEvents();
+app.MapPress();
 app.MapEventRegistration();
 app.MapEventAttendance();
 app.MapEventCalendar();
