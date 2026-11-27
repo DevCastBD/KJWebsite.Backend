@@ -8813,6 +8813,60 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AggregateRunView"
+  /api/v1/admin/reporting/dashboards:
+    get:
+      tags:
+        - "Dashboards"
+      summary: "The caller\u0027s dashboard: only the sections their permissions allow"
+      description: "Sections are \u0060donations\u0060 and \u0060expenses\u0060 (\u0060finance.view\u0060), \u0060membership\u0060 (\u0060membership.manage\u0060), \u0060events\u0060 (\u0060events.manage\u0060), \u0060content\u0060 (\u0060content.view\u0060), \u0060inbox\u0060 (\u0060cta.view\u0060) and \u0060programme\u0060 (\u0060programme.manage\u0060). A section the caller may not see is not in the response at all. Every figure and series carries a \u0060trace\u0060 naming its warehouse metric and the call that returns its rows. All figures read the warehouse, never a transactional table; \u0060asOf\u0060 and \u0060stale\u0060 say how fresh they are. \u0060months\u0060 is 1-36 (default 12). Requires \u0060dashboard.view\u0060."
+      operationId: "GetDashboards"
+      parameters:
+        -
+          name: "months"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardView"
+  "/api/v1/admin/reporting/dashboards/{section}":
+    get:
+      tags:
+        - "Dashboards"
+      summary: "One dashboard section"
+      description: "Same shape as the whole dashboard with a single section; 403 when the caller lacks that section\u0027s permission, 404 for an unknown section. Requires \u0060dashboard.view\u0060."
+      operationId: "GetDashboardSection"
+      parameters:
+        -
+          name: "section"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "months"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardView"
   /api/v1/admin/reporting/audit:
     get:
       tags:
@@ -10191,6 +10245,8 @@ tags:
     name: "Reconciliation"
   -
     name: "Aggregates"
+  -
+    name: "Dashboards"
   -
     name: "Admin: Sponsorship"
   -
@@ -13130,6 +13186,118 @@ components:
               type: "null"
             -
               $ref: "#/components/schemas/AggregateRunView"
+    DashboardFigure:
+      required:
+        - "key"
+        - "label"
+        - "value"
+        - "unit"
+        - "trace"
+      type: "object"
+      properties:
+        key:
+          type: "string"
+        label:
+          type: "string"
+        value:
+          type: "string"
+        unit:
+          type:
+            - "null"
+            - "string"
+        trace:
+          $ref: "#/components/schemas/DashboardTrace"
+    DashboardPoint:
+      required:
+        - "period"
+        - "value"
+      type: "object"
+      properties:
+        period:
+          type: "string"
+        value:
+          type: "string"
+    DashboardSection:
+      required:
+        - "id"
+        - "title"
+        - "figures"
+        - "series"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        title:
+          type: "string"
+        figures:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/DashboardFigure"
+        series:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/DashboardSeries"
+    DashboardSeries:
+      required:
+        - "key"
+        - "label"
+        - "currency"
+        - "points"
+        - "trace"
+      type: "object"
+      properties:
+        key:
+          type: "string"
+        label:
+          type: "string"
+        currency:
+          type:
+            - "null"
+            - "string"
+        points:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/DashboardPoint"
+        trace:
+          $ref: "#/components/schemas/DashboardTrace"
+    DashboardTrace:
+      required:
+        - "metric"
+        - "source"
+        - "drilldown"
+      type: "object"
+      properties:
+        metric:
+          type: "string"
+        source:
+          type: "string"
+        drilldown:
+          type: "string"
+    DashboardView:
+      required:
+        - "asOf"
+        - "stale"
+        - "months"
+        - "sections"
+      type: "object"
+      properties:
+        asOf:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        stale:
+          type: "boolean"
+        months:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        sections:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/DashboardSection"
     SourceFreshness:
       required:
         - "source"

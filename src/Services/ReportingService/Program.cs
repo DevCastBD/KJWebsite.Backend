@@ -2,6 +2,7 @@ using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Security;
 using Microsoft.EntityFrameworkCore;
 using ReportingService.Aggregates;
+using ReportingService.Dashboards;
 using ReportingService.Data;
 using Scalar.AspNetCore;
 
@@ -33,6 +34,8 @@ builder.Services.AddHttpClient(AggregateRefresher.ClientName, (services, client)
     client.Timeout = TimeSpan.FromSeconds(services.GetRequiredService<IConfiguration>().GetValue("Reporting:Aggregates:FeedTimeoutSeconds", 30)));
 builder.Services.AddScoped<AggregateRefresher>();
 builder.Services.AddScoped<AggregateQuery>();
+builder.Services.Configure<DashboardOptions>(builder.Configuration.GetSection(DashboardOptions.SectionName));
+builder.Services.AddScoped<DashboardService>();
 if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
 {
     builder.Services.AddHostedService<AggregateWorker>();
@@ -78,6 +81,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Reporting
    .AllowAnonymous();
 
 app.MapAggregates();
+app.MapDashboards();
 app.MapAuditLog<ReportingDbContext>("/api/v1/admin/reporting/audit", "Reporting");
 
 app.Run();
