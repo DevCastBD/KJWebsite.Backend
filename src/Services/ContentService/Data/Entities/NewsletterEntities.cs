@@ -53,8 +53,49 @@ public sealed class NewsletterMessageEntity
     /// <summary>The per-recipient one-click unsubscribe URL (RFC 8058), sent as `List-Unsubscribe` with `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.</summary>
     public string? ListUnsubscribeUrl { get; set; }
 
+    public string? BodyHtml { get; set; }
+    public string? CampaignId { get; set; }
+
+    /// <summary>Earliest delivery time, Unix seconds (a number so SQL can compare it). Spaced out per recipient to throttle a campaign; 0 sends at once.</summary>
+    public long NotBeforeUnix { get; set; }
+
+    /// <summary>`queued`, `sent`, `failed`, `skipped` (the subscriber stopped being confirmed before delivery) or `cancelled`.</summary>
     public string Status { get; set; } = "queued";
+
+    public DateTimeOffset? SentAt { get; set; }
+    public string? Error { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>A bilingual starting point for a campaign. A campaign copies it, so editing a template never rewrites a draft.</summary>
+public sealed class NewsletterTemplateEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string SubjectBn { get; set; } = string.Empty;
+    public string BodyBn { get; set; } = string.Empty;
+    public string SubjectEn { get; set; } = string.Empty;
+    public string BodyEn { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public sealed class NewsletterCampaignEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? SegmentId { get; set; }
+    public string SubjectBn { get; set; } = string.Empty;
+    public string BodyBn { get; set; } = string.Empty;
+    public string SubjectEn { get; set; } = string.Empty;
+    public string BodyEn { get; set; } = string.Empty;
+
+    /// <summary>`draft`, `sending` (queued for delivery, possibly in the future) or `cancelled`.</summary>
+    public string Status { get; set; } = "draft";
+
+    public int RecipientCount { get; set; }
+    public DateTimeOffset? SendStartsAt { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
 }
 
 public sealed class NewsletterSegmentEntity

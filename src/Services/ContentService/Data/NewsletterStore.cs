@@ -23,16 +23,22 @@ public sealed class NewsletterOptions
 
     /// <summary>Public API origin, used for the one-click unsubscribe URL.</summary>
     public string ApiUrl { get; set; } = "http://localhost:7002";
+
+    /// <summary>Campaign delivery rate. Recipients are spaced evenly at this rate so a new domain does not send a thousand messages at once.</summary>
+    public int SendPerMinute { get; set; } = 120;
+
+    /// <summary>Whether the background dispatcher delivers queued messages.</summary>
+    public bool DispatchEnabled { get; set; } = true;
 }
 
-public sealed record SubscribeRequest(string? Email, string? Lang, string[]? Topics, string? Source, string? Website);
-public sealed record PreferencesRequest(string? Lang, string[]? Topics);
-public sealed record PreferencesView(string Email, string Lang, string[] Topics, string Status);
-public sealed record ProviderEvent(string? Email, string? Type);
-public sealed record SubscriberView(string Id, string Email, string Lang, string[] Topics, string Status, string Source, string? SuppressionReason, DateTimeOffset CreatedAt, DateTimeOffset? ConfirmedAt, DateTimeOffset? UnsubscribedAt);
-public sealed record SegmentFilter(string[]? Langs, string[]? Sources, string[]? Topics, bool? AttendedEvent);
-public sealed record SegmentRequest(string? Name, SegmentFilter? Filter);
-public sealed record SegmentView(string Id, string Name, SegmentFilter Filter, DateTimeOffset CreatedAt);
+public sealed record NewsletterSubscribeRequest(string? Email, string? Lang, string[]? Topics, string? Source, string? Website);
+public sealed record NewsletterPreferencesRequest(string? Lang, string[]? Topics);
+public sealed record NewsletterPreferencesView(string Email, string Lang, string[] Topics, string Status);
+public sealed record NewsletterProviderEvent(string? Email, string? Type);
+public sealed record NewsletterSubscriberView(string Id, string Email, string Lang, string[] Topics, string Status, string Source, string? SuppressionReason, DateTimeOffset CreatedAt, DateTimeOffset? ConfirmedAt, DateTimeOffset? UnsubscribedAt);
+public sealed record NewsletterSegmentFilter(string[]? Langs, string[]? Sources, string[]? Topics, bool? AttendedEvent);
+public sealed record NewsletterSegmentRequest(string? Name, NewsletterSegmentFilter? Filter);
+public sealed record NewsletterSegmentView(string Id, string Name, NewsletterSegmentFilter Filter, DateTimeOffset CreatedAt);
 
 /// <summary>
 /// The newsletter list. Nothing is sent to an address until the owner confirms it from the link in the confirmation email (double opt-in);
@@ -83,7 +89,7 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
     // ---- public flows
 
     /// <summary>Asks for a subscription. Always looks the same to the caller (no address enumeration); a confirmation email is queued only when one is useful.</summary>
-    public async Task<(bool Valid, string? Error)> SubscribeAsync(SubscribeRequest request)
+    public async Task<(bool Valid, string? Error)> SubscribeAsync(NewsletterSubscribeRequest request)
     {
         if (!TryEmail(request.Email, out var email))
         {
@@ -187,13 +193,13 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
         return true;
     }
 
-    public async Task<PreferencesView?> GetPreferencesAsync(string? token)
+    public async Task<NewsletterPreferencesView?> GetPreferencesAsync(string? token)
     {
         var subscriber = await Find("manage", token);
-        return subscriber is null ? null : new PreferencesView(Mask(subscriber.Email), subscriber.Lang, Topics(subscriber), subscriber.Status);
+        return subscriber is null ? null : new NewsletterPreferencesView(Mask(subscriber.Email), subscriber.Lang, Topics(subscriber), subscriber.Status);
     }
 
-    public async Task<(PreferencesView? View, string? Error)> UpdatePreferencesAsync(string? token, PreferencesRequest request)
+    public async Task<(NewsletterPreferencesView? View, string? Error)> UpdatePreferencesAsync(string? token, NewsletterPreferencesRequest request)
     {
         var subscriber = await Find("manage", token);
         if (subscriber is null)
@@ -217,13 +223,13 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
         subscriber.UpdatedAt = now;
         AddEvent(subscriber.Id, "preferences", $"lang={lang}", now);
         await SaveAsync();
-        return (new PreferencesView(Mask(subscriber.Email), subscriber.Lang, Topics(subscriber), subscriber.Status), null);
+        return (new NewsletterPreferencesView(Mask(subscriber.Email), subscriber.Lang, Topics(subscriber), subscriber.Status), null);
     }
 
     // ---- bounces and complaints
 
     /// <summary>Applies provider events. `bounce` (permanent) and `complaint` suppress at once; `soft-bounce` suppresses on the third. Returns how many addresses changed.</summary>
-    public async Task<(int Applied, string? Error)> ApplyProviderEventsAsync(IReadOnlyList<ProviderEvent> events)
+    public async Task<(int Applied, string? Error)> ApplyProviderEventsAsync(IReadOnlyList<NewsletterProviderEvent> events)
     {
         var applied = 0;
         var now = time.GetUtcNow();
@@ -297,7 +303,7 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
 
     // ---- back office
 
-    public async Task<(List<SubscriberView> Rows, int Total)> ListAsync(string? status, string? query, int limit, int offset)
+    public async Task<(List<NewsletterSubscriberView> Rows, int Total)> ListAsync(string? status, string? query, int limit, int offset)
     {
         var rows = db.NewsletterSubscribers.AsNoTracking().AsQueryable();
         if (!string.IsNullOrWhiteSpace(status))
@@ -316,14 +322,14 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
         return ([.. page.Select(View)], total);
     }
 
-    public async Task<(SegmentView? Segment, string? Error)> CreateSegmentAsync(SegmentRequest request)
+    public async Task<(NewsletterSegmentView? Segment, string? Error)> CreateSegmentAsync(NewsletterSegmentRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Length > 120)
         {
             return (null, "name is required (max 120 characters).");
         }
 
-        var filter = request.Filter ?? new SegmentFilter(null, null, null, null);
+        var filter = request.Filter ?? new NewsletterSegmentFilter(null, null, null, null);
         if (filter.Langs?.Any(l => !Languages.Contains(l)) == true)
         {
             return (null, "langs may only contain bn and en.");
@@ -335,7 +341,7 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
         return (ToView(entity), null);
     }
 
-    public async Task<List<SegmentView>> ListSegmentsAsync() =>
+    public async Task<List<NewsletterSegmentView>> ListSegmentsAsync() =>
         [.. (await db.NewsletterSegments.AsNoTracking().OrderBy(s => s.Name).ThenBy(s => s.Id).ToListAsync()).Select(ToView)];
 
     public async Task<bool> DeleteSegmentAsync(string id)
@@ -355,16 +361,28 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
     /// The audience of a segment: confirmed subscribers only (so consent is always respected), in a fixed order, so the same data always gives the same list.
     /// `attendedEvent` matches subscribers whose address checked in to any event (via the registration email hash, never the stored ciphertext).
     /// </summary>
-    public async Task<(List<SubscriberView> Rows, int Total)?> ResolveSegmentAsync(string id, int limit, int offset)
+    public async Task<(List<NewsletterSubscriberView> Rows, int Total)?> ResolveSegmentAsync(string id, int limit, int offset)
     {
-        var segment = await db.NewsletterSegments.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
-        if (segment is null)
+        var list = await AudienceAsync(id);
+        return list is null ? null : ([.. list.Skip(offset).Take(limit).Select(View)], list.Count);
+    }
+
+    /// <summary>The confirmed subscribers a campaign would reach: the segment's, or everyone confirmed when `segmentId` is null. Null when the segment does not exist.</summary>
+    public async Task<List<NewsletterSubscriberEntity>?> AudienceAsync(string? segmentId)
+    {
+        var filter = new NewsletterSegmentFilter(null, null, null, null);
+        if (segmentId is not null)
         {
-            return null;
+            var segment = await db.NewsletterSegments.AsNoTracking().FirstOrDefaultAsync(s => s.Id == segmentId);
+            if (segment is null)
+            {
+                return null;
+            }
+
+            filter = JsonSerializer.Deserialize<NewsletterSegmentFilter>(segment.FilterJson, Json) ?? filter;
         }
 
-        var filter = JsonSerializer.Deserialize<SegmentFilter>(segment.FilterJson, Json) ?? new SegmentFilter(null, null, null, null);
-        var all = await db.NewsletterSubscribers.AsNoTracking().Where(s => s.Status == SubscriberStatuses.Confirmed)
+        var all =await db.NewsletterSubscribers.AsNoTracking().Where(s => s.Status == SubscriberStatuses.Confirmed)
             .OrderBy(s => s.Email).ToListAsync();
         IEnumerable<NewsletterSubscriberEntity> rows = all;
         if (filter.Langs is { Length: > 0 })
@@ -388,9 +406,17 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
             rows = rows.Where(s => attended.Contains(privacy.HashEmail(s.Email)));
         }
 
-        var list = rows.ToList();
-        return ([.. list.Skip(offset).Take(limit).Select(View)], list.Count);
+        return [.. rows];
     }
+
+    /// <summary>The links a message to this subscriber carries: one-click unsubscribe (also the `List-Unsubscribe` header) and the preference centre.</summary>
+    public (string UnsubscribeUrl, string PreferencesUrl) Links(string subscriberId)
+    {
+        var manage = Token("manage", subscriberId);
+        return ($"{_options.ApiUrl.TrimEnd('/')}/api/v1/newsletter/unsubscribe/{manage}", $"{_options.SiteUrl.TrimEnd('/')}/newsletter/preferences?token={manage}");
+    }
+
+    public int SendPerMinute => Math.Max(1, _options.SendPerMinute);
 
     // ---- helpers
 
@@ -416,11 +442,11 @@ public sealed class NewsletterStore(ContentDbContext db, TimeProvider time, IOpt
         }
     }
 
-    private static SubscriberView View(NewsletterSubscriberEntity s) =>
+    private static NewsletterSubscriberView View(NewsletterSubscriberEntity s) =>
         new(s.Id, s.Email, s.Lang, Topics(s), s.Status, s.Source, s.SuppressionReason, s.CreatedAt, s.ConfirmedAt, s.UnsubscribedAt);
 
-    private static SegmentView ToView(NewsletterSegmentEntity s) =>
-        new(s.Id, s.Name, JsonSerializer.Deserialize<SegmentFilter>(s.FilterJson, Json) ?? new SegmentFilter(null, null, null, null), s.CreatedAt);
+    private static NewsletterSegmentView ToView(NewsletterSegmentEntity s) =>
+        new(s.Id, s.Name, JsonSerializer.Deserialize<NewsletterSegmentFilter>(s.FilterJson, Json) ?? new NewsletterSegmentFilter(null, null, null, null), s.CreatedAt);
 
     private static string[] Topics(NewsletterSubscriberEntity s) => JsonSerializer.Deserialize<string[]>(s.TopicsJson, Json) ?? [];
 

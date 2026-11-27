@@ -18,7 +18,7 @@ public static class NewsletterEndpoints
 
     public static void MapNewsletter(this WebApplication app)
     {
-        app.MapPost($"{Public}/subscribe", async (HttpContext context, NewsletterStore store, SubscribeRequest payload) =>
+        app.MapPost($"{Public}/subscribe", async (HttpContext context, NewsletterStore store, NewsletterSubscribeRequest payload) =>
         {
             context.Response.Headers.CacheControl = "no-store";
             var (valid, error) = await store.SubscribeAsync(payload);
@@ -28,7 +28,7 @@ public static class NewsletterEndpoints
         .WithDescription("Always answers 202 for a valid address, whether or not it is already known, so the endpoint cannot be used to find out who is subscribed. Nothing is sent to the address except a confirmation email until the owner confirms it. `website` is a honeypot: leave it empty. `lang` is bn (default) or en.")
         .WithTags(PublicTag).AllowAnonymous();
 
-        app.MapPost($"{Public}/confirm", async (HttpContext context, NewsletterStore store, TokenRequest payload) =>
+        app.MapPost($"{Public}/confirm", async (HttpContext context, NewsletterStore store, NewsletterTokenRequest payload) =>
             await store.ConfirmAsync(payload.Token) ? Results.NoContent() : NotFound(context.Request, "This confirmation link is not valid."))
         .WithName("ConfirmNewsletter").WithSummary("Confirm a subscription with the token from the email")
         .WithDescription("POST, not GET, so a mail scanner that opens links cannot confirm on the owner's behalf. Idempotent.")
@@ -49,7 +49,7 @@ public static class NewsletterEndpoints
         .WithName("GetNewsletterPreferences").WithSummary("Preference centre: current language and topics (address masked)")
         .WithTags(PublicTag).AllowAnonymous();
 
-        app.MapPut($"{Public}/preferences/{{token}}", async (HttpContext context, NewsletterStore store, string token, PreferencesRequest payload) =>
+        app.MapPut($"{Public}/preferences/{{token}}", async (HttpContext context, NewsletterStore store, string token, NewsletterPreferencesRequest payload) =>
         {
             context.Response.Headers.CacheControl = "no-store";
             var (view, error) = await store.UpdatePreferencesAsync(token, payload);
@@ -58,7 +58,7 @@ public static class NewsletterEndpoints
         .WithName("UpdateNewsletterPreferences").WithSummary("Preference centre: change language and topics")
         .WithTags(PublicTag).AllowAnonymous();
 
-        app.MapPost($"{Public}/provider-events", async (HttpContext context, NewsletterStore store, IOptions<NewsletterOptions> options, ProviderEvent[] payload) =>
+        app.MapPost($"{Public}/provider-events", async (HttpContext context, NewsletterStore store, IOptions<NewsletterOptions> options, NewsletterProviderEvent[] payload) =>
         {
             var secret = options.Value.WebhookSecret;
             if (string.IsNullOrEmpty(secret))
@@ -87,7 +87,7 @@ public static class NewsletterEndpoints
             }
 
             var (rows, total) = await store.ListAsync(status, q, safeLimit, safeOffset);
-            return Results.Ok(new PagingEnvelope<SubscriberView>(rows.ToArray(), total, null, safeLimit, safeOffset));
+            return Results.Ok(new PagingEnvelope<NewsletterSubscriberView>(rows.ToArray(), total, null, safeLimit, safeOffset));
         })
         .WithName("ListNewsletterSubscribers").WithSummary("Subscribers, filterable by status and address")
         .WithTags(AdminTag).RequirePermission(Permissions.CommsManage);
@@ -96,7 +96,7 @@ public static class NewsletterEndpoints
         .WithName("ListNewsletterSegments").WithSummary("Saved segments")
         .WithTags(AdminTag).RequirePermission(Permissions.CommsManage);
 
-        app.MapPost($"{Admin}/segments", async (HttpContext context, NewsletterStore store, SegmentRequest payload) =>
+        app.MapPost($"{Admin}/segments", async (HttpContext context, NewsletterStore store, NewsletterSegmentRequest payload) =>
         {
             var (segment, error) = await store.CreateSegmentAsync(payload);
             return segment is null ? Invalid(context.Request, error!) : Results.Created($"{Admin}/segments/{segment.Id}", segment);
@@ -112,7 +112,7 @@ public static class NewsletterEndpoints
             }
 
             var result = await store.ResolveSegmentAsync(id, safeLimit, safeOffset);
-            return result is null ? NotFound(context.Request, "Segment not found.") : Results.Ok(new PagingEnvelope<SubscriberView>(result.Value.Rows.ToArray(), result.Value.Total, null, safeLimit, safeOffset));
+            return result is null ? NotFound(context.Request, "Segment not found.") : Results.Ok(new PagingEnvelope<NewsletterSubscriberView>(result.Value.Rows.ToArray(), result.Value.Total, null, safeLimit, safeOffset));
         })
         .WithName("ResolveNewsletterSegment").WithSummary("Who a segment currently contains")
         .WithDescription("Confirmed subscribers only, in a fixed order: the same data always resolves to the same list, and an unconfirmed, unsubscribed or suppressed address never appears.")
@@ -125,4 +125,4 @@ public static class NewsletterEndpoints
     }
 }
 
-public sealed record TokenRequest(string? Token);
+public sealed record NewsletterTokenRequest(string? Token);
