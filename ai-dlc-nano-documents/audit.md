@@ -450,3 +450,4 @@
 - 2026-11-24T13:00Z [claude] 082-issue-242-content-conflict-codes PHASE CONSTRUCT→WRAP-UP @00a82e6: 7/8 mutations caught then fixed, review done, live proof ok (subagent built; Codex stalls)
 - 2026-11-24T14:00Z [claude] 082-issue-242-content-conflict-codes SIDE-EFFECT @a0ebcb0: pushed branch, PR #243 opened; FE#381 comment posted; Backend#244 created (assigned, on board); user approved
 - 2026-11-24T14:00Z [claude] 082-issue-242-content-conflict-codes DONE @a0ebcb0: PR #243 open, never merged by claude
+- 2026-11-27T00:00Z [claude] 083-issue-73-events-crud CREATED @b33f121: milestone 6 run; issues assigned to FHShubho (user asked)

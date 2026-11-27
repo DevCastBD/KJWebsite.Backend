@@ -10,6 +10,7 @@ public static class ContentTypes
     public const string Testimonial = "testimonial";
     public const string Partner = "partner";
     public const string Press = "press";
+    public const string Event = "event";
 }
 
 /// <summary>
@@ -42,6 +43,7 @@ public sealed class ContentItemEntity
     public List<ContentTranslationEntity> Translations { get; set; } = [];
     public ProjectEntity? Project { get; set; }
     public NewsArticleEntity? News { get; set; }
+    public EventEntity? Event { get; set; }
     public List<ContentItemTagEntity> TagLinks { get; set; } = [];
 
     /// <summary>Items this one points at, in editor order.</summary>
