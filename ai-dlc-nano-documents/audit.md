@@ -454,3 +454,5 @@
 - 2026-11-27T00:00Z [claude] 083-issue-73-events-crud BRANCH @b33f121: feat/issue-73-events-crud off origin/develop (user confirmed)
 - 2026-11-27T00:00Z [claude] 083-issue-73-events-crud DONE @7278368: targeted tests pass (57); full suite skipped at user request
 - 2026-11-27T00:00Z [claude] 084-issue-74-event-registration BRANCH @7278368: feat/issue-74-event-registration stacked on #73 (user instructed)
+- 2026-11-27T00:00Z [claude] 084-issue-74-event-registration DONE @b3ff850: targeted tests pass; paid-event Finance link left as follow-up
+- 2026-11-27T00:00Z [claude] 085-issue-75-event-attendance DONE @b3ff850: branch feat/issue-75-event-attendance stacked on #74; targeted tests pass

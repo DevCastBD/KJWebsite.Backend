@@ -189,6 +189,55 @@ namespace ContentService.Migrations
                     b.ToTable("content_translations", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.EventCertificateEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EventItemId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuedBy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("NameProtected")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("RegistrationId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("RegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("event_certificates", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.EventEntity", b =>
                 {
                     b.Property<string>("ContentItemId")
@@ -263,6 +312,60 @@ namespace ContentService.Migrations
                     b.ToTable("events", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.EventFeedbackFormEntity", b =>
+                {
+                    b.Property<string>("EventItemId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsOpen")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("QuestionsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("EventItemId");
+
+                    b.ToTable("event_feedback_forms", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.EventFeedbackResponseEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AnswersJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventItemId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("RegistrationId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventItemId");
+
+                    b.HasIndex("RegistrationId")
+                        .IsUnique();
+
+                    b.ToTable("event_feedback_responses", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.EventNotificationEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -312,6 +415,13 @@ namespace ContentService.Migrations
                     b.Property<string>("Id")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CheckInSource")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset?>("CheckedInAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -746,11 +856,38 @@ namespace ContentService.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.EventCertificateEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.EventRegistrationEntity", null)
+                        .WithMany()
+                        .HasForeignKey("RegistrationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.EventEntity", b =>
                 {
                     b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
                         .WithOne("Event")
                         .HasForeignKey("ContentService.Data.Entities.EventEntity", "ContentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.EventFeedbackFormEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithMany()
+                        .HasForeignKey("EventItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.EventFeedbackResponseEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.EventRegistrationEntity", null)
+                        .WithMany()
+                        .HasForeignKey("RegistrationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

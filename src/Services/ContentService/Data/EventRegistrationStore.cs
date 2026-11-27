@@ -31,7 +31,8 @@ public sealed record TicketView(
     int? WaitlistPosition,
     long? PriceMinor,
     string Currency,
-    string? Reason);
+    string? Reason,
+    DateTimeOffset? CheckedInAt = null);
 
 public sealed record AdminRegistrationView(
     string Id,
@@ -45,9 +46,10 @@ public sealed record AdminRegistrationView(
     DateTimeOffset? DeadlineAt,
     string? Reason,
     string? PaymentReference,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? CheckedInAt = null);
 
-public sealed record RegistrationSummary(Dictionary<string, int> ByStatus, int? Capacity, int SeatsHeld);
+public sealed record RegistrationSummary(Dictionary<string, int> ByStatus, int? Capacity, int SeatsHeld, int CheckedIn = 0);
 
 public sealed record AdminRegistrationList(List<AdminRegistrationView> Items, int Total, int Limit, int Offset, RegistrationSummary Summary);
 
@@ -191,7 +193,7 @@ public sealed class EventRegistrationStore(ContentDbContext db, TimeProvider tim
         var all = await db.EventRegistrations.AsNoTracking().Where(r => r.EventItemId == item.Id).ToListAsync();
         var filtered = all.Where(r => status is null || r.Status == status).OrderBy(r => r.CreatedAt).ThenBy(r => r.Id, StringComparer.Ordinal).ToList();
         var held = all.Count(r => RegistrationStatuses.HoldingSeat.Contains(r.Status));
-        var summary = new RegistrationSummary(all.GroupBy(r => r.Status).ToDictionary(g => g.Key, g => g.Count()), item.Event.Capacity, held);
+        var summary = new RegistrationSummary(all.GroupBy(r => r.Status).ToDictionary(g => g.Key, g => g.Count()), item.Event.Capacity, held, all.Count(r => r.CheckedInAt is not null));
         return new AdminRegistrationList([.. filtered.Skip(offset).Take(limit).Select(ToAdmin)], filtered.Count, limit, offset, summary);
     }
 
@@ -475,11 +477,11 @@ public sealed class EventRegistrationStore(ContentDbContext db, TimeProvider tim
         return new TicketView(r.TicketCode, r.Status, item.Slug, r.OccurrenceStartUtc, detail.TimeZoneId,
             TimeZoneInfo.ConvertTime(r.OccurrenceStartUtc, zone).ToString("yyyy-MM-ddTHH:mm:sszzz", System.Globalization.CultureInfo.InvariantCulture),
             privacy.Unprotect(r.NameProtected), r.DeadlineAt, position, detail.PriceMinor, detail.Currency,
-            r.Status is RegistrationStatuses.Rejected or RegistrationStatuses.Cancelled ? r.DecisionReason : null);
+            r.Status is RegistrationStatuses.Rejected or RegistrationStatuses.Cancelled ? r.DecisionReason : null, r.CheckedInAt);
     }
 
     private AdminRegistrationView ToAdmin(EventRegistrationEntity r) => new(r.Id, r.Status, r.TicketCode, r.OccurrenceStartUtc, privacy.Unprotect(r.NameProtected),
-        privacy.Unprotect(r.EmailProtected), r.PhoneProtected is null ? null : privacy.Unprotect(r.PhoneProtected), r.MemberId, r.DeadlineAt, r.DecisionReason, r.PaymentReference, r.CreatedAt);
+        privacy.Unprotect(r.EmailProtected), r.PhoneProtected is null ? null : privacy.Unprotect(r.PhoneProtected), r.MemberId, r.DeadlineAt, r.DecisionReason, r.PaymentReference, r.CreatedAt, r.CheckedInAt);
 
     private static RegistrationResult Fail(RegistrationOutcome outcome, string error, string? code = null) => new(outcome, Error: error, Code: code);
 

@@ -12,11 +12,13 @@
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.OutputCaching.StackExchangeRedis" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="QuestPDF" />
     <PackageReference Include="Scalar.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Data\Seed\*.json" WithCulture="false" LogicalName="ContentService.Data.Seed.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\FinanceService\Assets\Fonts\NotoSansBengali.ttf" LogicalName="Fonts.NotoSansBengali.ttf" Link="Assets\Fonts\NotoSansBengali.ttf" />
   </ItemGroup>
 
   <ItemGroup>

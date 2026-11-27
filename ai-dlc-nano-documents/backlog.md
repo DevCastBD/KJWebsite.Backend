@@ -90,3 +90,5 @@
 - [2026-11-01] MembershipReviewTests.ReviewerScoreAndNotesAreInternalOnly — asserts the response does not contain digit substrings such as "82", which timestamps randomly contain; flaky in full runs (found: 066-issue-72-controls)
 - [2026-11-01] FinanceService/controls — go-live gate: external review of the financial controls is not done; checklist in docs/CONTROLS.md (found: 066-issue-72-controls)
 - [2026-11-01] FinanceService/controls — no live gateway refund API calls; refunds are done in the gateway dashboard and reconciled by the signed notice (found: 066-issue-72-controls)
+- [2026-11-27] events/registration — purge guest PII after RetainUntil (#58) and wire pending_payment to Finance confirmation (found: 084-issue-74)
+- [2026-11-27] events — outbox delivery of event_notifications (#32/#33) (found: 084-issue-74)
