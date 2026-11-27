@@ -21,7 +21,7 @@ builder.Services.AddOpenApi(options =>
     options.AddDocumentTransformer((document, context, ct) =>
     {
         document.Info.Title = "KJWebsite API Gateway";
-        document.Info.Description = "Entry point: routes /api/v1/content/*, /api/v1/cta/*, /api/v1/membership/*, /api/v1/donations/*, /api/v1/campaigns/*, /api/v1/auth/*, /api/v1/admin/reporting/*, /api/v1/admin/sponsorship/* and /api/v1/donors/me/students/* to their respective downstream services.";
+        document.Info.Description = "Entry point: routes /api/v1/content/*, /api/v1/cta/*, /api/v1/membership/*, /api/v1/donations/*, /api/v1/campaigns/*, /api/v1/auth/*, /api/v1/admin/reporting/*, /api/v1/analytics/*, /api/v1/admin/sponsorship/* and /api/v1/donors/me/students/* to their respective downstream services.";
         document.Info.Version = "v1";
         return Task.CompletedTask;
     });
@@ -56,6 +56,7 @@ builder.Services.AddReverseProxy().LoadFromMemory(
     new RouteConfig { RouteId = "sitemap", ClusterId = "content", Match = new RouteMatch { Path = "/sitemap.xml" } },
     new RouteConfig { RouteId = "feed-rss", ClusterId = "content", Match = new RouteMatch { Path = "/feed.rss" } },
     new RouteConfig { RouteId = "feed-atom", ClusterId = "content", Match = new RouteMatch { Path = "/feed.atom" } },
+    new RouteConfig { RouteId = "analytics", ClusterId = "reporting", Match = new RouteMatch { Path = "/api/v1/analytics/{**catch-all}" } },
     new RouteConfig { RouteId = "admin-reporting", ClusterId = "reporting", Match = new RouteMatch { Path = "/api/v1/admin/reporting/{**catch-all}" } },
     new RouteConfig { RouteId = "admin-auth", ClusterId = "auth", Match = new RouteMatch { Path = "/api/v1/admin/auth/{**catch-all}" } }
 ],

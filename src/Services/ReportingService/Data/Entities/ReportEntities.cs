@@ -104,3 +104,22 @@ public sealed class ReportDeliveryEntity
     public string? Error { get; set; }
     public DateTimeOffset At { get; set; }
 }
+
+/// <summary>
+/// One anonymous site event. There is deliberately nothing here that identifies a person: `Visitor` is a daily-rotating keyed hash of IP and user agent (the IP itself is never stored),
+/// `Run` is the random id the browser made for one visit to a funnel, and the other fields are short tokens from a fixed set of names.
+/// </summary>
+public sealed class AnalyticsEventEntity
+{
+    public long Id { get; set; }
+
+    /// <summary>UTC, as a DateTime so every provider can range-filter it.</summary>
+    public DateTime At { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+    public string? Step { get; set; }
+    public string? Field { get; set; }
+    public string? Run { get; set; }
+    public string? Path { get; set; }
+    public string Visitor { get; set; } = string.Empty;
+}

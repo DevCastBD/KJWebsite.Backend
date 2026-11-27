@@ -9264,6 +9264,47 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/analytics/events:
+    post:
+      tags:
+        - "Analytics"
+      summary: "Record one anonymous site event"
+      description: "Body \u0060{name, props?: {step?, field?, run?}, path?}\u0060 as JSON (text/plain is accepted). \u0060name\u0060 is one of the documented event names (see docs/ANALYTICS_EVENTS.md); \u0060props\u0060 may hold only \u0060step\u0060, \u0060field\u0060 and \u0060run\u0060, each a token of up to 40 letters, digits, \u0060.\u0060, \u0060-\u0060 or \u0060_\u0060. No cookie is set and the IP is hashed with the user agent and the day, never stored. Do Not Track and Global Privacy Control are honoured (202, nothing stored). 202 on success, 400 for an unknown name or a bad value, 429 when one visitor floods."
+      operationId: "CollectAnalyticsEvent"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/reporting/funnels/{funnel}":
+    get:
+      tags:
+        - "Analytics"
+      summary: "Per-step entry, completion and abandonment for the application or donation funnel"
+      description: "\u0060funnel\u0060 is \u0060application\u0060 or \u0060donation\u0060; \u0060from\u0060 and \u0060to\u0060 default to the last 30 days (at most 366). A visit is one \u0060run\u0060. \u0060entered\u0060, \u0060completed\u0060 and \u0060abandoned\u0060 count distinct visits per step; \u0060dropOffPercent\u0060 is entered-but-not-completed. \u0060converted\u0060 is visits that completed the last step, \u0060abandoned\u0060 those that left, \u0060inProgress\u0060 the rest. \u0060events\u0060 counts every event of the funnel, including those that carry no run. Requires \u0060reporting.view\u0060."
+      operationId: "GetFunnel"
+      parameters:
+        -
+          name: "funnel"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunnelView"
   /api/v1/admin/reporting/audit:
     get:
       tags:
@@ -10648,6 +10689,8 @@ tags:
     name: "Metrics"
   -
     name: "Schedules"
+  -
+    name: "Analytics"
   -
     name: "Admin: Sponsorship"
   -
@@ -13712,6 +13755,95 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/DashboardSection"
+    FunnelStepView:
+      required:
+        - "step"
+        - "entered"
+        - "completed"
+        - "abandoned"
+        - "dropOffPercent"
+      type: "object"
+      properties:
+        step:
+          type: "string"
+        entered:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        completed:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        abandoned:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        dropOffPercent:
+          type: "string"
+    FunnelView:
+      required:
+        - "funnel"
+        - "from"
+        - "to"
+        - "visits"
+        - "converted"
+        - "abandoned"
+        - "inProgress"
+        - "conversionPercent"
+        - "steps"
+        - "events"
+      type: "object"
+      properties:
+        funnel:
+          type: "string"
+        from:
+          type: "string"
+        to:
+          type: "string"
+        visits:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        converted:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        abandoned:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        inProgress:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        conversionPercent:
+          type: "string"
+        steps:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/FunnelStepView"
+        events:
+          type: "object"
+          additionalProperties:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
     MetricCreateRequest:
       required:
         - "key"

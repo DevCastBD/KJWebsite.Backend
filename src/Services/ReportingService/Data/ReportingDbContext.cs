@@ -16,6 +16,7 @@ public sealed class ReportingDbContext(DbContextOptions<ReportingDbContext> opti
     public DbSet<ReportScheduleEntity> ReportSchedules => Set<ReportScheduleEntity>();
     public DbSet<ReportRecipientEntity> ReportRecipients => Set<ReportRecipientEntity>();
     public DbSet<ReportDeliveryEntity> ReportDeliveries => Set<ReportDeliveryEntity>();
+    public DbSet<AnalyticsEventEntity> AnalyticsEvents => Set<AnalyticsEventEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +143,20 @@ public sealed class ReportingDbContext(DbContextOptions<ReportingDbContext> opti
             e.Property(x => x.Status).HasMaxLength(16).IsRequired();
             e.Property(x => x.Error).HasMaxLength(1000);
             e.HasIndex(x => x.RunId);
+        });
+
+        modelBuilder.Entity<AnalyticsEventEntity>(e =>
+        {
+            e.ToTable("analytics_events");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).HasMaxLength(40).IsRequired();
+            e.Property(x => x.Step).HasMaxLength(40);
+            e.Property(x => x.Field).HasMaxLength(40);
+            e.Property(x => x.Run).HasMaxLength(40);
+            e.Property(x => x.Path).HasMaxLength(200);
+            e.Property(x => x.Visitor).HasMaxLength(32).IsRequired();
+            e.HasIndex(x => x.At);
+            e.HasIndex(x => new { x.Name, x.At });
         });
     }
 }
