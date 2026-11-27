@@ -110,6 +110,12 @@ public sealed class EventRegistrationEntity
 
     /// <summary>Guest personal data is kept until this date, then purged (retention, #58).</summary>
     public DateTimeOffset RetainUntil { get; set; }
+
+    /// <summary>When the person arrived. The earliest report wins, so late and out-of-order offline submissions cannot move it later.</summary>
+    public DateTimeOffset? CheckedInAt { get; set; }
+
+    /// <summary>`qr` for a scanned ticket code, `manual` for an organiser's tick.</summary>
+    public string? CheckInSource { get; set; }
 }
 
 /// <summary>A message for a registrant, written in the same commit as the change that caused it; delivery is the outbox/email work of #32/#33.</summary>
@@ -123,4 +129,36 @@ public sealed class EventNotificationEntity
     public string PayloadJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? SentAt { get; set; }
+}
+
+/// <summary>An attendance certificate. The printed name is its own field so it can be corrected before issuing; it is encrypted like the registration.</summary>
+public sealed class EventCertificateEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string RegistrationId { get; set; } = string.Empty;
+    public string EventItemId { get; set; } = string.Empty;
+    public string Number { get; set; } = string.Empty;
+    public string NameProtected { get; set; } = string.Empty;
+    public string Language { get; set; } = "en";
+    public DateTimeOffset IssuedAt { get; set; }
+    public string IssuedBy { get; set; } = string.Empty;
+}
+
+/// <summary>The post-event feedback form of an event: questions as JSON, open or closed by an organiser.</summary>
+public sealed class EventFeedbackFormEntity
+{
+    public string EventItemId { get; set; } = string.Empty;
+    public string QuestionsJson { get; set; } = "[]";
+    public bool IsOpen { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+/// <summary>One attendee's answers. Linked to the registration only to allow one response each; organiser views never show who wrote what.</summary>
+public sealed class EventFeedbackResponseEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string EventItemId { get; set; } = string.Empty;
+    public string RegistrationId { get; set; } = string.Empty;
+    public string AnswersJson { get; set; } = "{}";
+    public DateTimeOffset CreatedAt { get; set; }
 }

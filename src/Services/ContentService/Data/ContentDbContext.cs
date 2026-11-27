@@ -14,6 +14,9 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<EventSessionEntity> EventSessions => Set<EventSessionEntity>();
     public DbSet<EventRegistrationEntity> EventRegistrations => Set<EventRegistrationEntity>();
     public DbSet<EventNotificationEntity> EventNotifications => Set<EventNotificationEntity>();
+    public DbSet<EventCertificateEntity> EventCertificates => Set<EventCertificateEntity>();
+    public DbSet<EventFeedbackFormEntity> EventFeedbackForms => Set<EventFeedbackFormEntity>();
+    public DbSet<EventFeedbackResponseEntity> EventFeedbackResponses => Set<EventFeedbackResponseEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
     public DbSet<TagNameEntity> TagNames => Set<TagNameEntity>();
     public DbSet<ContentItemTagEntity> ItemTags => Set<ContentItemTagEntity>();
@@ -129,6 +132,7 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
             entity.Property(x => x.DecisionReason).HasMaxLength(500);
             entity.Property(x => x.PaymentReference).HasMaxLength(120);
+            entity.Property(x => x.CheckInSource).HasMaxLength(16);
             entity.HasIndex(x => x.TicketCode).IsUnique();
             entity.HasIndex(x => new { x.EventItemId, x.OccurrenceStartUtc, x.Status });
             entity.HasIndex(x => new { x.EventItemId, x.EmailKey });
@@ -145,6 +149,44 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.RecipientProtected).IsRequired();
             entity.Property(x => x.PayloadJson).IsRequired();
             entity.HasIndex(x => x.SentAt);
+        });
+
+        modelBuilder.Entity<EventCertificateEntity>(entity =>
+        {
+            entity.ToTable("event_certificates");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.RegistrationId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.EventItemId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Number).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.NameProtected).IsRequired();
+            entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.IssuedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.RegistrationId).IsUnique();
+            entity.HasIndex(x => x.Number).IsUnique();
+            entity.HasOne<EventRegistrationEntity>().WithMany().HasForeignKey(x => x.RegistrationId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EventFeedbackFormEntity>(entity =>
+        {
+            entity.ToTable("event_feedback_forms");
+            entity.HasKey(x => x.EventItemId);
+            entity.Property(x => x.EventItemId).HasMaxLength(64);
+            entity.Property(x => x.QuestionsJson).IsRequired();
+            entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.EventItemId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EventFeedbackResponseEntity>(entity =>
+        {
+            entity.ToTable("event_feedback_responses");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.EventItemId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.RegistrationId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.AnswersJson).IsRequired();
+            entity.HasIndex(x => x.RegistrationId).IsUnique();
+            entity.HasIndex(x => x.EventItemId);
+            entity.HasOne<EventRegistrationEntity>().WithMany().HasForeignKey(x => x.RegistrationId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TagEntity>(entity =>

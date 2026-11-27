@@ -662,6 +662,211 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/content/events/{slug}/check-ins":
+    post:
+      tags:
+        - "Admin \u2014 Event attendance"
+      summary: "Check people in by ticket code or registration id (batch, idempotent)"
+      description: "Built for the organiser app\u0027s offline queue: send what was scanned, late and in any order, up to 500 at once. Each item answers \u0060checked_in\u0060, \u0060already_checked_in\u0060 (a repeat is a success; the earliest \u0060checkedInAt\u0060 is kept), \u0060not_found\u0060, \u0060wrong_event\u0060 or \u0060not_eligible\u0060 (not confirmed, e.g. unpaid or cancelled). A late scan of someone already marked \u0060no_show\u0060 puts them back to \u0060confirmed\u0060."
+      operationId: "CheckInEventAttendees"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/attendance/close":
+    post:
+      tags:
+        - "Admin \u2014 Event attendance"
+      summary: "Mark confirmed registrations that never checked in as no-shows"
+      description: "Only after the occurrence ended. Cancelled registrations stay \u0060cancelled\u0060; no-shows are \u0060no_show\u0060."
+      operationId: "CloseEventAttendance"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceCloseRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/registrations/{id}/certificate":
+    post:
+      tags:
+        - "Admin \u2014 Event attendance"
+      summary: "Issue an attendance certificate, optionally with a corrected name"
+      description: "Only for someone who checked in, and once: pass \u0060name\u0060 to print a corrected spelling instead of the registered name."
+      operationId: "IssueEventCertificate"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueCertificateRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Admin \u2014 Event attendance"
+      summary: "Download an issued certificate (PDF)"
+      operationId: "GetEventCertificateAdmin"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/event-tickets/{code}/certificate":
+    get:
+      tags:
+        - "Content \u2014 Event attendance"
+      summary: "The ticket holder downloads their certificate (PDF)"
+      operationId: "GetEventCertificate"
+      parameters:
+        -
+          name: "code"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/feedback-form":
+    put:
+      tags:
+        - "Admin \u2014 Event attendance"
+      summary: "Define or open/close the feedback form"
+      description: "Questions are \u0060rating\u0060 (1 to 5), \u0060choice\u0060 (2 to 20 options) or \u0060text\u0060. Questions are locked once responses exist; \u0060isOpen\u0060 can still change."
+      operationId: "PutEventFeedbackForm"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackFormRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Admin \u2014 Event attendance"
+      summary: "The feedback form definition"
+      operationId: "GetEventFeedbackForm"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/feedback":
+    get:
+      tags:
+        - "Admin \u2014 Event attendance"
+      summary: "Aggregated feedback"
+      description: "Averages, distributions, choice counts and free-text answers without any identity. Feedback can be candid, so only \u0060events.manage\u0060 reads it."
+      operationId: "GetEventFeedbackResults"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/event-tickets/{code}/feedback-form":
+    get:
+      tags:
+        - "Content \u2014 Event attendance"
+      summary: "The feedback form, for a ticket that was checked in"
+      operationId: "GetTicketFeedbackForm"
+      parameters:
+        -
+          name: "code"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/event-tickets/{code}/feedback":
+    post:
+      tags:
+        - "Content \u2014 Event attendance"
+      summary: "Submit feedback once per checked-in ticket"
+      operationId: "SubmitEventFeedback"
+      parameters:
+        -
+          name: "code"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackSubmission"
+        required: true
+      responses:
+        "200":
+          description: "OK"
   /api/v1/content/pages:
     get:
       tags:
@@ -7406,6 +7611,10 @@ tags:
   -
     name: "Admin \u2014 Event registration"
   -
+    name: "Admin \u2014 Event attendance"
+  -
+    name: "Content \u2014 Event attendance"
+  -
     name: "Content \u2014 Page"
   -
     name: "Content \u2014 Faq"
@@ -7483,6 +7692,16 @@ tags:
     name: "Admin \u2014 Roles and users"
 components:
   schemas:
+    AttendanceCloseRequest:
+      required:
+        - "occurrence"
+      type: "object"
+      properties:
+        occurrence:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
     BulkItem:
       required:
         - "type"
@@ -7518,6 +7737,37 @@ components:
             - "null"
             - "string"
           format: "date-time"
+    CheckInItem:
+      required:
+        - "ticketCode"
+        - "registrationId"
+        - "checkedInAt"
+      type: "object"
+      properties:
+        ticketCode:
+          type:
+            - "null"
+            - "string"
+        registrationId:
+          type:
+            - "null"
+            - "string"
+        checkedInAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+    CheckInRequest:
+      required:
+        - "items"
+      type: "object"
+      properties:
+        items:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/CheckInItem"
     ContentTranslationInput:
       required:
         - "lang"
@@ -7713,6 +7963,62 @@ components:
           type:
             - "null"
             - "string"
+    FeedbackFormRequest:
+      required:
+        - "questions"
+        - "isOpen"
+      type: "object"
+      properties:
+        questions:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/FeedbackQuestion"
+        isOpen:
+          type:
+            - "null"
+            - "boolean"
+    FeedbackQuestion:
+      required:
+        - "id"
+        - "type"
+        - "prompt"
+        - "required"
+        - "options"
+      type: "object"
+      properties:
+        id:
+          type:
+            - "null"
+            - "string"
+        type:
+          type:
+            - "null"
+            - "string"
+        prompt:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            type: "string"
+        required:
+          type: "boolean"
+        options:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+    FeedbackSubmission:
+      required:
+        - "answers"
+      type: "object"
+      properties:
+        answers:
+          type:
+            - "null"
+            - "object"
     FlagWrite:
       required:
         - "enabled"
@@ -7722,6 +8028,15 @@ components:
         enabled:
           type: "boolean"
         description:
+          type:
+            - "null"
+            - "string"
+    IssueCertificateRequest:
+      required:
+        - "name"
+      type: "object"
+      properties:
+        name:
           type:
             - "null"
             - "string"
