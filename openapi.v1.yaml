@@ -1366,6 +1366,131 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/notifications/catalogue:
+    get:
+      tags:
+        - "Notification templates"
+      summary: "Every transactional message and the variables it may use"
+      operationId: "GetNotificationCatalogue"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/notifications/templates:
+    get:
+      tags:
+        - "Notification templates"
+      summary: "The current (newest) version of each template in each language"
+      operationId: "ListNotificationTemplates"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/notifications/templates/{key}/{lang}/versions":
+    get:
+      tags:
+        - "Notification templates"
+      summary: "Every version of one template in one language, newest first"
+      operationId: "ListNotificationTemplateVersions"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/notifications/templates/{key}/{lang}":
+    post:
+      tags:
+        - "Notification templates"
+      summary: "Save an edit as the next version"
+      description: "Versions are immutable. Only the variables declared for the key (see the catalogue) may be used; the new version is used for every send from now on, while past sends keep the version they used."
+      operationId: "AddNotificationTemplateVersion"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationTemplateWrite"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/notifications/templates/{key}/render":
+    post:
+      tags:
+        - "Notification templates"
+      summary: "Render a template with values (test render, or record a send)"
+      description: "A variable the template uses but \u0060values\u0060 lacks fails with 400 \u0060RENDER_ERROR\u0060: nothing renders \u0060{{name}}\u0060 to a recipient. \u0060version\u0060 pins an older version (default: newest). \u0060record: true\u0060 with \u0060toEmail\u0060 stores the rendered message and its version as a send record."
+      operationId: "RenderNotificationTemplate"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationRenderRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/notifications/sends:
+    get:
+      tags:
+        - "Notification templates"
+      summary: "Recorded sends with the version and exact text each used"
+      operationId: "ListNotificationSends"
+      parameters:
+        -
+          name: "key"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/content/pages:
     get:
       tags:
@@ -8856,6 +8981,8 @@ tags:
   -
     name: "Newsletter \u2014 campaigns"
   -
+    name: "Notification templates"
+  -
     name: "Content \u2014 Page"
   -
     name: "Content \u2014 Faq"
@@ -9560,6 +9687,54 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/NewsTranslationInput"
+    NotificationRenderRequest:
+      required:
+        - "lang"
+        - "values"
+        - "version"
+        - "toEmail"
+        - "record"
+      type: "object"
+      properties:
+        lang:
+          type:
+            - "null"
+            - "string"
+        values:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            type: "string"
+        version:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        toEmail:
+          type:
+            - "null"
+            - "string"
+        record:
+          type:
+            - "null"
+            - "boolean"
+    NotificationTemplateWrite:
+      required:
+        - "subject"
+        - "body"
+      type: "object"
+      properties:
+        subject:
+          type:
+            - "null"
+            - "string"
+        body:
+          type:
+            - "null"
+            - "string"
     PaymentRequest:
       required:
         - "reference"

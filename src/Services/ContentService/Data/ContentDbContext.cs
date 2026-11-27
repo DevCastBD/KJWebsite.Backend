@@ -22,6 +22,8 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<NewsletterSegmentEntity> NewsletterSegments => Set<NewsletterSegmentEntity>();
     public DbSet<NewsletterTemplateEntity> NewsletterTemplates => Set<NewsletterTemplateEntity>();
     public DbSet<NewsletterCampaignEntity> NewsletterCampaigns => Set<NewsletterCampaignEntity>();
+    public DbSet<NotificationTemplateEntity> NotificationTemplates => Set<NotificationTemplateEntity>();
+    public DbSet<NotificationSendEntity> NotificationSends => Set<NotificationSendEntity>();
     public DbSet<EventFeedbackFormEntity> EventFeedbackForms => Set<EventFeedbackFormEntity>();
     public DbSet<EventFeedbackResponseEntity> EventFeedbackResponses => Set<EventFeedbackResponseEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
@@ -225,6 +227,32 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.BodyBn).IsRequired();
             entity.Property(x => x.BodyEn).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+        });
+
+        modelBuilder.Entity<NotificationTemplateEntity>(entity =>
+        {
+            entity.ToTable("notification_templates");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Key).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Lang).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Subject).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Body).IsRequired();
+            entity.Property(x => x.CreatedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.Key, x.Lang, x.Version }).IsUnique();
+        });
+
+        modelBuilder.Entity<NotificationSendEntity>(entity =>
+        {
+            entity.ToTable("notification_sends");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Key).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Lang).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.ToEmail).HasMaxLength(254).IsRequired();
+            entity.Property(x => x.Subject).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Body).IsRequired();
+            entity.Property(x => x.BodyHtml).IsRequired();
+            entity.HasIndex(x => x.Key);
         });
 
         modelBuilder.Entity<NewsletterSegmentEntity>(entity =>

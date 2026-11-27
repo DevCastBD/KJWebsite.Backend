@@ -58,6 +58,7 @@ builder.Services.AddScoped<EventCalendarStore>();
 builder.Services.Configure<NewsletterOptions>(builder.Configuration.GetSection(NewsletterOptions.SectionName));
 builder.Services.AddScoped<NewsletterStore>();
 builder.Services.AddScoped<NewsletterCampaignStore>();
+builder.Services.AddScoped<NotificationTemplateStore>();
 builder.Services.AddSingleton<INewsletterTransport, LoggingNewsletterTransport>();
 builder.Services.AddSingleton<NewsletterDispatcher>();
 builder.Services.AddHostedService(services => services.GetRequiredService<NewsletterDispatcher>());
@@ -91,6 +92,7 @@ if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenA
     }
 
     await ContentSeeder.SeedAsync(db, scope.ServiceProvider.GetRequiredService<TimeProvider>());
+    await NotificationTemplateStore.SeedAsync(db, scope.ServiceProvider.GetRequiredService<TimeProvider>());
     await scope.ServiceProvider.GetRequiredService<SearchIndex>().EnsureBuiltAsync();
 }
 
@@ -366,6 +368,7 @@ app.MapEventAttendance();
 app.MapEventCalendar();
 app.MapNewsletter();
 app.MapNewsletterCampaigns();
+app.MapNotificationTemplates();
 app.MapGenericContent();
 app.MapSettings();
 app.MapBackOffice();

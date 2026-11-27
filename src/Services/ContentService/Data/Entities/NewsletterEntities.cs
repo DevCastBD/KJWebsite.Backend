@@ -105,3 +105,30 @@ public sealed class NewsletterSegmentEntity
     public string FilterJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+/// <summary>One immutable version of a transactional message in one language. The newest version of a (key, lang) is the one sent.</summary>
+public sealed class NotificationTemplateEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public string Lang { get; set; } = "bn";
+    public int Version { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public string CreatedBy { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>What was actually produced for a recipient, with the template version it came from, so a past message can always be reproduced.</summary>
+public sealed class NotificationSendEntity
+{
+    public long Id { get; set; }
+    public string Key { get; set; } = string.Empty;
+    public string Lang { get; set; } = "bn";
+    public int Version { get; set; }
+    public string ToEmail { get; set; } = string.Empty;
+    public string Subject { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public string BodyHtml { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+}
