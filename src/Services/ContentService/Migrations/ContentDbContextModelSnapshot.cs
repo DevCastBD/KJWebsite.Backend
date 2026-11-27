@@ -597,6 +597,46 @@ namespace ContentService.Migrations
                     b.ToTable("feature_flags", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.InAppNotificationEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Subject");
+
+                    b.ToTable("in_app_notifications", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.NewsArticleEntity", b =>
                 {
                     b.Property<string>("ContentItemId")
@@ -896,6 +936,41 @@ namespace ContentService.Migrations
                     b.ToTable("newsletter_templates", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.NotificationPreferenceEntity", b =>
+                {
+                    b.Property<string>("Subject")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Email")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("InApp")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Lang")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<bool>("Push")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Sms")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Subject");
+
+                    b.ToTable("notification_preferences", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.NotificationSendEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -1008,6 +1083,45 @@ namespace ContentService.Migrations
                     b.ToTable("projects", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.PushSubscriptionEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("ConsentedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("Subject");
+
+                    b.ToTable("push_subscriptions", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.RedirectEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -1089,6 +1203,70 @@ namespace ContentService.Migrations
                     b.HasKey("Key");
 
                     b.ToTable("settings", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.SmsMessageEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("CreatedUnix")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Encoding")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Lang")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<int>("Segments")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ToPhone")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedUnix");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("sms_messages", "content");
                 });
 
             modelBuilder.Entity("ContentService.Data.Entities.TagEntity", b =>

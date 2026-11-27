@@ -24,6 +24,10 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<NewsletterCampaignEntity> NewsletterCampaigns => Set<NewsletterCampaignEntity>();
     public DbSet<NotificationTemplateEntity> NotificationTemplates => Set<NotificationTemplateEntity>();
     public DbSet<NotificationSendEntity> NotificationSends => Set<NotificationSendEntity>();
+    public DbSet<NotificationPreferenceEntity> NotificationPreferences => Set<NotificationPreferenceEntity>();
+    public DbSet<InAppNotificationEntity> InAppNotifications => Set<InAppNotificationEntity>();
+    public DbSet<SmsMessageEntity> SmsMessages => Set<SmsMessageEntity>();
+    public DbSet<PushSubscriptionEntity> PushSubscriptions => Set<PushSubscriptionEntity>();
     public DbSet<EventFeedbackFormEntity> EventFeedbackForms => Set<EventFeedbackFormEntity>();
     public DbSet<EventFeedbackResponseEntity> EventFeedbackResponses => Set<EventFeedbackResponseEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
@@ -253,6 +257,55 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.Body).IsRequired();
             entity.Property(x => x.BodyHtml).IsRequired();
             entity.HasIndex(x => x.Key);
+        });
+
+        modelBuilder.Entity<NotificationPreferenceEntity>(entity =>
+        {
+            entity.ToTable("notification_preferences");
+            entity.HasKey(x => x.Subject);
+            entity.Property(x => x.Subject).HasMaxLength(64);
+            entity.Property(x => x.Phone).HasMaxLength(16);
+            entity.Property(x => x.Lang).HasMaxLength(8).IsRequired();
+        });
+
+        modelBuilder.Entity<InAppNotificationEntity>(entity =>
+        {
+            entity.ToTable("in_app_notifications");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Subject).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Key).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Body).IsRequired();
+            entity.HasIndex(x => x.Subject);
+        });
+
+        modelBuilder.Entity<SmsMessageEntity>(entity =>
+        {
+            entity.ToTable("sms_messages");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Subject).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ToPhone).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Key).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Lang).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Body).IsRequired();
+            entity.Property(x => x.Encoding).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Error).HasMaxLength(300);
+            entity.HasIndex(x => x.Status);
+            entity.HasIndex(x => x.CreatedUnix);
+        });
+
+        modelBuilder.Entity<PushSubscriptionEntity>(entity =>
+        {
+            entity.ToTable("push_subscriptions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Subject).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Endpoint).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.P256dh).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Auth).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => x.Endpoint).IsUnique();
+            entity.HasIndex(x => x.Subject);
         });
 
         modelBuilder.Entity<NewsletterSegmentEntity>(entity =>

@@ -43,3 +43,14 @@ Back office, `comms.manage`, under `/api/v1/admin/newsletter`.
 - **Reproducible past sends**: with `record: true` the rendered subject, text, HTML and the template version are stored (`GET /sends?key=`). Later edits never alter them, and `version` pins an old version for a re-render.
 - **Mail-client-safe HTML**: one centred 600px table, inline styles, viewport meta, no `<style>`, flex, grid, web fonts, remote images or tracking; a test asserts this structure. Actual rendering in Gmail, Outlook and a phone client still needs a manual check with real accounts (not done here).
 - Other services call the render endpoint (or move to a shared transport later); wiring each existing sender (Auth password reset, donation receipts, event notifications) onto it is a follow-up.
+
+# SMS, in-app and web push (BE-079, #83)
+
+Member endpoints (`member.profile.edit`, the caller's own data) under `/api/v1/notifications`; staff under `/api/v1/admin/notifications` (`comms.manage`).
+
+- **Preferences** (`GET|PUT /preferences`): email, sms, inApp, push, a Bangladeshi mobile number (`01XXXXXXXXX`, `8801...` or `+8801...`, operator digit 3-9, stored as `+8801XXXXXXXXX`) and language. Email and in-app default on; SMS and push default **off**. SMS cannot be enabled without a number.
+- **`POST /templates/{key}/notify`** (staff) sends one catalogue message over the channels the person allows and reports each channel as `queued` or `skipped` with a reason. A skipped channel never blocks another.
+- **SMS gates** (all required, because it costs per message): `allowSms: true` on the call (an explicit decision per send); the template is on the SMS allow-list (`event.reminder`, `dues.reminder`, `auth.password-reset`); the person opted in and has a valid number; the message fits `Channels:SmsMaxSegments` (3); fewer than `Channels:SmsPerRecipientPerDay` (3) to that number and `Channels:SmsDailyLimit` (1000) overall in 24 h. Bengali text is UCS-2 (70 chars, then 67 per part) versus 160/153 for GSM-7, so the stored `encoding` and `segments` show the real cost (`GET /sms`). `SmsDispatcher` hands queued messages to `ISmsTransport`; the default only logs, so nothing is sent until a Bangladeshi SMS provider is registered (provider choice and credentials are still open).
+- **In-app** (`GET /inbox`, `POST /inbox/{id}/read`, `POST /inbox/read-all`): persisted per member with an unread count; read state is server-side, so every device agrees.
+- **Web push** (`POST|DELETE /push-subscriptions`): stores a browser subscription only with `consent: true` and turns the push preference on; turning push off deletes the subscriptions. The UI must ask on a deliberate action, never on first visit. Delivery needs a VAPID key pair and a push library and is not wired yet.
+- Email on `notify` writes a send record (`/sends`); actual email delivery is the transport's job, as for campaigns.
