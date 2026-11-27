@@ -9,6 +9,7 @@ public sealed class ReportingDbContext(DbContextOptions<ReportingDbContext> opti
     public DbSet<AggregatePointEntity> AggregatePoints => Set<AggregatePointEntity>();
     public DbSet<AggregateSourceEntity> AggregateSources => Set<AggregateSourceEntity>();
     public DbSet<AggregateRunEntity> AggregateRuns => Set<AggregateRunEntity>();
+    public DbSet<MetricDefinitionEntity> MetricDefinitions => Set<MetricDefinitionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +45,23 @@ public sealed class ReportingDbContext(DbContextOptions<ReportingDbContext> opti
             e.Property(x => x.Trigger).HasMaxLength(16).IsRequired();
             e.Property(x => x.Status).HasMaxLength(16).IsRequired();
             e.Property(x => x.Error).HasMaxLength(2000);
+        });
+
+        modelBuilder.Entity<MetricDefinitionEntity>(e =>
+        {
+            e.ToTable("metric_definitions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.Key).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Description).HasMaxLength(500).IsRequired();
+            e.Property(x => x.Methodology).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Unit).HasMaxLength(32).IsRequired();
+            e.Property(x => x.Metric).HasMaxLength(80).IsRequired();
+            e.Property(x => x.Kind).HasMaxLength(16).IsRequired();
+            e.Property(x => x.Scale).HasPrecision(18, 8);
+            e.Property(x => x.CreatedBy).HasMaxLength(64);
+            e.HasIndex(x => new { x.Key, x.Version }).IsUnique();
         });
     }
 }

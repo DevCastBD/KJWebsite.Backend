@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ReportingService.Aggregates;
 using ReportingService.Dashboards;
 using ReportingService.Data;
+using ReportingService.Metrics;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,7 +27,7 @@ builder.Services.AddDbContext<ReportingDbContext>((services, options) =>
     options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "reporting"));
     options.AddInterceptors(services.GetRequiredService<AuditInterceptor>());
 });
-builder.Services.AddKjAuditing("reporting", audit => audit.Audit<ReportingService.Data.Entities.AggregateRunEntity>());
+builder.Services.AddKjAuditing("reporting", audit => audit.Audit<ReportingService.Data.Entities.AggregateRunEntity>().Audit<ReportingService.Data.Entities.MetricDefinitionEntity>());
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.Configure<AggregateOptions>(builder.Configuration.GetSection(AggregateOptions.SectionName));
@@ -36,6 +37,7 @@ builder.Services.AddScoped<AggregateRefresher>();
 builder.Services.AddScoped<AggregateQuery>();
 builder.Services.Configure<DashboardOptions>(builder.Configuration.GetSection(DashboardOptions.SectionName));
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<MetricService>();
 if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
 {
     builder.Services.AddHostedService<AggregateWorker>();
@@ -58,6 +60,8 @@ if (!(app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("OpenA
     {
         db.Database.EnsureCreated();
     }
+
+    await MetricSeeder.EnsureAsync(db, scope.ServiceProvider.GetRequiredService<TimeProvider>());
 }
 
 if (app.Environment.IsDevelopment())
@@ -82,6 +86,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Reporting
 
 app.MapAggregates();
 app.MapDashboards();
+app.MapMetrics();
 app.MapAuditLog<ReportingDbContext>("/api/v1/admin/reporting/audit", "Reporting");
 
 app.Run();
