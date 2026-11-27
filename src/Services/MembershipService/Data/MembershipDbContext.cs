@@ -31,6 +31,8 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<MouEntity> Mous => Set<MouEntity>();
     public DbSet<SessionLogEntity> SessionLogs => Set<SessionLogEntity>();
     public DbSet<ProgrammeOutcomeEntity> ProgrammeOutcomes => Set<ProgrammeOutcomeEntity>();
+    public DbSet<TaskAssignmentEntity> Tasks => Set<TaskAssignmentEntity>();
+    public DbSet<MemberNotificationEntity> MemberNotifications => Set<MemberNotificationEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -274,6 +276,36 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.Note).HasMaxLength(500);
             entity.Property(x => x.RecordedBy).HasMaxLength(64).IsRequired();
             entity.HasIndex(x => new { x.ProjectSlug, x.MetricKey, x.PeriodStart, x.PeriodEnd }).IsUnique();
+        });
+
+        modelBuilder.Entity<TaskAssignmentEntity>(entity =>
+        {
+            entity.ToTable("tasks");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.AssigneeMemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ProjectSlug).HasMaxLength(120);
+            entity.Property(x => x.CommitteeId).HasMaxLength(64);
+            entity.Property(x => x.Priority).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.CreatedBy).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.UpdatedAt).IsConcurrencyToken();
+            entity.HasIndex(x => new { x.AssigneeMemberId, x.Status });
+            entity.HasIndex(x => x.ProjectSlug);
+            entity.HasIndex(x => x.CommitteeId);
+            entity.HasOne<MemberEntity>().WithMany().HasForeignKey(x => x.AssigneeMemberId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MemberNotificationEntity>(entity =>
+        {
+            entity.ToTable("member_notifications");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Template).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.PayloadJson).IsRequired();
+            entity.HasIndex(x => new { x.MemberId, x.ReadAt });
         });
 
         modelBuilder.Entity<MemberEntity>(entity =>

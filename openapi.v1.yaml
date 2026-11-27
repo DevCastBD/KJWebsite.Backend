@@ -4418,6 +4418,188 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/membership/tasks:
+    get:
+      tags:
+        - "Task assignment"
+      summary: "Tasks by project, committee, assignee or status"
+      operationId: "ListTasks"
+      parameters:
+        -
+          name: "project"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "committeeId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "assignee"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Task assignment"
+      summary: "Assign a task to a member for a project or a committee"
+      description: "Exactly one of \u0060projectSlug\u0060 and \u0060committeeId\u0060. The assignee must be an active member and is notified."
+      operationId: "CreateTask"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/tasks/{id}":
+    put:
+      tags:
+        - "Task assignment"
+      summary: "Edit, reassign or move a task; fields left out stay"
+      description: "Reassigning notifies the new assignee; changing the due date notifies the assignee."
+      operationId: "UpdateTask"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Task assignment"
+      summary: "Delete a task"
+      operationId: "DeleteTask"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/tasks/workload:
+    get:
+      tags:
+        - "Task assignment"
+      summary: "Open tasks per member, busiest first"
+      description: "Counts open tasks (todo, in progress, blocked) per assignee with overdue, due-soon and high-priority counts, so an overloaded volunteer shows up before they burn out."
+      operationId: "TaskWorkload"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/tasks/reminders/run:
+    post:
+      tags:
+        - "Task assignment"
+      summary: "Create due-soon and overdue notices, once per due date"
+      description: "Safe to call repeatedly: a task is reminded once per due date. Run it daily from a timer."
+      operationId: "RunTaskReminders"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/tasks:
+    get:
+      tags:
+        - "Task assignment"
+      summary: "My tasks"
+      operationId: "ListMyTasks"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/members/me/tasks/{id}/status":
+    put:
+      tags:
+        - "Task assignment"
+      summary: "Move my task between todo, in progress, blocked and done"
+      operationId: "SetMyTaskStatus"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StatusRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/inbox:
+    get:
+      tags:
+        - "Task assignment"
+      summary: "My notification centre (the preferences stay at /members/me/notifications)"
+      operationId: "ListMyInbox"
+      parameters:
+        -
+          name: "unread"
+          in: "query"
+          schema:
+            type: "boolean"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/inbox/read:
+    post:
+      tags:
+        - "Task assignment"
+      summary: "Mark all my notifications read"
+      operationId: "MarkMyInboxRead"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/membership/audit:
     get:
       tags:
@@ -8209,6 +8391,8 @@ tags:
   -
     name: "Programme delivery"
   -
+    name: "Task assignment"
+  -
     name: "Donations"
   -
     name: "Finance"
@@ -9490,6 +9674,60 @@ components:
             - "null"
             - "string"
         email:
+          type:
+            - "null"
+            - "string"
+    StatusRequest:
+      required:
+        - "status"
+      type: "object"
+      properties:
+        status:
+          type:
+            - "null"
+            - "string"
+    TaskRequest:
+      required:
+        - "title"
+        - "description"
+        - "assigneeMemberId"
+        - "projectSlug"
+        - "committeeId"
+        - "dueOn"
+        - "priority"
+        - "status"
+      type: "object"
+      properties:
+        title:
+          type:
+            - "null"
+            - "string"
+        description:
+          type:
+            - "null"
+            - "string"
+        assigneeMemberId:
+          type:
+            - "null"
+            - "string"
+        projectSlug:
+          type:
+            - "null"
+            - "string"
+        committeeId:
+          type:
+            - "null"
+            - "string"
+        dueOn:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        priority:
+          type:
+            - "null"
+            - "string"
+        status:
           type:
             - "null"
             - "string"
