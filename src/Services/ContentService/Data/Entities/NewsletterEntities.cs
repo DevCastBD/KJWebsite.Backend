@@ -132,3 +132,64 @@ public sealed class NotificationSendEntity
     public string BodyHtml { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+/// <summary>A member's channel choices. Email and in-app default on; SMS and web push are off until the member turns them on.</summary>
+public sealed class NotificationPreferenceEntity
+{
+    public string Subject { get; set; } = string.Empty;
+    public bool Email { get; set; } = true;
+    public bool Sms { get; set; }
+    public bool InApp { get; set; } = true;
+    public bool Push { get; set; }
+
+    /// <summary>Normalised Bangladeshi mobile number, `+8801XXXXXXXXX`.</summary>
+    public string? Phone { get; set; }
+
+    public string Lang { get; set; } = "bn";
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+/// <summary>A durable in-app notification. Read state lives here, so every device of the member sees the same unread count.</summary>
+public sealed class InAppNotificationEntity
+{
+    public long Id { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? ReadAt { get; set; }
+}
+
+public sealed class SmsMessageEntity
+{
+    public long Id { get; set; }
+    public string Subject { get; set; } = string.Empty;
+    public string ToPhone { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public string Lang { get; set; } = "bn";
+    public string Body { get; set; } = string.Empty;
+
+    /// <summary>`gsm7` or `ucs2` (any Bengali text): decides the segment count and so the cost.</summary>
+    public string Encoding { get; set; } = "gsm7";
+
+    public int Segments { get; set; }
+    public string Status { get; set; } = "queued";
+    public string? Error { get; set; }
+
+    /// <summary>Unix seconds, so rate limits can be counted in SQL.</summary>
+    public long CreatedUnix { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>A browser's push subscription, stored only after the member explicitly opts in. Sending needs a VAPID key pair and a push library, which are not wired yet.</summary>
+public sealed class PushSubscriptionEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string Subject { get; set; } = string.Empty;
+    public string Endpoint { get; set; } = string.Empty;
+    public string P256dh { get; set; } = string.Empty;
+    public string Auth { get; set; } = string.Empty;
+    public DateTimeOffset ConsentedAt { get; set; }
+}

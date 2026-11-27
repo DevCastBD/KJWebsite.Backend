@@ -1491,6 +1491,178 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/notifications/preferences:
+    get:
+      tags:
+        - "Notification channels"
+      summary: "My channels: email, SMS, in-app, push"
+      description: "Email and in-app default on; SMS and push default off and stay off until turned on here."
+      operationId: "GetNotificationPreferences"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Notification channels"
+      summary: "Change my channels, Bangladeshi mobile number and language"
+      description: "\u0060phone\u0060 accepts 01XXXXXXXXX, 8801XXXXXXXXX or \u002B8801XXXXXXXXX and is stored as \u002B8801XXXXXXXXX; an empty string removes it. SMS cannot be turned on without a number."
+      operationId: "SetNotificationPreferences"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationPreferenceWrite"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/notifications/inbox:
+    get:
+      tags:
+        - "Notification channels"
+      summary: "My in-app notifications, newest first, with the unread count"
+      operationId: "GetInAppInbox"
+      parameters:
+        -
+          name: "unreadOnly"
+          in: "query"
+          schema:
+            type: "boolean"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/notifications/inbox/{id}/read":
+    post:
+      tags:
+        - "Notification channels"
+      summary: "Mark one notification read (on every device)"
+      operationId: "MarkInAppRead"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/notifications/inbox/read-all:
+    post:
+      tags:
+        - "Notification channels"
+      summary: "Mark everything read"
+      operationId: "MarkAllInAppRead"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/notifications/push-subscriptions:
+    post:
+      tags:
+        - "Notification channels"
+      summary: "Register this browser for web push (explicit consent only)"
+      description: "Send only after the member has agreed in the UI, with \u0060consent: true\u0060; never on first visit. Stores the subscription and turns the push preference on. Delivery needs a VAPID key pair and push library, which are not configured yet."
+      operationId: "AddPushSubscription"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushSubscriptionWrite"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Notification channels"
+      summary: "Unregister a browser"
+      operationId: "RemovePushSubscription"
+      parameters:
+        -
+          name: "endpoint"
+          in: "query"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/notifications/templates/{key}/notify":
+    post:
+      tags:
+        - "Notification channels"
+      summary: "Send one catalogue message over the channels the person allows"
+      description: "Returns each channel as \u0060queued\u0060 or \u0060skipped\u0060 with a reason. SMS needs all of: \u0060allowSms: true\u0060 on this call (an explicit decision per send), a template on the SMS allow-list, the person\u0027s opt-in and a valid Bangladeshi number, a message within the segment limit, and the per-number and daily limits. A skipped channel never blocks the others."
+      operationId: "NotifyOverChannels"
+      parameters:
+        -
+          name: "key"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotifyRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/notifications/sms:
+    get:
+      tags:
+        - "Notification channels"
+      summary: "Queued and sent SMS with encoding and segment count (cost)"
+      operationId: "ListSmsMessages"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/content/pages:
     get:
       tags:
@@ -8983,6 +9155,8 @@ tags:
   -
     name: "Notification templates"
   -
+    name: "Notification channels"
+  -
     name: "Content \u2014 Page"
   -
     name: "Content \u2014 Faq"
@@ -9687,6 +9861,40 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/NewsTranslationInput"
+    NotificationPreferenceWrite:
+      required:
+        - "email"
+        - "sms"
+        - "inApp"
+        - "push"
+        - "phone"
+        - "lang"
+      type: "object"
+      properties:
+        email:
+          type:
+            - "null"
+            - "boolean"
+        sms:
+          type:
+            - "null"
+            - "boolean"
+        inApp:
+          type:
+            - "null"
+            - "boolean"
+        push:
+          type:
+            - "null"
+            - "boolean"
+        phone:
+          type:
+            - "null"
+            - "string"
+        lang:
+          type:
+            - "null"
+            - "string"
     NotificationRenderRequest:
       required:
         - "lang"
@@ -9735,6 +9943,42 @@ components:
           type:
             - "null"
             - "string"
+    NotifyRequest:
+      required:
+        - "subject"
+        - "email"
+        - "phone"
+        - "lang"
+        - "values"
+        - "allowSms"
+      type: "object"
+      properties:
+        subject:
+          type:
+            - "null"
+            - "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        phone:
+          type:
+            - "null"
+            - "string"
+        lang:
+          type:
+            - "null"
+            - "string"
+        values:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            type: "string"
+        allowSms:
+          type:
+            - "null"
+            - "boolean"
     PaymentRequest:
       required:
         - "reference"
@@ -9824,6 +10068,30 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/ProjectTranslationInput"
+    PushSubscriptionWrite:
+      required:
+        - "endpoint"
+        - "p256dh"
+        - "auth"
+        - "consent"
+      type: "object"
+      properties:
+        endpoint:
+          type:
+            - "null"
+            - "string"
+        p256dh:
+          type:
+            - "null"
+            - "string"
+        auth:
+          type:
+            - "null"
+            - "string"
+        consent:
+          type:
+            - "null"
+            - "boolean"
     ReasonRequest:
       required:
         - "reason"
