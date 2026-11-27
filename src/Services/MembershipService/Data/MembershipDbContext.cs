@@ -26,6 +26,11 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<VolunteerOpportunityEntity> VolunteerOpportunities => Set<VolunteerOpportunityEntity>();
     public DbSet<VolunteerShiftEntity> VolunteerShifts => Set<VolunteerShiftEntity>();
     public DbSet<VolunteerSignupEntity> VolunteerSignups => Set<VolunteerSignupEntity>();
+    public DbSet<BeneficiaryEntity> Beneficiaries => Set<BeneficiaryEntity>();
+    public DbSet<ProgrammeEnrolmentEntity> ProgrammeEnrolments => Set<ProgrammeEnrolmentEntity>();
+    public DbSet<MouEntity> Mous => Set<MouEntity>();
+    public DbSet<SessionLogEntity> SessionLogs => Set<SessionLogEntity>();
+    public DbSet<ProgrammeOutcomeEntity> ProgrammeOutcomes => Set<ProgrammeOutcomeEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -202,6 +207,73 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.HasIndex(x => new { x.ShiftId, x.MemberId }).IsUnique();
             entity.HasOne<VolunteerShiftEntity>().WithMany().HasForeignKey(x => x.ShiftId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<MemberEntity>().WithMany().HasForeignKey(x => x.MemberId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<BeneficiaryEntity>(entity =>
+        {
+            entity.ToTable("beneficiaries");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Slug).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Kind).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.NameEn).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.NameBn).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.District).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => x.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<ProgrammeEnrolmentEntity>(entity =>
+        {
+            entity.ToTable("programme_enrolments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ProjectSlug).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.BeneficiaryId).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.ProjectSlug, x.BeneficiaryId }).IsUnique();
+            entity.HasOne<BeneficiaryEntity>().WithMany().HasForeignKey(x => x.BeneficiaryId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<MouEntity>(entity =>
+        {
+            entity.ToTable("mous");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.BeneficiaryId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SignatoryProtected).IsRequired();
+            entity.Property(x => x.SignatoryRole).HasMaxLength(120);
+            entity.Property(x => x.DocumentKey).HasMaxLength(128);
+            entity.Property(x => x.DocumentContentType).HasMaxLength(128);
+            entity.Property(x => x.DocumentFileName).HasMaxLength(200);
+            entity.HasIndex(x => x.BeneficiaryId);
+            entity.HasOne<BeneficiaryEntity>().WithMany().HasForeignKey(x => x.BeneficiaryId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<SessionLogEntity>(entity =>
+        {
+            entity.ToTable("session_logs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ClientId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ProjectSlug).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.BeneficiaryId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Topic).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.LoggedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.ClientId).IsUnique();
+            entity.HasIndex(x => new { x.ProjectSlug, x.HeldOn });
+            entity.HasOne<BeneficiaryEntity>().WithMany().HasForeignKey(x => x.BeneficiaryId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ProgrammeOutcomeEntity>(entity =>
+        {
+            entity.ToTable("programme_outcomes");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ProjectSlug).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.MetricKey).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Unit).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.Property(x => x.RecordedBy).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.ProjectSlug, x.MetricKey, x.PeriodStart, x.PeriodEnd }).IsUnique();
         });
 
         modelBuilder.Entity<MemberEntity>(entity =>

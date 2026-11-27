@@ -4140,6 +4140,284 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/membership/programme/beneficiaries:
+    get:
+      tags:
+        - "Programme delivery"
+      summary: "Beneficiary institutions with the projects they take part in"
+      operationId: "ListBeneficiaries"
+      parameters:
+        -
+          name: "includeArchived"
+          in: "query"
+          schema:
+            type: "boolean"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Programme delivery"
+      summary: "Add a beneficiary institution"
+      operationId: "CreateBeneficiary"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BeneficiaryRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/programme/beneficiaries/{id}":
+    put:
+      tags:
+        - "Programme delivery"
+      summary: "Edit or archive an institution; fields left out stay"
+      operationId: "UpdateBeneficiary"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BeneficiaryRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/programme/beneficiaries/{id}/enrolments/{projectSlug}":
+    put:
+      tags:
+        - "Programme delivery"
+      summary: "Set how many of an institution\u0027s students a project reaches"
+      operationId: "SetBeneficiaryEnrolment"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "projectSlug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EnrolmentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Programme delivery"
+      summary: "Take an institution out of a project"
+      operationId: "RemoveBeneficiaryEnrolment"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "projectSlug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/programme/beneficiaries/{id}/mous":
+    get:
+      tags:
+        - "Programme delivery"
+      summary: "MoUs of an institution"
+      operationId: "ListMous"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Programme delivery"
+      summary: "Record an MoU"
+      operationId: "CreateMou"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MouRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/programme/mous/{mouId}/document":
+    put:
+      tags:
+        - "Programme delivery"
+      summary: "Attach the signed MoU (PDF, JPEG or PNG, up to 10 MB; raw body, \u0060X-Filename\u0060 header)"
+      operationId: "UploadMouDocument"
+      parameters:
+        -
+          name: "mouId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Programme delivery"
+      summary: "Download an MoU document (permission-gated, never cached)"
+      operationId: "DownloadMouDocument"
+      parameters:
+        -
+          name: "mouId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/programme/sessions:
+    post:
+      tags:
+        - "Programme delivery"
+      summary: "Log one delivered session"
+      description: "Idempotent on \u0060clientId\u0060 (the field app\u0027s own id): sending it again returns \u0060duplicate\u0060 and changes nothing."
+      operationId: "LogProgrammeSession"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionInput"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Programme delivery"
+      summary: "Logged sessions"
+      operationId: "ListProgrammeSessions"
+      parameters:
+        -
+          name: "project"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "beneficiaryId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/programme/sessions/batch:
+    post:
+      tags:
+        - "Programme delivery"
+      summary: "Log sessions in a batch, late and in any order"
+      description: "For field staff on poor connections. Each item is answered \u0060created\u0060, \u0060duplicate\u0060 (same \u0060clientId\u0060 seen before) or \u0060invalid\u0060 with the reason; one bad item does not stop the rest. A session may be up to a year old; one in the future is invalid."
+      operationId: "LogProgrammeSessionsBatch"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionBatch"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/programme/outcomes:
+    put:
+      tags:
+        - "Programme delivery"
+      summary: "Record an outcome metric for a project and period (replaces the same key and period)"
+      operationId: "RecordProgrammeOutcome"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutcomeRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/programme/projects/{projectSlug}/summary":
+    get:
+      tags:
+        - "Programme delivery"
+      summary: "A project\u0027s institutions, MoUs, sessions delivered, students reached and outcomes"
+      operationId: "ProjectProgrammeSummary"
+      parameters:
+        -
+          name: "projectSlug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/programme/figures:
+    get:
+      tags:
+        - "Programme delivery"
+      summary: "Aggregate figures only: the numbers that may be published"
+      description: "Counts of institutions, students reached and sessions delivered, per project and in total, each with a fingerprint of the logged sessions and enrolments behind it. No names, addresses, MoUs or districts are included. Impact metrics (BE-085) read this, not the institution endpoints."
+      operationId: "ProgrammeFigures"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/membership/audit:
     get:
       tags:
@@ -7929,6 +8207,8 @@ tags:
   -
     name: "Volunteer operations"
   -
+    name: "Programme delivery"
+  -
     name: "Donations"
   -
     name: "Finance"
@@ -8711,6 +8991,45 @@ components:
             - "null"
             - "string"
           format: "date-time"
+    BeneficiaryRequest:
+      required:
+        - "slug"
+        - "kind"
+        - "nameEn"
+        - "nameBn"
+        - "address"
+        - "district"
+        - "isArchived"
+      type: "object"
+      properties:
+        slug:
+          type:
+            - "null"
+            - "string"
+        kind:
+          type:
+            - "null"
+            - "string"
+        nameEn:
+          type:
+            - "null"
+            - "string"
+        nameBn:
+          type:
+            - "null"
+            - "string"
+        address:
+          type:
+            - "null"
+            - "string"
+        district:
+          type:
+            - "null"
+            - "string"
+        isArchived:
+          type:
+            - "null"
+            - "boolean"
     CampaignRequest:
       required:
         - "slug"
@@ -8844,6 +9163,18 @@ components:
             - "null"
             - "string"
           format: "date"
+    EnrolmentRequest:
+      required:
+        - "students"
+      type: "object"
+      properties:
+        students:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
     HourRequest:
       required:
         - "projectSlug"
@@ -8874,6 +9205,32 @@ components:
             - "string"
           format: "int32"
         description:
+          type:
+            - "null"
+            - "string"
+    MouRequest:
+      required:
+        - "signedOn"
+        - "validUntil"
+        - "signatory"
+        - "signatoryRole"
+      type: "object"
+      properties:
+        signedOn:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        validUntil:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        signatory:
+          type:
+            - "null"
+            - "string"
+        signatoryRole:
           type:
             - "null"
             - "string"
@@ -8952,6 +9309,50 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/ShiftInput"
+    OutcomeRequest:
+      required:
+        - "projectSlug"
+        - "metricKey"
+        - "periodStart"
+        - "periodEnd"
+        - "value"
+        - "unit"
+        - "note"
+      type: "object"
+      properties:
+        projectSlug:
+          type:
+            - "null"
+            - "string"
+        metricKey:
+          type:
+            - "null"
+            - "string"
+        periodStart:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        periodEnd:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        value:
+          pattern: "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$"
+          type:
+            - "null"
+            - "number"
+            - "string"
+          format: "double"
+        unit:
+          type:
+            - "null"
+            - "string"
+        note:
+          type:
+            - "null"
+            - "string"
     ProfilePatch:
       required:
         - "changes"
@@ -8972,6 +9373,63 @@ components:
           type:
             - "null"
             - "string"
+    SessionBatch:
+      required:
+        - "sessions"
+      type: "object"
+      properties:
+        sessions:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/SessionInput"
+    SessionInput:
+      required:
+        - "clientId"
+        - "projectSlug"
+        - "beneficiarySlug"
+        - "heldOn"
+        - "topic"
+        - "attendance"
+        - "durationMinutes"
+      type: "object"
+      properties:
+        clientId:
+          type:
+            - "null"
+            - "string"
+        projectSlug:
+          type:
+            - "null"
+            - "string"
+        beneficiarySlug:
+          type:
+            - "null"
+            - "string"
+        heldOn:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        topic:
+          type:
+            - "null"
+            - "string"
+        attendance:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        durationMinutes:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
     ShiftInput:
       required:
         - "startsAt"

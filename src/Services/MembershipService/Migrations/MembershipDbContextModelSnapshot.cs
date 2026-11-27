@@ -345,6 +345,57 @@ namespace MembershipService.Migrations
                     b.ToTable("application_attachments", "membership");
                 });
 
+            modelBuilder.Entity("MembershipService.Data.Entities.BeneficiaryEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AddressProtected")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("District")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("NameBn")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameEn")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("beneficiaries", "membership");
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.CampaignEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -769,6 +820,56 @@ namespace MembershipService.Migrations
                     b.ToTable("member_status_events", "membership");
                 });
 
+            modelBuilder.Entity("MembershipService.Data.Entities.MouEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("BeneficiaryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DocumentBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("DocumentContentType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("DocumentFileName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("DocumentKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("SignatoryProtected")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SignatoryRole")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateOnly>("SignedOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ValidUntil")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BeneficiaryId");
+
+                    b.ToTable("mous", "membership");
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.NotificationOutboxEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -861,6 +962,88 @@ namespace MembershipService.Migrations
                     b.ToTable("profile_changes", "membership");
                 });
 
+            modelBuilder.Entity("MembershipService.Data.Entities.ProgrammeEnrolmentEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("BeneficiaryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ProjectSlug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("Students")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BeneficiaryId");
+
+                    b.HasIndex("ProjectSlug", "BeneficiaryId")
+                        .IsUnique();
+
+                    b.ToTable("programme_enrolments", "membership");
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.ProgrammeOutcomeEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("MetricKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ProjectSlug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RecordedBy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<double>("Value")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectSlug", "MetricKey", "PeriodStart", "PeriodEnd")
+                        .IsUnique();
+
+                    b.ToTable("programme_outcomes", "membership");
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.RetentionItemEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -924,6 +1107,61 @@ namespace MembershipService.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("retention_runs", "membership");
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.SessionLogEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Attendance")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("BeneficiaryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("HeldOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("LoggedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LoggedBy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ProjectSlug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Topic")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BeneficiaryId");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique();
+
+                    b.HasIndex("ProjectSlug", "HeldOn");
+
+                    b.ToTable("session_logs", "membership");
                 });
 
             modelBuilder.Entity("MembershipService.Data.Entities.VolunteerHourEntity", b =>
@@ -1132,6 +1370,33 @@ namespace MembershipService.Migrations
                         .WithMany("Attachments")
                         .HasForeignKey("ApplicationId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.MouEntity", b =>
+                {
+                    b.HasOne("MembershipService.Data.Entities.BeneficiaryEntity", null)
+                        .WithMany()
+                        .HasForeignKey("BeneficiaryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.ProgrammeEnrolmentEntity", b =>
+                {
+                    b.HasOne("MembershipService.Data.Entities.BeneficiaryEntity", null)
+                        .WithMany()
+                        .HasForeignKey("BeneficiaryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.SessionLogEntity", b =>
+                {
+                    b.HasOne("MembershipService.Data.Entities.BeneficiaryEntity", null)
+                        .WithMany()
+                        .HasForeignKey("BeneficiaryId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
