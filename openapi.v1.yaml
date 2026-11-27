@@ -8983,6 +8983,287 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MetricVersionView"
+  /api/v1/admin/reporting/report-templates:
+    get:
+      tags:
+        - "Reports"
+      summary: "The built-in report templates and the parameters a report may take"
+      description: "Parameters: \u0060month\u0060 (2026-03), or \u0060from\u0060 and \u0060to\u0060 (yyyy-MM-dd), or \u0060months\u0060 (1-60, ending this month); \u0060metric\u0060 for \u0060aggregate-series\u0060. Requires \u0060reporting.view\u0060."
+      operationId: "ListReportTemplates"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportTemplateListView"
+  /api/v1/admin/reporting/reports:
+    get:
+      tags:
+        - "Reports"
+      summary: "Saved report definitions"
+      description: "Financial reports are listed only to callers who also hold \u0060finance.view\u0060. Requires \u0060reporting.view\u0060."
+      operationId: "ListSavedReports"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportListView"
+    post:
+      tags:
+        - "Reports"
+      summary: "Save a report definition"
+      description: "\u0060{name, template, parameters?}\u0060. A financial template (or a series over a finance metric) also needs \u0060finance.view\u0060. Requires \u0060reporting.manage\u0060."
+      operationId: "SaveReport"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportDefinitionView"
+  "/api/v1/admin/reporting/reports/{id}":
+    get:
+      tags:
+        - "Reports"
+      summary: "One saved report"
+      operationId: "GetSavedReport"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportDefinitionView"
+    delete:
+      tags:
+        - "Reports"
+      summary: "Archive a report and stop its schedules"
+      description: "Runs and files are kept. Requires \u0060reporting.manage\u0060."
+      operationId: "ArchiveSavedReport"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/reporting/reports/{id}/runs":
+    post:
+      tags:
+        - "Reports"
+      summary: "Run a report now with parameters and formats"
+      description: "\u0060{parameters?, formats?}\u0060: parameters override the saved ones, \u0060formats\u0060 is any of \u0060csv\u0060, \u0060xlsx\u0060, \u0060pdf\u0060 (default all). Returns the run with a download \u0060url\u0060 per format. CSV has a byte-order mark so Excel reads Bengali; PDF embeds a Bengali font. Requires \u0060reporting.view\u0060."
+      operationId: "RunSavedReport"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                -
+                  type: "null"
+                -
+                  $ref: "#/components/schemas/ReportRunRequest"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportRunView"
+    get:
+      tags:
+        - "Reports"
+      summary: "Recent runs of a report, newest first"
+      operationId: "ListReportRuns"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportRunListView"
+  "/api/v1/admin/reporting/report-runs/{runId}/files/{format}":
+    get:
+      tags:
+        - "Reports"
+      summary: "Download one export of a run"
+      description: "The stored bytes, the same every time. Financial reports need \u0060finance.view\u0060 as well. Requires \u0060reporting.view\u0060."
+      operationId: "DownloadReportFile"
+      parameters:
+        -
+          name: "runId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "format"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/octet-stream:
+              schema:
+                type: "string"
+                format: "byte"
+  "/api/v1/admin/reporting/reports/{id}/schedules":
+    post:
+      tags:
+        - "Schedules"
+      summary: "Mail a report every month"
+      description: "\u0060{dayOfMonth (1-28), hourUtc, formats?, parameters?}\u0060. With no window parameters the run covers the previous calendar month. It stays due until a run succeeds: failures are logged as alerts and retried, never skipped. Add recipients next. Requires \u0060reporting.manage\u0060."
+      operationId: "ScheduleReport"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleView"
+    get:
+      tags:
+        - "Schedules"
+      summary: "A report\u0027s schedules with their recipients"
+      operationId: "ListReportSchedules"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleListView"
+  "/api/v1/admin/reporting/report-schedules/{id}":
+    delete:
+      tags:
+        - "Schedules"
+      summary: "Stop a schedule"
+      operationId: "StopReportSchedule"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/reporting/report-schedules/{id}/recipients":
+    post:
+      tags:
+        - "Schedules"
+      summary: "Add a recipient to a schedule"
+      description: "\u0060{email}\u0060. For a financial report the caller also needs \u0060reporting.recipients\u0060. The address is stored encrypted; who added it and when is in the audit log. Requires \u0060reporting.manage\u0060."
+      operationId: "AddReportRecipient"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipientRequest"
+        required: true
+      responses:
+        "201":
+          description: "Created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipientView"
+  "/api/v1/admin/reporting/report-schedules/{id}/recipients/{recipientId}":
+    delete:
+      tags:
+        - "Schedules"
+      summary: "Remove a recipient from a schedule"
+      description: "The recipient stops receiving the report; the row is kept and the removal is in the audit log. Requires \u0060reporting.manage\u0060 (and \u0060reporting.recipients\u0060 for a financial report)."
+      operationId: "RemoveReportRecipient"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "recipientId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/reporting/audit:
     get:
       tags:
@@ -10365,6 +10646,8 @@ tags:
     name: "Dashboards"
   -
     name: "Metrics"
+  -
+    name: "Schedules"
   -
     name: "Admin: Sponsorship"
   -
@@ -13647,6 +13930,331 @@ components:
           type:
             - "null"
             - "string"
+    RecipientRequest:
+      required:
+        - "email"
+      type: "object"
+      properties:
+        email:
+          type:
+            - "null"
+            - "string"
+    RecipientView:
+      required:
+        - "id"
+        - "email"
+        - "addedBy"
+        - "addedAt"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        email:
+          type: "string"
+        addedBy:
+          type:
+            - "null"
+            - "string"
+        addedAt:
+          type: "string"
+          format: "date-time"
+    ReportCreateRequest:
+      required:
+        - "name"
+        - "template"
+        - "parameters"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        template:
+          type:
+            - "null"
+            - "string"
+        parameters:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            type: "string"
+    ReportDefinitionView:
+      required:
+        - "id"
+        - "name"
+        - "template"
+        - "sensitive"
+        - "parameters"
+        - "createdAt"
+        - "createdBy"
+        - "archived"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        name:
+          type: "string"
+        template:
+          type: "string"
+        sensitive:
+          type: "boolean"
+        parameters:
+          type: "object"
+          additionalProperties:
+            type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        createdBy:
+          type:
+            - "null"
+            - "string"
+        archived:
+          type: "boolean"
+    ReportFileView:
+      required:
+        - "format"
+        - "fileName"
+        - "contentType"
+        - "bytes"
+        - "sha256"
+        - "url"
+      type: "object"
+      properties:
+        format:
+          type: "string"
+        fileName:
+          type: "string"
+        contentType:
+          type: "string"
+        bytes:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int64"
+        sha256:
+          type: "string"
+        url:
+          type: "string"
+    ReportListView:
+      required:
+        - "items"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ReportDefinitionView"
+    ReportRunListView:
+      required:
+        - "items"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ReportRunView"
+    ReportRunRequest:
+      required:
+        - "parameters"
+        - "formats"
+      type: "object"
+      properties:
+        parameters:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            type: "string"
+        formats:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+    ReportRunView:
+      required:
+        - "id"
+        - "reportId"
+        - "trigger"
+        - "status"
+        - "attempts"
+        - "error"
+        - "rows"
+        - "startedAt"
+        - "finishedAt"
+        - "parameters"
+        - "files"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        reportId:
+          type: "string"
+        trigger:
+          type: "string"
+        status:
+          type: "string"
+        attempts:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        error:
+          type:
+            - "null"
+            - "string"
+        rows:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        startedAt:
+          type: "string"
+          format: "date-time"
+        finishedAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        parameters:
+          type: "object"
+          additionalProperties:
+            type: "string"
+        files:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ReportFileView"
+    ReportTemplateListView:
+      required:
+        - "items"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ReportTemplateView"
+    ReportTemplateView:
+      required:
+        - "template"
+        - "description"
+        - "parameters"
+      type: "object"
+      properties:
+        template:
+          type: "string"
+        description:
+          type: "string"
+        parameters:
+          type: "array"
+          items:
+            type: "string"
+    ScheduleListView:
+      required:
+        - "items"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ScheduleView"
+    ScheduleRequest:
+      required:
+        - "dayOfMonth"
+        - "hourUtc"
+        - "formats"
+        - "parameters"
+      type: "object"
+      properties:
+        dayOfMonth:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        hourUtc:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        formats:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        parameters:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            type: "string"
+    ScheduleView:
+      required:
+        - "id"
+        - "reportId"
+        - "dayOfMonth"
+        - "hourUtc"
+        - "formats"
+        - "parameters"
+        - "active"
+        - "nextRunAt"
+        - "lastSuccessAt"
+        - "failureCount"
+        - "recipients"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        reportId:
+          type: "string"
+        dayOfMonth:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        hourUtc:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        formats:
+          type: "array"
+          items:
+            type: "string"
+        parameters:
+          type: "object"
+          additionalProperties:
+            type: "string"
+        active:
+          type: "boolean"
+        nextRunAt:
+          type: "string"
+          format: "date-time"
+        lastSuccessAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        failureCount:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        recipients:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/RecipientView"
     SourceFreshness:
       required:
         - "source"

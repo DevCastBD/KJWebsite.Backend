@@ -10,6 +10,12 @@ public sealed class ReportingDbContext(DbContextOptions<ReportingDbContext> opti
     public DbSet<AggregateSourceEntity> AggregateSources => Set<AggregateSourceEntity>();
     public DbSet<AggregateRunEntity> AggregateRuns => Set<AggregateRunEntity>();
     public DbSet<MetricDefinitionEntity> MetricDefinitions => Set<MetricDefinitionEntity>();
+    public DbSet<ReportDefinitionEntity> ReportDefinitions => Set<ReportDefinitionEntity>();
+    public DbSet<ReportRunEntity> ReportRuns => Set<ReportRunEntity>();
+    public DbSet<ReportFileEntity> ReportFiles => Set<ReportFileEntity>();
+    public DbSet<ReportScheduleEntity> ReportSchedules => Set<ReportScheduleEntity>();
+    public DbSet<ReportRecipientEntity> ReportRecipients => Set<ReportRecipientEntity>();
+    public DbSet<ReportDeliveryEntity> ReportDeliveries => Set<ReportDeliveryEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +68,80 @@ public sealed class ReportingDbContext(DbContextOptions<ReportingDbContext> opti
             e.Property(x => x.Scale).HasPrecision(18, 8);
             e.Property(x => x.CreatedBy).HasMaxLength(64);
             e.HasIndex(x => new { x.Key, x.Version }).IsUnique();
+        });
+
+        modelBuilder.Entity<ReportDefinitionEntity>(e =>
+        {
+            e.ToTable("report_definitions");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            e.Property(x => x.Template).HasMaxLength(40).IsRequired();
+            e.Property(x => x.ParametersJson).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.CreatedBy).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<ReportRunEntity>(e =>
+        {
+            e.ToTable("report_runs");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.ReportId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ScheduleId).HasMaxLength(64);
+            e.Property(x => x.Trigger).HasMaxLength(16).IsRequired();
+            e.Property(x => x.ParametersJson).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.Error).HasMaxLength(2000);
+            e.Property(x => x.GeneratedBy).HasMaxLength(64);
+            e.HasIndex(x => x.ReportId);
+        });
+
+        modelBuilder.Entity<ReportFileEntity>(e =>
+        {
+            e.ToTable("report_files");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.RunId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Format).HasMaxLength(8).IsRequired();
+            e.Property(x => x.FileName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.ContentType).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => new { x.RunId, x.Format }).IsUnique();
+        });
+
+        modelBuilder.Entity<ReportScheduleEntity>(e =>
+        {
+            e.ToTable("report_schedules");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.ReportId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Formats).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ParametersJson).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.CreatedBy).HasMaxLength(64);
+            e.HasIndex(x => new { x.Active, x.NextRunAt });
+        });
+
+        modelBuilder.Entity<ReportRecipientEntity>(e =>
+        {
+            e.ToTable("report_recipients");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(64);
+            e.Property(x => x.ScheduleId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.EmailProtected).IsRequired();
+            e.Property(x => x.EmailKey).HasMaxLength(64).IsRequired();
+            e.Property(x => x.AddedBy).HasMaxLength(64);
+            e.Property(x => x.RemovedBy).HasMaxLength(64);
+            e.HasIndex(x => new { x.ScheduleId, x.EmailKey });
+        });
+
+        modelBuilder.Entity<ReportDeliveryEntity>(e =>
+        {
+            e.ToTable("report_deliveries");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.RunId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.RecipientId).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.Error).HasMaxLength(1000);
+            e.HasIndex(x => x.RunId);
         });
     }
 }
