@@ -746,6 +746,113 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/content/og-image/{type}/{slug}":
+    get:
+      tags:
+        - "Content \u2014 Social"
+      summary: "The Open Graph image (1200x630 PNG) of a published item"
+      description: "Served from storage only: a missing image is 404 and the page should fall back to the default image. Images are drawn by a background worker after publish (and redrawn when the title or summary changes), never on request. \u0060lang\u0060 is bn or en."
+      operationId: "GetOpenGraphImage"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/shares/{type}/{slug}":
+    post:
+      tags:
+        - "Content \u2014 Social"
+      summary: "Count one share of a published item on a channel"
+      description: "\u0060channel\u0060: facebook, x, linkedin, whatsapp, copy, other. A bare counter: no visitor, address or device is stored. Counts are indicative (anyone can call this), not an audit figure."
+      operationId: "CountShare"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentShareRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Content \u2014 Social"
+      summary: "Share counts of a published item by channel"
+      operationId: "GetShareCounts"
+      parameters:
+        -
+          name: "type"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/social/top-shared:
+    get:
+      tags:
+        - "Content \u2014 Social"
+      summary: "The most-shared items"
+      operationId: "ListTopSharedContent"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/social/og/generate:
+    post:
+      tags:
+        - "Content \u2014 Social"
+      summary: "Draw any missing or outdated Open Graph images now (up to 50)"
+      description: "The background worker does this on its own every 30 seconds; this only skips the wait after a publish."
+      operationId: "GenerateOpenGraphImages"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/content/events/{slug}/registrations":
     post:
       tags:
@@ -9601,6 +9708,8 @@ tags:
   -
     name: "Content \u2014 Partners"
   -
+    name: "Content \u2014 Social"
+  -
     name: "Content \u2014 Event registration"
   -
     name: "Admin \u2014 Event registration"
@@ -9865,6 +9974,15 @@ components:
             - "array"
           items:
             type: "string"
+    ContentShareRequest:
+      required:
+        - "channel"
+      type: "object"
+      properties:
+        channel:
+          type:
+            - "null"
+            - "string"
     ContentTranslationInput:
       required:
         - "lang"

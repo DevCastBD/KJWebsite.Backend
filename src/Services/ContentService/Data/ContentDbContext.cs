@@ -117,6 +117,28 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.RegistrationVersion).IsConcurrencyToken();
         });
 
+        modelBuilder.Entity<OgImageEntity>(entity =>
+        {
+            entity.ToTable("og_images");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ContentItemId).HasMaxLength(64).IsRequired();
+            entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(x => x.Lang).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.SourceStamp).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Png).IsRequired();
+            entity.HasIndex(x => new { x.ContentItemId, x.Lang }).IsUnique();
+        });
+
+        modelBuilder.Entity<ShareCountEntity>(entity =>
+        {
+            entity.ToTable("share_counts");
+            entity.HasKey(x => new { x.ContentItemId, x.Channel });
+            entity.Property(x => x.ContentItemId).HasMaxLength(64);
+            entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.Property(x => x.Channel).HasMaxLength(16);
+        });
+
         modelBuilder.Entity<ConsentRecordEntity>(entity =>
         {
             entity.ToTable("consent_records");

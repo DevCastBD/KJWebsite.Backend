@@ -1134,6 +1134,42 @@ namespace ContentService.Migrations
                     b.ToTable("notification_templates", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.OgImageEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ContentItemId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("GeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Lang")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<byte[]>("Png")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("SourceStamp")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentItemId", "Lang")
+                        .IsUnique();
+
+                    b.ToTable("og_images", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.ProjectEntity", b =>
                 {
                     b.Property<string>("ContentItemId")
@@ -1273,6 +1309,24 @@ namespace ContentService.Migrations
                     b.HasKey("Key");
 
                     b.ToTable("settings", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.ShareCountEntity", b =>
+                {
+                    b.Property<string>("ContentItemId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Channel")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<long>("Count")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("ContentItemId", "Channel");
+
+                    b.ToTable("share_counts", "content");
                 });
 
             modelBuilder.Entity("ContentService.Data.Entities.SmsMessageEntity", b =>
@@ -1686,6 +1740,15 @@ namespace ContentService.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.OgImageEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithMany()
+                        .HasForeignKey("ContentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.ProjectEntity", b =>
                 {
                     b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
@@ -1696,6 +1759,15 @@ namespace ContentService.Migrations
                 });
 
             modelBuilder.Entity("ContentService.Data.Entities.SearchTermEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithMany()
+                        .HasForeignKey("ContentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.ShareCountEntity", b =>
                 {
                     b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
                         .WithMany()

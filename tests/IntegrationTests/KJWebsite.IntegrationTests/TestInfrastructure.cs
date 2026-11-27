@@ -286,7 +286,7 @@ public sealed class ContentApiFactory : SqliteWebApplicationFactory<ContentServi
     {
         base.ConfigureWebHost(builder);
         builder.ConfigureAppConfiguration((_, configuration) =>
-            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary), ["Newsletter:WebhookSecret"] = NewsletterWebhookSecret, ["Newsletter:DispatchEnabled"] = "false", ["Channels:DispatchEnabled"] = "false" }));
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary), ["Newsletter:WebhookSecret"] = NewsletterWebhookSecret, ["Newsletter:DispatchEnabled"] = "false", ["Channels:DispatchEnabled"] = "false", ["Social:OgEnabled"] = "false" }));
     }
 }
 
