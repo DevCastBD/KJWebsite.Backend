@@ -773,6 +773,41 @@ namespace MembershipService.Migrations
                     b.ToTable("members", "membership");
                 });
 
+            modelBuilder.Entity("MembershipService.Data.Entities.MemberNotificationEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MemberId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Template")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MemberId", "ReadAt");
+
+                    b.ToTable("member_notifications", "membership");
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.MemberStatusEventEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -1164,6 +1199,80 @@ namespace MembershipService.Migrations
                     b.ToTable("session_logs", "membership");
                 });
 
+            modelBuilder.Entity("MembershipService.Data.Entities.TaskAssignmentEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("AssigneeMemberId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CommitteeId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly?>("DueOn")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("OverdueNoticeForDueOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("ProjectSlug")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateOnly?>("ReminderForDueOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .IsConcurrencyToken()
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CommitteeId");
+
+                    b.HasIndex("ProjectSlug");
+
+                    b.HasIndex("AssigneeMemberId", "Status");
+
+                    b.ToTable("tasks", "membership");
+                });
+
             modelBuilder.Entity("MembershipService.Data.Entities.VolunteerHourEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -1396,6 +1505,15 @@ namespace MembershipService.Migrations
                     b.HasOne("MembershipService.Data.Entities.BeneficiaryEntity", null)
                         .WithMany()
                         .HasForeignKey("BeneficiaryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MembershipService.Data.Entities.TaskAssignmentEntity", b =>
+                {
+                    b.HasOne("MembershipService.Data.Entities.MemberEntity", null)
+                        .WithMany()
+                        .HasForeignKey("AssigneeMemberId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
