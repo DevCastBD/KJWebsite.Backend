@@ -33,3 +33,13 @@ Back office, `comms.manage`, under `/api/v1/admin/newsletter`.
 - **Cancel** (`POST .../cancel`) cancels everything not yet delivered.
 - **Report** (`GET .../report`): recipients, queued, sent, failed, skipped, cancelled, bounced, complaints, unsubscribed since the send began, and counts by language, from the outbox, so they add up.
 - **Tracking**: none. No open pixel and no click rewriting; the report is delivery and consent outcomes only. Add it later only if the organisation decides it wants it.
+
+# Transactional templates (BE-078, #82)
+
+`/api/v1/admin/notifications/*`, `comms.manage`. The catalogue (`NotificationCatalogue`) lists nine messages (application received / status changed / approved, donation receipt, event registration, event reminder, dues reminder, password reset, admin alert), each with the variables it may use. All are seeded at startup as version 1 in **both** bn and en; the seeded wording is a starting point to edit.
+
+- **Versioned and immutable**: `POST /templates/{key}/{lang}` saves an edit as the next version; the newest is the one sent. An edit may only use the key's declared variables.
+- **Missing variable fails loudly**: `POST /templates/{key}/render {lang, values, version?, record?, toEmail?}` returns 400 `RENDER_ERROR` naming the variable if any variable the text uses has no value, so `{{name}}` never reaches a recipient. Language defaults to Bengali.
+- **Reproducible past sends**: with `record: true` the rendered subject, text, HTML and the template version are stored (`GET /sends?key=`). Later edits never alter them, and `version` pins an old version for a re-render.
+- **Mail-client-safe HTML**: one centred 600px table, inline styles, viewport meta, no `<style>`, flex, grid, web fonts, remote images or tracking; a test asserts this structure. Actual rendering in Gmail, Outlook and a phone client still needs a manual check with real accounts (not done here).
+- Other services call the render endpoint (or move to a shared transport later); wiring each existing sender (Auth password reset, donation receipts, event notifications) onto it is a follow-up.
