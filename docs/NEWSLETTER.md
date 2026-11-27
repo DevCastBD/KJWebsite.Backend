@@ -21,3 +21,15 @@ Confirm and manage tokens are `<subscriberId>.<HMAC>` signed with `Newsletter:Li
 
 ## Config
 `Newsletter:LinkKey`, `Newsletter:WebhookSecret`, `Newsletter:SiteUrl` (confirmation link), `Newsletter:ApiUrl` (unsubscribe URL).
+
+# Campaign email (BE-077, #81)
+
+Back office, `comms.manage`, under `/api/v1/admin/newsletter`.
+
+- **Templates** (`/templates`) and **campaigns** (`/campaigns`) hold a bn and an en subject and body (light Markdown: paragraphs, `# heading`, `**bold**`, `[text](https://...)`; raw HTML is escaped). Variables: `{{email}}`, `{{unsubscribeUrl}}`, `{{preferencesUrl}}`; any other variable is rejected when the draft is saved, and a footer with the unsubscribe and preferences links is always added. A campaign copies its template, so editing a template does not change a draft. The legacy `email.html` is not in the repo, so no template is seeded yet (that is #82's catalogue).
+- **Preview / test send**: `GET .../preview?lang=` and `POST .../test {email, lang}` use the same `NewsletterRenderer.Render` as the real send. A test message goes to one address, needs no confirmation and is prefixed `[TEST]`.
+- **Send**: `POST .../send {confirmRecipientCount, scheduledAt?}`. Refused unless both languages are complete (400 `MISSING_LANGUAGE`) and `confirmRecipientCount` equals the current audience (409 `RECIPIENT_COUNT_MISMATCH`). The audience is the campaign's segment (or all confirmed subscribers); each recipient's rendered message is queued in their own language, spaced at `Newsletter:SendPerMinute` (default 120) so delivery is throttled. A campaign sends once; a sent campaign is frozen.
+- **Delivery**: `NewsletterDispatcher` (background, every 5 s, `Newsletter:DispatchEnabled`) delivers due messages through `INewsletterTransport`. The default transport only logs, so no mail leaves until a real transport is registered. Consent is re-checked at delivery: a recipient who unsubscribed, bounced or complained since the send was queued is `skipped`.
+- **Cancel** (`POST .../cancel`) cancels everything not yet delivered.
+- **Report** (`GET .../report`): recipients, queued, sent, failed, skipped, cancelled, bounced, complaints, unsubscribed since the send began, and counts by language, from the outbox, so they add up.
+- **Tracking**: none. No open pixel and no click rewriting; the report is delivery and consent outcomes only. Add it later only if the organisation decides it wants it.

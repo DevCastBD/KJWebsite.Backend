@@ -20,6 +20,8 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<NewsletterEventEntity> NewsletterEvents => Set<NewsletterEventEntity>();
     public DbSet<NewsletterMessageEntity> NewsletterMessages => Set<NewsletterMessageEntity>();
     public DbSet<NewsletterSegmentEntity> NewsletterSegments => Set<NewsletterSegmentEntity>();
+    public DbSet<NewsletterTemplateEntity> NewsletterTemplates => Set<NewsletterTemplateEntity>();
+    public DbSet<NewsletterCampaignEntity> NewsletterCampaigns => Set<NewsletterCampaignEntity>();
     public DbSet<EventFeedbackFormEntity> EventFeedbackForms => Set<EventFeedbackFormEntity>();
     public DbSet<EventFeedbackResponseEntity> EventFeedbackResponses => Set<EventFeedbackResponseEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
@@ -192,8 +194,37 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.Subject).HasMaxLength(300).IsRequired();
             entity.Property(x => x.Body).IsRequired();
             entity.Property(x => x.ListUnsubscribeUrl).HasMaxLength(500);
+            entity.Property(x => x.CampaignId).HasMaxLength(64);
             entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Error).HasMaxLength(300);
             entity.HasIndex(x => x.Status);
+            entity.HasIndex(x => x.CampaignId);
+        });
+
+        modelBuilder.Entity<NewsletterTemplateEntity>(entity =>
+        {
+            entity.ToTable("newsletter_templates");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.SubjectBn).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.SubjectEn).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.BodyBn).IsRequired();
+            entity.Property(x => x.BodyEn).IsRequired();
+        });
+
+        modelBuilder.Entity<NewsletterCampaignEntity>(entity =>
+        {
+            entity.ToTable("newsletter_campaigns");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.SegmentId).HasMaxLength(64);
+            entity.Property(x => x.SubjectBn).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.SubjectEn).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.BodyBn).IsRequired();
+            entity.Property(x => x.BodyEn).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
         });
 
         modelBuilder.Entity<NewsletterSegmentEntity>(entity =>

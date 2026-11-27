@@ -977,7 +977,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SubscribeRequest"
+              $ref: "#/components/schemas/NewsletterSubscribeRequest"
         required: true
       responses:
         "200":
@@ -993,7 +993,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TokenRequest"
+              $ref: "#/components/schemas/NewsletterTokenRequest"
         required: true
       responses:
         "200":
@@ -1047,7 +1047,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PreferencesRequest"
+              $ref: "#/components/schemas/NewsletterPreferencesRequest"
         required: true
       responses:
         "200":
@@ -1065,7 +1065,7 @@ paths:
             schema:
               type: "array"
               items:
-                $ref: "#/components/schemas/ProviderEvent"
+                $ref: "#/components/schemas/NewsletterProviderEvent"
         required: true
       responses:
         "200":
@@ -1126,7 +1126,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SegmentRequest"
+              $ref: "#/components/schemas/NewsletterSegmentRequest"
         required: true
       responses:
         "200":
@@ -1172,6 +1172,190 @@ paths:
         - "Newsletter \u2014 back office"
       summary: "Delete a saved segment"
       operationId: "DeleteNewsletterSegment"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/newsletter/templates:
+    get:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Bilingual campaign templates"
+      operationId: "ListNewsletterTemplates"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Save a template (bn and en subject and body)"
+      description: "Bodies are light Markdown (paragraphs, \u0060# heading\u0060, \u0060**bold**\u0060, \u0060[text](https://link)\u0060). Variables: \u0060{{email}}\u0060, \u0060{{unsubscribeUrl}}\u0060, \u0060{{preferencesUrl}}\u0060. An unknown variable is rejected here, not rendered to a subscriber. An unsubscribe and preferences footer is always added."
+      operationId: "CreateNewsletterTemplate"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterTemplateRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/newsletter/campaigns:
+    get:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Campaigns, newest first"
+      operationId: "ListNewsletterCampaigns"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Create a draft, optionally from a template and aimed at a segment"
+      operationId: "CreateNewsletterCampaign"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterCampaignRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/newsletter/campaigns/{id}":
+    get:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "One campaign"
+      operationId: "GetNewsletterCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Edit a draft"
+      operationId: "UpdateNewsletterCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterCampaignRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/newsletter/campaigns/{id}/preview":
+    get:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "The exact subject, text and HTML for one language"
+      operationId: "PreviewNewsletterCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/newsletter/campaigns/{id}/test":
+    post:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Send a test of one language to any address"
+      description: "Needs no confirmation and works on drafts. Rendered by the same code as the real send, so it is the final render."
+      operationId: "TestSendNewsletterCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterTestSendRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/newsletter/campaigns/{id}/send":
+    post:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Send (or schedule) a campaign: irreversible"
+      description: "\u0060confirmRecipientCount\u0060 must equal the audience right now, else 409 \u0060RECIPIENT_COUNT_MISMATCH\u0060 with the actual count. Both language versions must be complete, else 400 \u0060MISSING_LANGUAGE\u0060. Each subscriber gets their own language; deliveries are spaced at \u0060Newsletter:SendPerMinute\u0060."
+      operationId: "SendNewsletterCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsletterSendRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/newsletter/campaigns/{id}/cancel":
+    post:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Cancel everything not yet delivered"
+      operationId: "CancelNewsletterCampaign"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/newsletter/campaigns/{id}/report":
+    get:
+      tags:
+        - "Newsletter \u2014 campaigns"
+      summary: "Delivery report"
+      description: "Counts come from the outbox, so they add up to \u0060recipients\u0060. \u0060bounced\u0060, \u0060complaints\u0060 and \u0060unsubscribed\u0060 describe the recipients afterwards. No open or click tracking is collected."
+      operationId: "GetNewsletterCampaignReport"
       parameters:
         -
           name: "id"
@@ -8670,6 +8854,8 @@ tags:
   -
     name: "Newsletter \u2014 back office"
   -
+    name: "Newsletter \u2014 campaigns"
+  -
     name: "Content \u2014 Page"
   -
     name: "Content \u2014 Faq"
@@ -9102,6 +9288,220 @@ components:
             - "null"
             - "string"
     JsonElement: {}
+    NewsletterCampaignRequest:
+      required:
+        - "name"
+        - "templateId"
+        - "segmentId"
+        - "versions"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        templateId:
+          type:
+            - "null"
+            - "string"
+        segmentId:
+          type:
+            - "null"
+            - "string"
+        versions:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/NewsletterCampaignVersions"
+    NewsletterCampaignVersions:
+      required:
+        - "subjectBn"
+        - "bodyBn"
+        - "subjectEn"
+        - "bodyEn"
+      type: "object"
+      properties:
+        subjectBn:
+          type:
+            - "null"
+            - "string"
+        bodyBn:
+          type:
+            - "null"
+            - "string"
+        subjectEn:
+          type:
+            - "null"
+            - "string"
+        bodyEn:
+          type:
+            - "null"
+            - "string"
+    NewsletterPreferencesRequest:
+      required:
+        - "lang"
+        - "topics"
+      type: "object"
+      properties:
+        lang:
+          type:
+            - "null"
+            - "string"
+        topics:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+    NewsletterProviderEvent:
+      required:
+        - "email"
+        - "type"
+      type: "object"
+      properties:
+        email:
+          type:
+            - "null"
+            - "string"
+        type:
+          type:
+            - "null"
+            - "string"
+    NewsletterSegmentFilter:
+      required:
+        - "langs"
+        - "sources"
+        - "topics"
+        - "attendedEvent"
+      type: "object"
+      properties:
+        langs:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        sources:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        topics:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        attendedEvent:
+          type:
+            - "null"
+            - "boolean"
+    NewsletterSegmentRequest:
+      required:
+        - "name"
+        - "filter"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        filter:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/NewsletterSegmentFilter"
+    NewsletterSendRequest:
+      required:
+        - "confirmRecipientCount"
+        - "scheduledAt"
+      type: "object"
+      properties:
+        confirmRecipientCount:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        scheduledAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+    NewsletterSubscribeRequest:
+      required:
+        - "email"
+        - "lang"
+        - "topics"
+        - "source"
+        - "website"
+      type: "object"
+      properties:
+        email:
+          type:
+            - "null"
+            - "string"
+        lang:
+          type:
+            - "null"
+            - "string"
+        topics:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        source:
+          type:
+            - "null"
+            - "string"
+        website:
+          type:
+            - "null"
+            - "string"
+    NewsletterTemplateRequest:
+      required:
+        - "name"
+        - "versions"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        versions:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/NewsletterCampaignVersions"
+    NewsletterTestSendRequest:
+      required:
+        - "email"
+        - "lang"
+      type: "object"
+      properties:
+        email:
+          type:
+            - "null"
+            - "string"
+        lang:
+          type:
+            - "null"
+            - "string"
+    NewsletterTokenRequest:
+      required:
+        - "token"
+      type: "object"
+      properties:
+        token:
+          type:
+            - "null"
+            - "string"
     NewsTranslationInput:
       required:
         - "lang"
@@ -9169,22 +9569,6 @@ components:
           type:
             - "null"
             - "string"
-    PreferencesRequest:
-      required:
-        - "lang"
-        - "topics"
-      type: "object"
-      properties:
-        lang:
-          type:
-            - "null"
-            - "string"
-        topics:
-          type:
-            - "null"
-            - "array"
-          items:
-            type: "string"
     PreviewTokenRequest:
       required:
         - "ttlMinutes"
@@ -9265,20 +9649,6 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/ProjectTranslationInput"
-    ProviderEvent:
-      required:
-        - "email"
-        - "type"
-      type: "object"
-      properties:
-        email:
-          type:
-            - "null"
-            - "string"
-        type:
-          type:
-            - "null"
-            - "string"
     ReasonRequest:
       required:
         - "reason"
@@ -9353,52 +9723,6 @@ components:
       properties:
         newSlug:
           type: "string"
-    SegmentFilter:
-      required:
-        - "langs"
-        - "sources"
-        - "topics"
-        - "attendedEvent"
-      type: "object"
-      properties:
-        langs:
-          type:
-            - "null"
-            - "array"
-          items:
-            type: "string"
-        sources:
-          type:
-            - "null"
-            - "array"
-          items:
-            type: "string"
-        topics:
-          type:
-            - "null"
-            - "array"
-          items:
-            type: "string"
-        attendedEvent:
-          type:
-            - "null"
-            - "boolean"
-    SegmentRequest:
-      required:
-        - "name"
-        - "filter"
-      type: "object"
-      properties:
-        name:
-          type:
-            - "null"
-            - "string"
-        filter:
-          oneOf:
-            -
-              type: "null"
-            -
-              $ref: "#/components/schemas/SegmentFilter"
     SetRelatedRequest:
       required:
         - "related"
@@ -9429,37 +9753,6 @@ components:
           type:
             - "null"
             - "boolean"
-    SubscribeRequest:
-      required:
-        - "email"
-        - "lang"
-        - "topics"
-        - "source"
-        - "website"
-      type: "object"
-      properties:
-        email:
-          type:
-            - "null"
-            - "string"
-        lang:
-          type:
-            - "null"
-            - "string"
-        topics:
-          type:
-            - "null"
-            - "array"
-          items:
-            type: "string"
-        source:
-          type:
-            - "null"
-            - "string"
-        website:
-          type:
-            - "null"
-            - "string"
     TagUpsertRequest:
       required:
         - "slug"
@@ -9472,15 +9765,6 @@ components:
           type: "object"
           additionalProperties:
             type: "string"
-    TokenRequest:
-      required:
-        - "token"
-      type: "object"
-      properties:
-        token:
-          type:
-            - "null"
-            - "string"
     WorkflowRequest:
       required:
         - "to"
