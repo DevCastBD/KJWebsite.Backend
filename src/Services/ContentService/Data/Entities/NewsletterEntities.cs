@@ -193,3 +193,22 @@ public sealed class PushSubscriptionEntity
     public string Auth { get; set; } = string.Empty;
     public DateTimeOffset ConsentedAt { get; set; }
 }
+
+/// <summary>A generated Open Graph image (PNG, 1200x630) for one language of one item. `SourceStamp` is a hash of what it was drawn from, so a changed title redraws it and nothing else does.</summary>
+public sealed class OgImageEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string ContentItemId { get; set; } = string.Empty;
+    public string Lang { get; set; } = string.Empty;
+    public string SourceStamp { get; set; } = string.Empty;
+    public byte[] Png { get; set; } = [];
+    public DateTimeOffset GeneratedAt { get; set; }
+}
+
+/// <summary>How many times a published item was shared on a channel. A bare counter: no person, address or device is stored.</summary>
+public sealed class ShareCountEntity
+{
+    public string ContentItemId { get; set; } = string.Empty;
+    public string Channel { get; set; } = string.Empty;
+    public long Count { get; set; }
+}

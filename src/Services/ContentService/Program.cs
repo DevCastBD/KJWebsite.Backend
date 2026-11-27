@@ -53,6 +53,9 @@ builder.Services.AddScoped<EventStore>();
 builder.Services.AddScoped<PressStore>();
 builder.Services.AddScoped<ConsentStore>();
 builder.Services.AddScoped<PartnerStore>();
+builder.Services.Configure<SocialOptions>(builder.Configuration.GetSection(SocialOptions.SectionName));
+builder.Services.AddScoped<SocialStore>();
+builder.Services.AddHostedService<OgImageWorker>();
 builder.Services.Configure<EventOptions>(builder.Configuration.GetSection(EventOptions.SectionName));
 builder.Services.AddSingleton<RegistrationPrivacy>();
 builder.Services.AddScoped<EventRegistrationStore>();
@@ -373,6 +376,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 app.MapEvents();
 app.MapPress();
 app.MapConsent();
+app.MapSocial();
 app.MapEventRegistration();
 app.MapEventAttendance();
 app.MapEventCalendar();
