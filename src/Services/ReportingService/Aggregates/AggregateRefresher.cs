@@ -181,6 +181,7 @@ public sealed class AggregateWorker(IServiceScopeFactory scopes, IOptions<Aggreg
                 await Task.Delay(next - now, clock, stoppingToken);
                 using var scope = scopes.CreateScope();
                 await scope.ServiceProvider.GetRequiredService<AggregateRefresher>().RunAsync("schedule", stoppingToken);
+                await scope.ServiceProvider.GetRequiredService<ReportingService.Analytics.AnalyticsStore>().PurgeAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

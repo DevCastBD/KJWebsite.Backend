@@ -3,6 +3,7 @@ using KJWebsite.BuildingBlocks.Security;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using ReportingService.Aggregates;
+using ReportingService.Analytics;
 using ReportingService.Dashboards;
 using ReportingService.Data;
 using ReportingService.Metrics;
@@ -52,6 +53,8 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
 
 builder.Services.Configure<ReportOptions>(builder.Configuration.GetSection(ReportOptions.SectionName));
 builder.Services.AddScoped<ReportTemplates>();
+builder.Services.Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName));
+builder.Services.AddScoped<AnalyticsStore>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ReportScheduler>();
 if (builder.Configuration["Reporting:Smtp:Host"] is { Length: > 0 })
@@ -113,6 +116,7 @@ app.MapAggregates();
 app.MapDashboards();
 app.MapMetrics();
 app.MapReports();
+app.MapAnalytics();
 app.MapAuditLog<ReportingDbContext>("/api/v1/admin/reporting/audit", "Reporting");
 
 app.Run();
