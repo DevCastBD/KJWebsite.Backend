@@ -234,7 +234,15 @@ public sealed class CapturingLoggerProvider : Microsoft.Extensions.Logging.ILogg
     }
 }
 
-public sealed class CtaApiFactory : SqliteWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint, CtaDbContext>;
+public sealed class CtaApiFactory : SqliteWebApplicationFactory<CtaSubmissionService.CtaSubmissionServiceTestEntryPoint, CtaDbContext>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.ConfigureAppConfiguration((_, configuration) =>
+            configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary) }));
+    }
+}
 
 /// <summary>
 /// Postgres-required: tests that verify real PostgreSQL behavior (migrations, schemas, collation).

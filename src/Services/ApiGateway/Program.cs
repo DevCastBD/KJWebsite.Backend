@@ -29,6 +29,7 @@ builder.Services.AddReverseProxy().LoadFromMemory(
 [
     new RouteConfig { RouteId = "content", ClusterId = "content", Match = new RouteMatch { Path = "/api/v1/content/{**catch-all}" } },
     new RouteConfig { RouteId = "cta", ClusterId = "cta", Match = new RouteMatch { Path = "/api/v1/cta/{**catch-all}" } },
+    new RouteConfig { RouteId = "admin-cta", ClusterId = "cta", Match = new RouteMatch { Path = "/api/v1/admin/cta/{**catch-all}" } },
     new RouteConfig { RouteId = "auth", ClusterId = "auth", Match = new RouteMatch { Path = "/api/v1/auth/{**catch-all}" } },
     new RouteConfig { RouteId = "committees", ClusterId = "membership", Match = new RouteMatch { Path = "/api/v1/committees/{**catch-all}" } },
     new RouteConfig { RouteId = "member-directory", ClusterId = "membership", Match = new RouteMatch { Path = "/api/v1/members/directory/{**catch-all}" } },

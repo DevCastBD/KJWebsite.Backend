@@ -4302,7 +4302,7 @@ paths:
       tags:
         - "CTA"
       summary: "Submit a CTA form"
-      description: "Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact."
+      description: "Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact, media. The enquiry lands in the engagement inbox, routed by the configured rules."
       operationId: "CreateCtaSubmission"
       parameters:
         -
@@ -4317,6 +4317,209 @@ paths:
             schema:
               $ref: "#/components/schemas/CtaSubmissionRequest"
         required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/cta/inbox:
+    get:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "All enquiries in one list: urgent first, then by response deadline"
+      description: "\u0060status\u0060: new, in_progress, responded, closed, or open (not yet answered or closed). \u0060category\u0060: membership, volunteering, partnership, donation, media, general. \u0060assignee\u0060: a user id, \u0060me\u0060 or \u0060none\u0060. \u0060slaState\u0060: on_track, at_risk (a quarter or less of the target left), breached, met, met_late, closed_unanswered, none. Media enquiries are never below high priority."
+      operationId: "ListEngagementInbox"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "category"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "assignee"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "slaState"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/cta/inbox/{id}":
+    get:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "One enquiry with the submitted values and its history (personal data)"
+      operationId: "GetEngagementItem"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/cta/inbox/{id}/assign":
+    post:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "Give an enquiry an owner"
+      operationId: "AssignEngagementItem"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngagementAssignRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/cta/inbox/{id}/respond":
+    post:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "Record that the enquiry was answered; the first time stops its SLA clock"
+      operationId: "RespondEngagementItem"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngagementNoteRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/cta/inbox/{id}/close":
+    post:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "Close an enquiry"
+      operationId: "CloseEngagementItem"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngagementNoteRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/cta/routing-rules:
+    get:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "Routing rules in the order they are applied"
+      operationId: "ListEngagementRules"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "Replace the routing rules (order matters: the first match wins)"
+      description: "Each rule matches on \u0060matchCategory\u0060, \u0060matchLanguage\u0060 and/or \u0060matchKeyword\u0060 (text in the submitted values) and sets \u0060assignTo\u0060, \u0060priority\u0060 and/or \u0060setCategory\u0060. Applies to enquiries received from now on. Configurable here, not in code, so the organisation\u0027s structure can change."
+      operationId: "SetEngagementRules"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngagementRulesRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/cta/sla-targets:
+    get:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "First-response targets in minutes, per category"
+      description: "Empty until the core members agree targets. A category without a target has no clock."
+      operationId: "GetEngagementSlaTargets"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "Set or remove response targets (\u0060{\u0022media\u0022: 240, \u0022general\u0022: null}\u0060)"
+      description: "Takes effect on open enquiries at once. Only the categories named are changed."
+      operationId: "SetEngagementSlaTargets"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EngagementSlaRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/cta/sla-report:
+    get:
+      tags:
+        - "Admin \u2014 Engagement inbox"
+      summary: "Response times and SLA breaches per category"
+      description: "For enquiries submitted in the window: received, responded, closed unanswered, open, open and breached, open and at risk, answered late, average and median first-response minutes, and the target."
+      operationId: "GetEngagementSlaReport"
+      parameters:
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
       responses:
         "200":
           description: "OK"
@@ -9754,6 +9957,8 @@ tags:
   -
     name: "CTA"
   -
+    name: "Admin \u2014 Engagement inbox"
+  -
     name: "Membership"
   -
     name: "Membership admin"
@@ -10978,6 +11183,95 @@ components:
         submittedAt:
           type: "string"
           format: "date-time"
+    EngagementAssignRequest:
+      required:
+        - "assignee"
+      type: "object"
+      properties:
+        assignee:
+          type:
+            - "null"
+            - "string"
+    EngagementNoteRequest:
+      required:
+        - "note"
+      type: "object"
+      properties:
+        note:
+          type:
+            - "null"
+            - "string"
+    EngagementRulesRequest:
+      required:
+        - "rules"
+      type: "object"
+      properties:
+        rules:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/EngagementRuleWrite"
+    EngagementRuleWrite:
+      required:
+        - "name"
+        - "matchCategory"
+        - "matchLanguage"
+        - "matchKeyword"
+        - "assignTo"
+        - "priority"
+        - "setCategory"
+        - "active"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        matchCategory:
+          type:
+            - "null"
+            - "string"
+        matchLanguage:
+          type:
+            - "null"
+            - "string"
+        matchKeyword:
+          type:
+            - "null"
+            - "string"
+        assignTo:
+          type:
+            - "null"
+            - "string"
+        priority:
+          type:
+            - "null"
+            - "string"
+        setCategory:
+          type:
+            - "null"
+            - "string"
+        active:
+          type:
+            - "null"
+            - "boolean"
+    EngagementSlaRequest:
+      required:
+        - "targets"
+      type: "object"
+      properties:
+        targets:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "null"
+              - "integer"
+              - "string"
+            format: "int32"
     ApplicationRequest:
       required:
         - "firstName"

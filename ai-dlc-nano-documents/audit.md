@@ -460,3 +460,11 @@
 - 2026-11-27T00:00Z [claude] 087-issue-77-programme-delivery DONE @5e84df0: feat/issue-77-programme-delivery stacked on #76; 5 targeted tests pass
 - 2026-11-27T00:00Z [claude] 088-issue-78-task-assignment DONE @7dd44be: feat/issue-78-task-assignment stacked on #77; 4 targeted tests pass; user chose to build despite issue note
 - 2026-11-27T00:00Z [claude] 089-issue-79-ical-feeds DONE @8429827: feat/issue-79-ical-feeds stacked on #78; 126 related tests pass; nothing pushed
+- 2026-11-27T09:00Z [claude] 090-issue-80-newsletter DONE: feat/issue-80-newsletter stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
+- 2026-11-27T09:00Z [claude] 091-issue-81-campaign-email DONE: feat/issue-81-campaign-email stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
+- 2026-11-27T09:00Z [claude] 092-issue-82-notification-templates DONE: feat/issue-82-notification-templates stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
+- 2026-11-27T09:00Z [claude] 093-issue-83-notification-channels DONE: feat/issue-83-notification-channels stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
+- 2026-11-27T09:00Z [claude] 094-issue-84-press-coverage DONE: feat/issue-84-press-coverage stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
+- 2026-11-27T09:00Z [claude] 095-issue-85-testimonials-consent DONE: feat/issue-85-testimonials-consent stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
+- 2026-11-27T09:00Z [claude] 096-issue-86-social-og DONE: feat/issue-86-social-og stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
+- 2026-11-27T09:00Z [claude] 097-issue-87-engagement-inbox DONE: feat/issue-87-engagement-inbox stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
