@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ReportingService.Aggregates;
 using ReportingService.Data;
+using ReportingService.Reports;
 
 namespace KJWebsite.IntegrationTests;
 
@@ -28,20 +29,56 @@ public sealed class FeedHandler : HttpMessageHandler
     public static HttpResponseMessage Ok(AggregateFeedResponse feed) => new(HttpStatusCode.OK) { Content = JsonContent.Create(feed) };
 }
 
+public sealed class SettableTimeProvider : TimeProvider
+{
+    private DateTimeOffset _now = DateTimeOffset.UtcNow;
+    public override DateTimeOffset GetUtcNow() => _now;
+    public void Set(DateTimeOffset moment) => _now = moment;
+    public void Advance(TimeSpan by) => _now += by;
+}
+
+public sealed class CapturingMailer : IReportMailer
+{
+    public List<ReportMail> Sent { get; } = [];
+    public bool Fail { get; set; }
+
+    public Task<KJWebsite.BuildingBlocks.Result> SendAsync(ReportMail mail, CancellationToken ct)
+    {
+        if (Fail)
+        {
+            return Task.FromResult(KJWebsite.BuildingBlocks.Result.Failure("MAIL_FAILED", "mail server down"));
+        }
+
+        Sent.Add(mail);
+        return Task.FromResult(KJWebsite.BuildingBlocks.Result.Success());
+    }
+}
+
 public sealed class ReportingApiFactory : SqliteWebApplicationFactory<ReportingService.ReportingServiceTestEntryPoint, ReportingDbContext>
 {
     public FeedHandler Handler { get; } = new();
+    public SettableTimeProvider Clock { get; } = new();
+    public CapturingMailer Mailer { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
-        builder.ConfigureServices(services => services.AddHttpClient(AggregateRefresher.ClientName).ConfigurePrimaryHttpMessageHandler(() => Handler));
+        builder.ConfigureServices(services =>
+        {
+            services.AddHttpClient(AggregateRefresher.ClientName).ConfigurePrimaryHttpMessageHandler(() => Handler);
+            services.AddSingleton<TimeProvider>(Clock);
+            services.AddSingleton<IReportMailer>(Mailer);
+        });
         builder.ConfigureAppConfiguration((_, configuration) =>
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Jwt:PublicKeyPem"] = TestTokens.PublicKeyPem(TestJwtKeys.Primary),
                 ["Reporting:Aggregates:WorkerEnabled"] = "false",
                 ["Reporting:Aggregates:Attempts"] = "1",
+                ["Reporting:Reports:WorkerEnabled"] = "false",
+                ["Reporting:Reports:Attempts"] = "2",
+                ["Reporting:Reports:RetryDelaySeconds"] = "0",
+                ["Reporting:Reports:RetryMinutes"] = "60",
                 ["Internal:Key"] = "feed-key"
             }));
     }
@@ -109,6 +146,7 @@ public sealed class ReportingAggregateTests : IDisposable
     {
         (await _client.SendAsync(Req(HttpMethod.Post, $"{Route}/refresh", [Permissions.ReportingManage]))).StatusCode.Should().Be(HttpStatusCode.OK);
 
+        _factory.Clock.Advance(TimeSpan.FromMinutes(1));
         Healthy(donations: 9000m, ledger: 1500m);
         var failed = await _client.SendAsync(Req(HttpMethod.Post, $"{Route}/refresh", [Permissions.ReportingManage]));
         failed.StatusCode.Should().Be(HttpStatusCode.BadGateway);
@@ -124,6 +162,7 @@ public sealed class ReportingAggregateTests : IDisposable
         status.GetProperty("alert").GetBoolean().Should().BeTrue();
         status.GetProperty("lastSuccess").GetProperty("status").GetString().Should().Be("succeeded");
 
+        _factory.Clock.Advance(TimeSpan.FromMinutes(1));
         Healthy(donations: 1500m, ledger: 1500m);
         (await _client.SendAsync(Req(HttpMethod.Post, $"{Route}/refresh", [Permissions.ReportingManage]))).StatusCode.Should().Be(HttpStatusCode.OK);
         (await Json(await _client.SendAsync(Req(HttpMethod.Get, $"{Route}/status", [Permissions.ReportingView])))).GetProperty("alert").GetBoolean().Should().BeFalse("the next good run clears the alert");

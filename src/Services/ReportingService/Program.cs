@@ -1,10 +1,12 @@
 using KJWebsite.BuildingBlocks.Auditing;
 using KJWebsite.BuildingBlocks.Security;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using ReportingService.Aggregates;
 using ReportingService.Dashboards;
 using ReportingService.Data;
 using ReportingService.Metrics;
+using ReportingService.Reports;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,7 +29,10 @@ builder.Services.AddDbContext<ReportingDbContext>((services, options) =>
     options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "reporting"));
     options.AddInterceptors(services.GetRequiredService<AuditInterceptor>());
 });
-builder.Services.AddKjAuditing("reporting", audit => audit.Audit<ReportingService.Data.Entities.AggregateRunEntity>().Audit<ReportingService.Data.Entities.MetricDefinitionEntity>());
+builder.Services.AddKjAuditing("reporting", audit => audit.Audit<ReportingService.Data.Entities.AggregateRunEntity>().Audit<ReportingService.Data.Entities.MetricDefinitionEntity>()
+    .Audit<ReportingService.Data.Entities.ReportDefinitionEntity>().Audit<ReportingService.Data.Entities.ReportScheduleEntity>()
+    .Audit<ReportingService.Data.Entities.ReportRecipientEntity>(nameof(ReportingService.Data.Entities.ReportRecipientEntity.EmailProtected), nameof(ReportingService.Data.Entities.ReportRecipientEntity.EmailKey))
+    .Audit<ReportingService.Data.Entities.ReportDeliveryEntity>());
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.Configure<AggregateOptions>(builder.Configuration.GetSection(AggregateOptions.SectionName));
@@ -38,9 +43,29 @@ builder.Services.AddScoped<AggregateQuery>();
 builder.Services.Configure<DashboardOptions>(builder.Configuration.GetSection(DashboardOptions.SectionName));
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<MetricService>();
+// Persist the key ring (DataProtection:KeysPath) in any deployment: recipient addresses encrypted by one instance must open on the next.
+var dataProtection = builder.Services.AddDataProtection(o => o.ApplicationDiscriminator = "KJWebsite.Reporting");
+if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath)
+{
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+}
+
+builder.Services.Configure<ReportOptions>(builder.Configuration.GetSection(ReportOptions.SectionName));
+builder.Services.AddScoped<ReportTemplates>();
+builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<ReportScheduler>();
+if (builder.Configuration["Reporting:Smtp:Host"] is { Length: > 0 })
+{
+    builder.Services.AddSingleton<IReportMailer, SmtpReportMailer>();
+}
+else
+{
+    builder.Services.AddSingleton<IReportMailer, NotConfiguredReportMailer>();
+}
 if (!builder.Configuration.GetValue<bool>("OpenApi:Export"))
 {
     builder.Services.AddHostedService<AggregateWorker>();
+    builder.Services.AddHostedService<ReportScheduleWorker>();
 }
 
 builder.Services.AddKjJwtAuthentication();
@@ -87,6 +112,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Reporting
 app.MapAggregates();
 app.MapDashboards();
 app.MapMetrics();
+app.MapReports();
 app.MapAuditLog<ReportingDbContext>("/api/v1/admin/reporting/audit", "Reporting");
 
 app.Run();

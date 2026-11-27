@@ -88,6 +88,8 @@ public static class Permissions
     public const string ReportingView = "reporting.view";
     /// <summary>Refresh aggregates, define metrics, save and schedule reports, review data-quality findings.</summary>
     public const string ReportingManage = "reporting.manage";
+    /// <summary>Add and remove the people a scheduled financial report is mailed to: sensitive figures leave the system, so it is held apart from reporting.manage.</summary>
+    public const string ReportingRecipients = "reporting.recipients";
 
     /// <summary>Self-service (P3): holding it lets a member edit their OWN profile; see <see cref="ResourceOwnership"/> for the owner check.</summary>
     public const string MemberProfileEdit = "member.profile.edit";
@@ -157,6 +159,7 @@ public static class PermissionCatalog
         new("dashboard", Permissions.DashboardView, "See the back-office dashboard and global search"),
         new("reporting", Permissions.ReportingView, "Read aggregate figures, impact metrics, saved reports and funnels"),
         new("reporting", Permissions.ReportingManage, "Refresh aggregates, define metrics, save and schedule reports, review data-quality findings"),
+        new("reporting", Permissions.ReportingRecipients, "Add and remove the recipients of scheduled financial reports"),
         new("audit", Permissions.AuditView, "Read the audit log")
     ];
 }
