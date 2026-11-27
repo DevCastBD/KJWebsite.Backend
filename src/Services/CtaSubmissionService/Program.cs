@@ -1,3 +1,5 @@
+using CtaSubmissionService.Aggregates;
+using KJWebsite.BuildingBlocks.Aggregates;
 using CtaSubmissionService.Contracts;
 using CtaSubmissionService.Data;
 using CtaSubmissionService.Data.Entities;
@@ -160,6 +162,7 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
 .AllowAnonymous();
 
 app.MapEngagement();
+app.MapAggregateFeed(InboxAggregates.Source, ctx => InboxAggregates.CollectAsync(ctx.RequestServices.GetRequiredService<CtaDbContext>(), ctx.RequestServices.GetRequiredService<TimeProvider>(), ctx.RequestAborted));
 
 app.Run();
 

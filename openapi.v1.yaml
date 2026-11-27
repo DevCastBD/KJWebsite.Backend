@@ -8716,6 +8716,187 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/admin/reporting/aggregates:
+    get:
+      tags:
+        - "Aggregates"
+      summary: "Monthly warehouse figures for one metric"
+      description: "\u0060metric\u0060 is required (for example \u0060donations.confirmed.amount\u0060); \u0060source\u0060, \u0060dimension\u0060, \u0060from\u0060 and \u0060to\u0060 narrow it. Every answer carries \u0060asOf\u0060 (the oldest source refresh) and \u0060stale\u0060, so a page can label the figure honestly. Money is a decimal string with its currency. Requires \u0060reporting.view\u0060."
+      operationId: "ListAggregates"
+      parameters:
+        -
+          name: "metric"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "source"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "dimension"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AggregateListView"
+  /api/v1/admin/reporting/aggregates/status:
+    get:
+      tags:
+        - "Aggregates"
+      summary: "Freshness of the warehouse and whether the last refresh failed"
+      description: "\u0060alert\u0060 is true while the most recent run failed; \u0060stale\u0060 is true when any source is older than the allowed age or the last run failed. Requires \u0060reporting.view\u0060."
+      operationId: "AggregateStatus"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AggregateStatusView"
+  /api/v1/admin/reporting/aggregates/runs:
+    get:
+      tags:
+        - "Aggregates"
+      summary: "Recent refresh runs, newest first, with the ledger reconciliation of each"
+      operationId: "ListAggregateRuns"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AggregateRunsView"
+  /api/v1/admin/reporting/aggregates/refresh:
+    post:
+      tags:
+        - "Aggregates"
+      summary: "Refresh the warehouse now"
+      description: "Reads every service\u0027s feed, checks the donation totals against the ledger and replaces the figures only if both succeed (200). Otherwise nothing changes and the run is returned with its error (502). Requires \u0060reporting.manage\u0060."
+      operationId: "RefreshAggregates"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AggregateRunView"
+        "502":
+          description: "Bad Gateway"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AggregateRunView"
+  /api/v1/admin/reporting/audit:
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Query the Reporting audit log"
+      description: "Newest first. Filters: \u0060actor\u0060 (id or email), \u0060entity\u0060, \u0060entityId\u0060, \u0060action\u0060 (create/update/delete), \u0060requestId\u0060, \u0060from\u0060, \u0060to\u0060. Page with \u0060cursor\u0060 = the \u0060nextCursor\u0060 of the previous page. Requires \u0060audit.view\u0060; before/after hold personal data."
+      operationId: "ListReportingAuditLog"
+      parameters:
+        -
+          name: "actor"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entity"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "entityId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "action"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "requestId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "cursor"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int64"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/reporting/audit/{id}":
+    get:
+      tags:
+        - "Admin \u2014 Audit log"
+      summary: "Get one Reporting audit event"
+      operationId: "GetReportingAuditEvent"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type: "integer"
+            format: "int64"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/admin/sponsorship/donors/{donorId}/students":
     get:
       tags:
@@ -10008,6 +10189,8 @@ tags:
     name: "Ledger"
   -
     name: "Reconciliation"
+  -
+    name: "Aggregates"
   -
     name: "Admin: Sponsorship"
   -
@@ -12814,6 +12997,155 @@ components:
           type:
             - "null"
             - "string"
+    AggregateItemView:
+      required:
+        - "source"
+        - "metric"
+        - "period"
+        - "dimension"
+        - "currency"
+        - "value"
+      type: "object"
+      properties:
+        source:
+          type: "string"
+        metric:
+          type: "string"
+        period:
+          type: "string"
+        dimension:
+          type: "string"
+        currency:
+          type:
+            - "null"
+            - "string"
+        value:
+          type: "string"
+    AggregateListView:
+      required:
+        - "items"
+        - "asOf"
+        - "stale"
+        - "sources"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/AggregateItemView"
+        asOf:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        stale:
+          type: "boolean"
+        sources:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SourceFreshness"
+    AggregateRunsView:
+      required:
+        - "items"
+      type: "object"
+      properties:
+        items:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/AggregateRunView"
+    AggregateRunView:
+      required:
+        - "id"
+        - "trigger"
+        - "status"
+        - "startedAt"
+        - "finishedAt"
+        - "error"
+        - "points"
+        - "reconciliation"
+      type: "object"
+      properties:
+        id:
+          type: "string"
+        trigger:
+          type: "string"
+        status:
+          type: "string"
+        startedAt:
+          type: "string"
+          format: "date-time"
+        finishedAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        error:
+          type:
+            - "null"
+            - "string"
+        points:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        reconciliation:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/JsonElement"
+    AggregateStatusView:
+      required:
+        - "sources"
+        - "asOf"
+        - "stale"
+        - "alert"
+        - "lastRun"
+        - "lastSuccess"
+      type: "object"
+      properties:
+        sources:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/SourceFreshness"
+        asOf:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        stale:
+          type: "boolean"
+        alert:
+          type: "boolean"
+        lastRun:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/AggregateRunView"
+        lastSuccess:
+          oneOf:
+            -
+              type: "null"
+            -
+              $ref: "#/components/schemas/AggregateRunView"
+    SourceFreshness:
+      required:
+        - "source"
+        - "asOf"
+        - "stale"
+      type: "object"
+      properties:
+        source:
+          type: "string"
+        asOf:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        stale:
+          type: "boolean"
     CreateLinkRequest:
       required:
         - "studentId"

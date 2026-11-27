@@ -60,6 +60,11 @@ public sealed class PrivacyEndpointMatrixTests(PrivacyStack stack) : IClassFixtu
         "DELETE /api/v1/donors/me/students (sponsorship)",
         "DELETE /api/v1/donors/me/students/{**rest} (sponsorship)",
         "GET /.well-known/jwks.json (auth)",
+        // Aggregate feeds for the reporting warehouse: closed without the shared Internal:Key, not routed by the gateway and not in the OpenAPI contract.
+        "GET /internal/v1/aggregates (content)",
+        "GET /internal/v1/aggregates (cta)",
+        "GET /internal/v1/aggregates (finance)",
+        "GET /internal/v1/aggregates (membership)",
         "GET /api/v1/campaigns/{slug}/progress (finance)",
         "GET /api/v1/committees (membership)",
         "GET /api/v1/committees/{slug} (membership)",

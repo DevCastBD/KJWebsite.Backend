@@ -1,3 +1,5 @@
+using KJWebsite.BuildingBlocks.Aggregates;
+using MembershipService.Aggregates;
 using System.Security.Cryptography;
 using System.Text;
 using KJWebsite.BuildingBlocks;
@@ -284,6 +286,7 @@ app.MapPublicCommittees();
 app.MapVolunteering();
 app.MapProgramme();
 app.MapTasks();
+app.MapAggregateFeed(MembershipAggregates.Source, ctx => MembershipAggregates.CollectAsync(ctx.RequestServices.GetRequiredService<MembershipDbContext>(), ctx.RequestServices.GetRequiredService<TimeProvider>(), ctx.RequestAborted));
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 
 app.MapPut("/api/v1/membership/applications/{id}/attachments/{kind}", async (HttpContext context, string id, string kind, MembershipDbContext db, IAttachmentStore store) =>
