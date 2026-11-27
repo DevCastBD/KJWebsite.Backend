@@ -22,6 +22,10 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
     public DbSet<MemberStatusEventEntity> MemberStatusEvents => Set<MemberStatusEventEntity>();
     public DbSet<MemberEntity> Members => Set<MemberEntity>();
     public DbSet<NotificationOutboxEntity> NotificationOutbox => Set<NotificationOutboxEntity>();
+    public DbSet<VolunteerHourEntity> VolunteerHours => Set<VolunteerHourEntity>();
+    public DbSet<VolunteerOpportunityEntity> VolunteerOpportunities => Set<VolunteerOpportunityEntity>();
+    public DbSet<VolunteerShiftEntity> VolunteerShifts => Set<VolunteerShiftEntity>();
+    public DbSet<VolunteerSignupEntity> VolunteerSignups => Set<VolunteerSignupEntity>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -142,6 +146,62 @@ public sealed class MembershipDbContext(DbContextOptions<MembershipDbContext> op
             entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
             entity.Property(x => x.RecipientProtected).IsRequired();
             entity.HasIndex(x => x.SentAt);
+        });
+
+        modelBuilder.Entity<VolunteerHourEntity>(entity =>
+        {
+            entity.ToTable("volunteer_hours");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ProjectSlug).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.EventSlug).HasMaxLength(120);
+            entity.Property(x => x.Description).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ReviewedBy).HasMaxLength(64);
+            entity.Property(x => x.RejectionReason).HasMaxLength(500);
+            entity.Property(x => x.UpdatedAt).IsConcurrencyToken();
+            entity.HasIndex(x => new { x.MemberId, x.Status });
+            entity.HasIndex(x => new { x.ProjectSlug, x.Status });
+            entity.HasOne<MemberEntity>().WithMany().HasForeignKey(x => x.MemberId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<VolunteerOpportunityEntity>(entity =>
+        {
+            entity.ToTable("volunteer_opportunities");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Slug).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.TitleEn).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.TitleBn).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.DescriptionEn).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.DescriptionBn).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.ProjectSlug).HasMaxLength(120);
+            entity.Property(x => x.Skills).HasMaxLength(500).IsRequired();
+            entity.HasIndex(x => x.Slug).IsUnique();
+            entity.HasMany(x => x.Shifts).WithOne().HasForeignKey(s => s.OpportunityId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<VolunteerShiftEntity>(entity =>
+        {
+            entity.ToTable("volunteer_shifts");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.OpportunityId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SignedUp).IsConcurrencyToken();
+        });
+
+        modelBuilder.Entity<VolunteerSignupEntity>(entity =>
+        {
+            entity.ToTable("volunteer_signups");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ShiftId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.MemberId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.HasIndex(x => new { x.ShiftId, x.MemberId }).IsUnique();
+            entity.HasOne<VolunteerShiftEntity>().WithMany().HasForeignKey(x => x.ShiftId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<MemberEntity>().WithMany().HasForeignKey(x => x.MemberId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<MemberEntity>(entity =>
