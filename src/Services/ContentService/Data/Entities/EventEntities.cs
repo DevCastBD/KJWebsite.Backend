@@ -162,3 +162,20 @@ public sealed class EventFeedbackResponseEntity
     public string AnswersJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+/// <summary>
+/// The secret in a member's calendar-feed URL. Only the SHA-256 of the token is stored, so a database leak does not leak feeds. One active
+/// token per member; creating a new one revokes the old, and revoking stops the feed at once.
+/// </summary>
+public sealed class EventFeedTokenEntity
+{
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>The member's Identity user id (the token `sub`), the same value stored as a registration's `MemberId`.</summary>
+    public string Subject { get; set; } = string.Empty;
+
+    public string TokenHash { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
+    public DateTimeOffset? LastUsedAt { get; set; }
+}

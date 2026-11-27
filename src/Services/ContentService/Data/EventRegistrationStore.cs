@@ -461,6 +461,7 @@ public sealed class EventRegistrationStore(ContentDbContext db, TimeProvider tim
         {
             eventSlug = item.Slug,
             ticketCode = r.TicketCode,
+            calendarPath = $"/api/v1/content/event-tickets/{r.TicketCode}/calendar.ics",
             occurrenceStartUtc = r.OccurrenceStartUtc,
             status = r.Status,
             deadlineAt = r.DeadlineAt

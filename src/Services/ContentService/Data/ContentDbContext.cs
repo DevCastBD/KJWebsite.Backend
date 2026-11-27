@@ -15,6 +15,7 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<EventRegistrationEntity> EventRegistrations => Set<EventRegistrationEntity>();
     public DbSet<EventNotificationEntity> EventNotifications => Set<EventNotificationEntity>();
     public DbSet<EventCertificateEntity> EventCertificates => Set<EventCertificateEntity>();
+    public DbSet<EventFeedTokenEntity> EventFeedTokens => Set<EventFeedTokenEntity>();
     public DbSet<EventFeedbackFormEntity> EventFeedbackForms => Set<EventFeedbackFormEntity>();
     public DbSet<EventFeedbackResponseEntity> EventFeedbackResponses => Set<EventFeedbackResponseEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
@@ -149,6 +150,17 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.RecipientProtected).IsRequired();
             entity.Property(x => x.PayloadJson).IsRequired();
             entity.HasIndex(x => x.SentAt);
+        });
+
+        modelBuilder.Entity<EventFeedTokenEntity>(entity =>
+        {
+            entity.ToTable("event_feed_tokens");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.Subject).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => x.Subject);
         });
 
         modelBuilder.Entity<EventCertificateEntity>(entity =>
