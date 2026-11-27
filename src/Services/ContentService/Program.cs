@@ -49,6 +49,7 @@ builder.Services.AddScoped<ContentStore>();
 builder.Services.AddScoped<TaxonomyStore>();
 builder.Services.AddScoped<RedirectStore>();
 builder.Services.AddScoped<GenericContentStore>();
+builder.Services.AddScoped<EventStore>();
 builder.Services.AddScoped<RevisionStore>();
 builder.Services.AddScoped<SearchIndex>();
 builder.Services.AddScoped<SettingsStore>();
@@ -348,6 +349,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 .EvictsContentCache()
 .RequirePermission(Permissions.ContentDelete);
 
+app.MapEvents();
 app.MapGenericContent();
 app.MapSettings();
 app.MapBackOffice();

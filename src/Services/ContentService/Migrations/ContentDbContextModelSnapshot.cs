@@ -189,6 +189,100 @@ namespace ContentService.Migrations
                     b.ToTable("content_translations", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.EventEntity", b =>
+                {
+                    b.Property<string>("ContentItemId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("EndUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExceptionsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("OnlineUrl")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("RecurrenceRule")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("SeriesKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("StartUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("ContentItemId");
+
+                    b.HasIndex("SeriesKey");
+
+                    b.ToTable("events", "content");
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.EventSessionEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ContentItemId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Room")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Speaker")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("StartOffsetMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TitlesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentItemId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("event_sessions", "content");
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.FeatureFlagEntity", b =>
                 {
                     b.Property<string>("Key")
@@ -505,6 +599,24 @@ namespace ContentService.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ContentService.Data.Entities.EventEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithOne("Event")
+                        .HasForeignKey("ContentService.Data.Entities.EventEntity", "ContentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentService.Data.Entities.EventSessionEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithMany()
+                        .HasForeignKey("ContentItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ContentService.Data.Entities.NewsArticleEntity", b =>
                 {
                     b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
@@ -543,6 +655,8 @@ namespace ContentService.Migrations
 
             modelBuilder.Entity("ContentService.Data.Entities.ContentItemEntity", b =>
                 {
+                    b.Navigation("Event");
+
                     b.Navigation("News");
 
                     b.Navigation("Project");

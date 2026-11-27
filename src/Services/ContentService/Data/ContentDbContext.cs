@@ -10,6 +10,8 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<ContentTranslationEntity> Translations => Set<ContentTranslationEntity>();
     public DbSet<ProjectEntity> Projects => Set<ProjectEntity>();
     public DbSet<NewsArticleEntity> News => Set<NewsArticleEntity>();
+    public DbSet<EventEntity> Events => Set<EventEntity>();
+    public DbSet<EventSessionEntity> EventSessions => Set<EventSessionEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
     public DbSet<TagNameEntity> TagNames => Set<TagNameEntity>();
     public DbSet<ContentItemTagEntity> ItemTags => Set<ContentItemTagEntity>();
@@ -48,6 +50,7 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.HasIndex(x => new { x.Type, x.SortOrder });
             entity.HasOne(x => x.Project).WithOne().HasForeignKey<ProjectEntity>(p => p.ContentItemId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne(x => x.News).WithOne().HasForeignKey<NewsArticleEntity>(n => n.ContentItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Event).WithOne().HasForeignKey<EventEntity>(n => n.ContentItemId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ContentTranslationEntity>(entity =>
@@ -78,6 +81,32 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.ToTable("news_articles");
             entity.HasKey(x => x.ContentItemId);
             entity.Property(x => x.ContentItemId).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<EventEntity>(entity =>
+        {
+            entity.ToTable("events");
+            entity.HasKey(x => x.ContentItemId);
+            entity.Property(x => x.ContentItemId).HasMaxLength(64);
+            entity.Property(x => x.TimeZoneId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.OnlineUrl).HasMaxLength(512).IsRequired();
+            entity.Property(x => x.RecurrenceRule).HasMaxLength(256).IsRequired();
+            entity.Property(x => x.ExceptionsJson).IsRequired();
+            entity.Property(x => x.SeriesKey).HasMaxLength(120).IsRequired();
+            entity.HasIndex(x => x.SeriesKey);
+        });
+
+        modelBuilder.Entity<EventSessionEntity>(entity =>
+        {
+            entity.ToTable("event_sessions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.ContentItemId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.TitlesJson).IsRequired();
+            entity.Property(x => x.Speaker).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Room).HasMaxLength(200).IsRequired();
+            entity.HasIndex(x => new { x.ContentItemId, x.Position }).IsUnique();
+            entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TagEntity>(entity =>

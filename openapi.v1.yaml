@@ -348,6 +348,107 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/content/events/{slug}/schedule":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get an event\u0027s schedule, sessions and occurrences"
+      description: "The \u0060ETag\u0060 is the item\u0027s version: send it back as \u0060If-Match\u0060 on PUT."
+      operationId: "GetAdminEventSchedule"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Set an event\u0027s schedule"
+      description: "Replaces start/end (stored in UTC), the IANA \u0060timeZoneId\u0060, venue coordinates, online URL, capacity, the recurrence rule (RRULE subset: FREQ DAILY/WEEKLY/MONTHLY, INTERVAL, COUNT or UNTIL, BYDAY) with its exceptions, and the ordered sessions. A recurring series is this one record; occurrences are expanded on read in the event\u0027s zone."
+      operationId: "PutEventSchedule"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EventScheduleRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/events/{slug}/schedule":
+    get:
+      tags:
+        - "Content \u2014 Event"
+      summary: "Schedule, sessions and occurrences of a published event"
+      operationId: "GetEventSchedule"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/event-occurrences:
+    get:
+      tags:
+        - "Content \u2014 Event"
+      summary: "Upcoming event occurrences, soonest first"
+      description: "Published events expanded into occurrences between \u0060from\u0060 (default now) and \u0060to\u0060 (default 90 days later). Times are UTC instants with the local wall-clock time in the event\u0027s own zone."
+      operationId: "ListEventOccurrences"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "from"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "to"
+          in: "query"
+          schema:
+            type: "string"
+            format: "date-time"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/content/pages:
     get:
       tags:
@@ -1302,6 +1403,165 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/content/events:
+    get:
+      tags:
+        - "Content \u2014 Event"
+      summary: "List events (published)"
+      description: "Returns \u0060{ items, total, limit, offset, lang }\u0060. \u0060tag\u0060 filters by tag slug or by a tag name in any language. Items without a translation in \u0060lang\u0060 are left out."
+      operationId: "ListEventItems"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "tag"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/events/{slug}":
+    get:
+      tags:
+        - "Content \u2014 Event"
+      summary: "Get one of events by slug"
+      description: "Includes the tags (named in the requested language) and the related items of any type."
+      operationId: "GetEventItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/events:
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "List events with all translations"
+      operationId: "ListAdminEventItems"
+      parameters:
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Create one of events"
+      description: "Creates a new item. If the slug is already used, by a live item or by a deleted one (a deleted item keeps its slug reserved), the response is 409 SLUG_TAKEN and nothing is changed: use PUT to edit a live item, or restore a deleted one from the trash."
+      operationId: "CreateEventItem"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get one of events with all translations"
+      description: "The \u0060ETag\u0060 header is the version to send back as \u0060If-Match\u0060 on update."
+      operationId: "GetAdminEventItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Update one of events"
+      description: "Replaces all translations, tags and related items. Send the \u0060ETag\u0060 from the last read as \u0060If-Match\u0060: if the item changed since, the response is 409 CONFLICT (a stale edit)."
+      operationId: "UpdateEventItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUpsertRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Delete one of events"
+      description: "Soft-deletes the item (the slug stays reserved)."
+      operationId: "DeleteEventItem"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/content/items/{type}/{slug}":
     get:
       tags:
@@ -1575,7 +1835,7 @@ paths:
       tags:
         - "Admin \u2014 Translations"
       summary: "Translation completeness of one item, per language"
-      description: "A language is complete when every required field is filled. Required fields per type: project: title, summary, body; news: title, summary, body; page: title, body; faq: title, body; team-member: title, summary; testimonial: title, body; partner: title; press: title, summary."
+      description: "A language is complete when every required field is filled. Required fields per type: project: title, summary, body; news: title, summary, body; page: title, body; faq: title, body; team-member: title, summary; testimonial: title, body; partner: title; press: title, summary; event: title, summary, body."
       operationId: "GetItemCompleteness"
       parameters:
         -
@@ -6927,6 +7187,8 @@ tags:
   -
     name: "Admin \u2014 Content"
   -
+    name: "Content \u2014 Event"
+  -
     name: "Content \u2014 Page"
   -
     name: "Content \u2014 Faq"
@@ -7112,6 +7374,109 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/RelatedRef"
+    EventScheduleRequest:
+      required:
+        - "start"
+        - "end"
+        - "timeZoneId"
+        - "onlineUrl"
+        - "latitude"
+        - "longitude"
+        - "capacity"
+        - "recurrence"
+        - "exceptions"
+        - "seriesKey"
+        - "sessions"
+      type: "object"
+      properties:
+        start:
+          type: "string"
+          format: "date-time"
+        end:
+          type: "string"
+          format: "date-time"
+        timeZoneId:
+          type: "string"
+        onlineUrl:
+          type:
+            - "null"
+            - "string"
+        latitude:
+          pattern: "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$"
+          type:
+            - "null"
+            - "number"
+            - "string"
+          format: "double"
+        longitude:
+          pattern: "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?(?:[eE][\u002B-]?\\d\u002B)?$"
+          type:
+            - "null"
+            - "number"
+            - "string"
+          format: "double"
+        capacity:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        recurrence:
+          type:
+            - "null"
+            - "string"
+        exceptions:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        seriesKey:
+          type:
+            - "null"
+            - "string"
+        sessions:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/EventSessionInput"
+    EventSessionInput:
+      required:
+        - "startOffsetMinutes"
+        - "durationMinutes"
+        - "titles"
+        - "speaker"
+        - "room"
+      type: "object"
+      properties:
+        startOffsetMinutes:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        durationMinutes:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "integer"
+            - "string"
+          format: "int32"
+        titles:
+          type:
+            - "null"
+            - "object"
+          additionalProperties:
+            type: "string"
+        speaker:
+          type:
+            - "null"
+            - "string"
+        room:
+          type:
+            - "null"
+            - "string"
     FlagWrite:
       required:
         - "enabled"
