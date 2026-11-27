@@ -50,3 +50,19 @@ All admin calls need `events.manage`.
 - **No-shows** `POST .../attendance/close` (`{ occurrence? }`, default the latest ended occurrence) marks confirmed registrations that never checked in as `no_show`. Cancelled ones stay `cancelled`, so the two are distinguishable; the registrations summary reports `checkedIn`.
 - **Certificates** `POST .../registrations/{id}/certificate` (`{ name? }`) issues once, only to someone who checked in; `name` prints a corrected spelling (no re-issue afterwards). The PDF (`GET .../registrations/{id}/certificate`, or for the holder `GET /api/v1/content/event-tickets/{code}/certificate`) embeds Noto Sans Bengali, as the Finance receipts do. The printed name is encrypted at rest.
 - **Feedback** `PUT/GET .../feedback-form` defines up to 30 questions (`rating` 1-5, `choice` 2-20 options, `text`) with bilingual prompts and an `isOpen` switch; questions lock once responses exist. Only a **checked-in** ticket holder can read the form (`GET /api/v1/content/event-tickets/{code}/feedback-form`) and submit once (`POST .../feedback`). Results (`GET .../events/{slug}/feedback`) are aggregates plus free-text answers without any identity, readable only with `events.manage`: feedback can be candid, so it is not given to ordinary content roles.
+
+# Calendar feeds (BE-075, #79)
+
+iCalendar (RFC 5545) output from the content service. Every time is written as a UTC instant (`DTSTART:20260314T140000Z`); the event's own IANA zone, DST included, is applied when occurrences are expanded, so a weekly 10:00 in `America/New_York` is 15:00Z before 8 March 2026 and 14:00Z after, and every client shows the right hour in its own zone. Lines are CRLF, folded at 75 octets without splitting a multi-byte (Bengali) character, and text is escaped (`\ \; \, \n`). `lang` (`en` or `bn`, default from `Accept-Language`) picks the title; the location is the translation's `venueName`, `venueAddress`.
+
+| Endpoint | Auth | What |
+|---|---|---|
+| `GET /api/v1/content/event-feed.ics` | none | All published events as occurrences from 30 days ago onwards, for subscription (`REFRESH-INTERVAL` 6 h, `max-age` 15 min). |
+| `GET /api/v1/content/events/{slug}/calendar.ics` | none | One published event, every occurrence. |
+| `GET /api/v1/content/event-tickets/{code}/calendar.ics` | ticket code | The invite for a **confirmed** registration (its own occurrence), `no-store`. Waitlisted, unpaid or cancelled tickets get 409. The registration notifications carry this path as `calendarPath`. |
+| `POST/DELETE /api/v1/content/calendar-feed/token` | member token | Create (or rotate) / revoke my subscription URL. |
+| `GET /api/v1/content/calendar-feed/{token}.ics` | the token | The member's confirmed registrations (those made with their token). |
+
+**A member feed URL is a credential.** The token is 256 random bits (43 base64url characters), shown once and stored only as a SHA-256 hash, never derived from the member id. One token is active per member: creating a new one revokes the old, `DELETE` revokes it, and an unknown or revoked token is a plain 404. The feed is `private, no-store` with `Referrer-Policy: no-referrer`. Because calendar apps put the URL in every request, treat it like a password and rotate it if shared.
+
+Gateway note: the feed routes are under `/api/v1/content`, which the gateway already forwards.

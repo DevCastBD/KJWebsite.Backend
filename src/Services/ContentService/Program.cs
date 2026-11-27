@@ -54,6 +54,7 @@ builder.Services.Configure<EventOptions>(builder.Configuration.GetSection(EventO
 builder.Services.AddSingleton<RegistrationPrivacy>();
 builder.Services.AddScoped<EventRegistrationStore>();
 builder.Services.AddScoped<EventAttendanceStore>();
+builder.Services.AddScoped<EventCalendarStore>();
 builder.Services.AddScoped<RevisionStore>();
 builder.Services.AddScoped<SearchIndex>();
 builder.Services.AddScoped<SettingsStore>();
@@ -356,6 +357,7 @@ app.MapDelete("/api/v1/admin/content/news/{id}", async (HttpRequest request, Con
 app.MapEvents();
 app.MapEventRegistration();
 app.MapEventAttendance();
+app.MapEventCalendar();
 app.MapGenericContent();
 app.MapSettings();
 app.MapBackOffice();

@@ -1,13 +1,14 @@
 # AI-DLC Nano State
 - Active work item: none
 - Phase: —
-- Branch: —
-- Base SHA: 00a82e6
-- Next step: wait for PR #243 review; then a post-merge comment on #242 (ask first)
+- Branch: feat/issue-79-ical-feeds
+- Base SHA: 8429827
+- Next step: user reviews the stacked branches #73..#79 (nothing pushed); then push/PRs on request
 - Paused work items:  (newest first)
-  - work-items/082-issue-242-content-conflict-codes (DONE, PR #243 open)
-  - work-items/081-issue-239-expose-retry-after (DONE, PR #240 merged)
-  - work-items/079-issue-235-publish-permissions (DONE, PR #236 merged)
-  - work-items/078-issue-226-gift-donor-id-attribution (DONE, PR #234 merged)
+  - work-items/089-issue-79-ical-feeds (DONE, local, stacked)
+  - work-items/088-issue-78-task-assignment (DONE, local, stacked)
+  - work-items/087-issue-77-programme-delivery (DONE, local, stacked)
+  - work-items/086-issue-76-volunteer-hours (DONE, local, stacked)
+  - work-items/085-issue-75-event-attendance (DONE, local, stacked)
 - Uncommitted code: no
-- Last updated: 2026-11-24 by claude
+- Last updated: 2026-11-27 by claude

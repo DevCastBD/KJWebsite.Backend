@@ -867,6 +867,105 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/content/event-feed.ics:
+    get:
+      tags:
+        - "Content \u2014 Event calendar"
+      summary: "Subscribe to all published events (iCalendar)"
+      description: "Published events as occurrences from 30 days ago onwards, with UTC times so every calendar shows the right hour in its own zone and across DST. \u0060lang\u0060 (en or bn) picks the title language."
+      operationId: "GetEventsCalendarFeed"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/events/{slug}/calendar.ics":
+    get:
+      tags:
+        - "Content \u2014 Event calendar"
+      summary: "One published event, all its occurrences (iCalendar)"
+      operationId: "GetEventCalendar"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/event-tickets/{code}/calendar.ics":
+    get:
+      tags:
+        - "Content \u2014 Event calendar"
+      summary: "Calendar invite for a confirmed registration (iCalendar)"
+      description: "The registrant\u0027s own occurrence, for adding to a calendar. Waitlisted, unpaid or cancelled tickets get 409."
+      operationId: "GetEventInvite"
+      parameters:
+        -
+          name: "code"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/calendar-feed/token:
+    post:
+      tags:
+        - "Content \u2014 Event calendar"
+      summary: "Create (or rotate) my calendar subscription URL"
+      description: "Returns the secret \u0060token\u0060 and \u0060path\u0060 once; only a hash is stored. The URL is a credential: anyone holding it sees your registered events, and calendar apps resend it on every refresh. Creating a new one revokes the previous; \u0060DELETE\u0060 revokes it."
+      operationId: "CreateCalendarFeedToken"
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Content \u2014 Event calendar"
+      summary: "Revoke my calendar subscription URL"
+      operationId: "RevokeCalendarFeedToken"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/calendar-feed/{token}.ics":
+    get:
+      tags:
+        - "Content \u2014 Event calendar"
+      summary: "A member\u0027s subscription feed (iCalendar), authorised by the token in the URL"
+      description: "Confirmed registrations of the member who made the token. Unknown and revoked tokens are both 404."
+      operationId: "GetMemberCalendarFeed"
+      parameters:
+        -
+          name: "token"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/content/pages:
     get:
       tags:
@@ -8348,6 +8447,8 @@ tags:
     name: "Admin \u2014 Event attendance"
   -
     name: "Content \u2014 Event attendance"
+  -
+    name: "Content \u2014 Event calendar"
   -
     name: "Content \u2014 Page"
   -
