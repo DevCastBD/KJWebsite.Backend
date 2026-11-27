@@ -449,6 +449,219 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/content/events/{slug}/registrations":
+    post:
+      tags:
+        - "Content \u2014 Event registration"
+      summary: "Register for an event, with or without an account"
+      description: "Needs \u0060name\u0060 and \u0060email\u0060; \u0060phone\u0060 and \u0060occurrence\u0060 (an occurrence start from the schedule, default the next one) are optional. The answer is a ticket whose \u0060status\u0060 is \u0060confirmed\u0060, \u0060waitlisted\u0060 (capacity reached), \u0060pending_approval\u0060 (organiser must approve) or \u0060pending_payment\u0060 (paid event: the seat is held until \u0060deadlineAt\u0060). Registering again with the same email for the same occurrence returns the existing ticket (200). The \u0060ticketCode\u0060 is the QR payload and the credential for the ticket endpoints."
+      operationId: "RegisterForEvent"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/event-tickets/{code}":
+    get:
+      tags:
+        - "Content \u2014 Event registration"
+      summary: "Ticket status, waitlist position and deadline"
+      operationId: "GetEventTicket"
+      parameters:
+        -
+          name: "code"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/event-tickets/{code}/accept":
+    post:
+      tags:
+        - "Content \u2014 Event registration"
+      summary: "Accept a waitlist offer before its deadline"
+      description: "A promoted waitlist entry holds its seat until \u0060deadlineAt\u0060. After that the seat is offered to the next person and this returns 409 OFFER_EXPIRED."
+      operationId: "AcceptEventOffer"
+      parameters:
+        -
+          name: "code"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/event-tickets/{code}/cancel":
+    post:
+      tags:
+        - "Content \u2014 Event registration"
+      summary: "Cancel a registration; a freed seat goes to the waitlist"
+      operationId: "CancelEventRegistration"
+      parameters:
+        -
+          name: "code"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/registrations":
+    get:
+      tags:
+        - "Admin \u2014 Event registration"
+      summary: "Registrations of an event with a seat summary"
+      description: "Includes the registrants\u0027 personal data, so it needs \u0060events.manage\u0060. \u0060status\u0060 filters."
+      operationId: "ListEventRegistrations"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/registrations/{id}/approve":
+    post:
+      tags:
+        - "Admin \u2014 Event registration"
+      summary: "Approve a registration; it then takes a seat or the waitlist"
+      operationId: "ApproveEventRegistration"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/registrations/{id}/reject":
+    post:
+      tags:
+        - "Admin \u2014 Event registration"
+      summary: "Reject a registration, with a reason"
+      operationId: "RejectEventRegistration"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/registrations/{id}/payment":
+    post:
+      tags:
+        - "Admin \u2014 Event registration"
+      summary: "Record that a paid registration was paid, confirming it"
+      description: "The only way a \u0060pending_payment\u0060 registration becomes \u0060confirmed\u0060. Needs the payment reference; fails with 409 if the hold already expired."
+      operationId: "ConfirmEventPayment"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/content/events/{slug}/registrations/{id}/cancel":
+    post:
+      tags:
+        - "Admin \u2014 Event registration"
+      summary: "Cancel a registration on the registrant\u0027s behalf"
+      operationId: "AdminCancelEventRegistration"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/content/pages:
     get:
       tags:
@@ -7189,6 +7402,10 @@ tags:
   -
     name: "Content \u2014 Event"
   -
+    name: "Content \u2014 Event registration"
+  -
+    name: "Admin \u2014 Event registration"
+  -
     name: "Content \u2014 Page"
   -
     name: "Content \u2014 Faq"
@@ -7442,6 +7659,25 @@ components:
             - "array"
           items:
             $ref: "#/components/schemas/EventSessionInput"
+        registrationOpen:
+          type:
+            - "null"
+            - "boolean"
+        requiresApproval:
+          type:
+            - "null"
+            - "boolean"
+        priceMinor:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int64"
+        currency:
+          type:
+            - "null"
+            - "string"
     EventSessionInput:
       required:
         - "startOffsetMinutes"
@@ -7548,6 +7784,15 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/NewsTranslationInput"
+    PaymentRequest:
+      required:
+        - "reference"
+      type: "object"
+      properties:
+        reference:
+          type:
+            - "null"
+            - "string"
     PreviewTokenRequest:
       required:
         - "ttlMinutes"
@@ -7628,6 +7873,15 @@ components:
           type: "array"
           items:
             $ref: "#/components/schemas/ProjectTranslationInput"
+    ReasonRequest:
+      required:
+        - "reason"
+      type: "object"
+      properties:
+        reason:
+          type:
+            - "null"
+            - "string"
     RedirectCreateRequest:
       required:
         - "from"
@@ -7646,6 +7900,36 @@ components:
             - "integer"
             - "string"
           format: "int32"
+    RegisterRequest:
+      required:
+        - "name"
+        - "email"
+        - "phone"
+        - "occurrence"
+        - "lang"
+      type: "object"
+      properties:
+        name:
+          type:
+            - "null"
+            - "string"
+        email:
+          type:
+            - "null"
+            - "string"
+        phone:
+          type:
+            - "null"
+            - "string"
+        occurrence:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        lang:
+          type:
+            - "null"
+            - "string"
     RelatedRef:
       required:
         - "type"

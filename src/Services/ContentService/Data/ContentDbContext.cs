@@ -12,6 +12,8 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
     public DbSet<NewsArticleEntity> News => Set<NewsArticleEntity>();
     public DbSet<EventEntity> Events => Set<EventEntity>();
     public DbSet<EventSessionEntity> EventSessions => Set<EventSessionEntity>();
+    public DbSet<EventRegistrationEntity> EventRegistrations => Set<EventRegistrationEntity>();
+    public DbSet<EventNotificationEntity> EventNotifications => Set<EventNotificationEntity>();
     public DbSet<TagEntity> Tags => Set<TagEntity>();
     public DbSet<TagNameEntity> TagNames => Set<TagNameEntity>();
     public DbSet<ContentItemTagEntity> ItemTags => Set<ContentItemTagEntity>();
@@ -94,6 +96,9 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.ExceptionsJson).IsRequired();
             entity.Property(x => x.SeriesKey).HasMaxLength(120).IsRequired();
             entity.HasIndex(x => x.SeriesKey);
+            entity.Property(x => x.Currency).HasMaxLength(3).IsRequired().HasDefaultValue(string.Empty);
+            entity.Property(x => x.RegistrationOpen).HasDefaultValue(true);
+            entity.Property(x => x.RegistrationVersion).IsConcurrencyToken();
         });
 
         modelBuilder.Entity<EventSessionEntity>(entity =>
@@ -107,6 +112,39 @@ public sealed class ContentDbContext(DbContextOptions<ContentDbContext> options)
             entity.Property(x => x.Room).HasMaxLength(200).IsRequired();
             entity.HasIndex(x => new { x.ContentItemId, x.Position }).IsUnique();
             entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.ContentItemId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EventRegistrationEntity>(entity =>
+        {
+            entity.ToTable("event_registrations");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(64);
+            entity.Property(x => x.EventItemId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.TicketCode).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.MemberId).HasMaxLength(64);
+            entity.Property(x => x.NameProtected).IsRequired();
+            entity.Property(x => x.EmailProtected).IsRequired();
+            entity.Property(x => x.EmailKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.DecisionReason).HasMaxLength(500);
+            entity.Property(x => x.PaymentReference).HasMaxLength(120);
+            entity.HasIndex(x => x.TicketCode).IsUnique();
+            entity.HasIndex(x => new { x.EventItemId, x.OccurrenceStartUtc, x.Status });
+            entity.HasIndex(x => new { x.EventItemId, x.EmailKey });
+            entity.HasOne<ContentItemEntity>().WithMany().HasForeignKey(x => x.EventItemId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EventNotificationEntity>(entity =>
+        {
+            entity.ToTable("event_notifications");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.RegistrationId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Template).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Language).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.RecipientProtected).IsRequired();
+            entity.Property(x => x.PayloadJson).IsRequired();
+            entity.HasIndex(x => x.SentAt);
         });
 
         modelBuilder.Entity<TagEntity>(entity =>

@@ -451,3 +451,6 @@
 - 2026-11-24T14:00Z [claude] 082-issue-242-content-conflict-codes SIDE-EFFECT @a0ebcb0: pushed branch, PR #243 opened; FE#381 comment posted; Backend#244 created (assigned, on board); user approved
 - 2026-11-24T14:00Z [claude] 082-issue-242-content-conflict-codes DONE @a0ebcb0: PR #243 open, never merged by claude
 - 2026-11-27T00:00Z [claude] 083-issue-73-events-crud CREATED @b33f121: milestone 6 run; issues assigned to FHShubho (user asked)
+- 2026-11-27T00:00Z [claude] 083-issue-73-events-crud BRANCH @b33f121: feat/issue-73-events-crud off origin/develop (user confirmed)
+- 2026-11-27T00:00Z [claude] 083-issue-73-events-crud DONE @7278368: targeted tests pass (57); full suite skipped at user request
+- 2026-11-27T00:00Z [claude] 084-issue-74-event-registration BRANCH @7278368: feat/issue-74-event-registration stacked on #73 (user instructed)
