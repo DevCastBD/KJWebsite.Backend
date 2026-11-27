@@ -3866,6 +3866,280 @@ paths:
       responses:
         "200":
           description: "OK"
+  /api/v1/members/me/volunteer/hours:
+    post:
+      tags:
+        - "Volunteer operations"
+      summary: "Log volunteer hours for approval"
+      description: "Needs \u0060projectSlug\u0060, \u0060date\u0060 (not in the future), \u0060minutes\u0060 (1 to 1440) and a \u0060description\u0060. The entry is \u0060submitted\u0060 and counts nowhere until an organiser approves it."
+      operationId: "SubmitVolunteerHours"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HourRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    get:
+      tags:
+        - "Volunteer operations"
+      summary: "My hours with their status, rejection reasons and totals"
+      operationId: "ListMyVolunteerHours"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/members/me/volunteer/hours/{id}":
+    put:
+      tags:
+        - "Volunteer operations"
+      summary: "Correct an entry that is waiting or was rejected; it goes back to review"
+      operationId: "UpdateMyVolunteerHours"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HourRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Volunteer operations"
+      summary: "Withdraw an entry that is not approved"
+      operationId: "WithdrawMyVolunteerHours"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/members/me/volunteer/opportunities:
+    get:
+      tags:
+        - "Volunteer operations"
+      summary: "The opportunity board, with how well each matches my expertise"
+      description: "Open opportunities with their upcoming shifts and free slots, best skill match first. The match uses the member\u0027s own expertise, whatever their publication consent."
+      operationId: "ListVolunteerOpportunities"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/members/me/volunteer/shifts/{shiftId}/signup":
+    post:
+      tags:
+        - "Volunteer operations"
+      summary: "Take a place on a shift"
+      description: "Decided on the server: the last slot goes to one person. A full shift is 409 SHIFT_FULL; signing up twice is idempotent."
+      operationId: "SignUpForVolunteerShift"
+      parameters:
+        -
+          name: "shiftId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    delete:
+      tags:
+        - "Volunteer operations"
+      summary: "Give up a shift"
+      operationId: "CancelVolunteerShift"
+      parameters:
+        -
+          name: "shiftId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/volunteer/hours:
+    get:
+      tags:
+        - "Volunteer operations"
+      summary: "Hours to review, oldest waiting first"
+      operationId: "ListVolunteerHoursAdmin"
+      parameters:
+        -
+          name: "status"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "project"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "memberId"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/volunteer/hours/{id}/approve":
+    post:
+      tags:
+        - "Volunteer operations"
+      summary: "Approve hours so they count"
+      description: "Never by the member who logged them (403 SELF_REVIEW)."
+      operationId: "ApproveVolunteerHours"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/volunteer/hours/{id}/reject":
+    post:
+      tags:
+        - "Volunteer operations"
+      summary: "Reject hours with a reason the volunteer sees"
+      operationId: "RejectVolunteerHours"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonBody"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/volunteer/rollups:
+    get:
+      tags:
+        - "Volunteer operations"
+      summary: "Approved hours per project or per member"
+      description: "Sums over approved entries only. \u0060fingerprint\u0060 is a hash of the approved entry ids and minutes behind each figure, so a published total can be traced to its entries (impact metrics, BE-085)."
+      operationId: "VolunteerRollups"
+      parameters:
+        -
+          name: "by"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "project"
+          in: "query"
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/membership/volunteer/opportunities:
+    get:
+      tags:
+        - "Volunteer operations"
+      summary: "All opportunities, open or closed"
+      operationId: "ListVolunteerOpportunitiesAdmin"
+      responses:
+        "200":
+          description: "OK"
+    post:
+      tags:
+        - "Volunteer operations"
+      summary: "Post an opportunity with its shifts"
+      operationId: "CreateVolunteerOpportunity"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpportunityRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/volunteer/opportunities/{id}":
+    put:
+      tags:
+        - "Volunteer operations"
+      summary: "Edit an opportunity, close it, or add shifts"
+      description: "Fields left out stay as they are. \u0060shifts\u0060 adds new shifts; existing shifts with sign-ups are never removed."
+      operationId: "UpdateVolunteerOpportunity"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OpportunityRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/admin/membership/volunteer/opportunities/{id}/matches":
+    get:
+      tags:
+        - "Volunteer operations"
+      summary: "Members whose expertise matches an opportunity (consenting members only)"
+      operationId: "VolunteerOpportunityMatches"
+      parameters:
+        -
+          name: "id"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
   /api/v1/admin/membership/audit:
     get:
       tags:
@@ -7653,6 +7927,8 @@ tags:
   -
     name: "Committees"
   -
+    name: "Volunteer operations"
+  -
     name: "Donations"
   -
     name: "Finance"
@@ -8568,6 +8844,39 @@ components:
             - "null"
             - "string"
           format: "date"
+    HourRequest:
+      required:
+        - "projectSlug"
+        - "eventSlug"
+        - "date"
+        - "minutes"
+        - "description"
+      type: "object"
+      properties:
+        projectSlug:
+          type:
+            - "null"
+            - "string"
+        eventSlug:
+          type:
+            - "null"
+            - "string"
+        date:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        minutes:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+        description:
+          type:
+            - "null"
+            - "string"
     NoteRequest:
       required:
         - "text"
@@ -8590,6 +8899,59 @@ components:
           type: "boolean"
         membership:
           type: "boolean"
+    OpportunityRequest:
+      required:
+        - "slug"
+        - "titleEn"
+        - "titleBn"
+        - "descriptionEn"
+        - "descriptionBn"
+        - "projectSlug"
+        - "skills"
+        - "isOpen"
+        - "shifts"
+      type: "object"
+      properties:
+        slug:
+          type:
+            - "null"
+            - "string"
+        titleEn:
+          type:
+            - "null"
+            - "string"
+        titleBn:
+          type:
+            - "null"
+            - "string"
+        descriptionEn:
+          type:
+            - "null"
+            - "string"
+        descriptionBn:
+          type:
+            - "null"
+            - "string"
+        projectSlug:
+          type:
+            - "null"
+            - "string"
+        skills:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
+        isOpen:
+          type:
+            - "null"
+            - "boolean"
+        shifts:
+          type:
+            - "null"
+            - "array"
+          items:
+            $ref: "#/components/schemas/ShiftInput"
     ProfilePatch:
       required:
         - "changes"
@@ -8601,6 +8963,39 @@ components:
             - "object"
           additionalProperties:
             type: "string"
+    ReasonBody:
+      required:
+        - "reason"
+      type: "object"
+      properties:
+        reason:
+          type:
+            - "null"
+            - "string"
+    ShiftInput:
+      required:
+        - "startsAt"
+        - "endsAt"
+        - "slots"
+      type: "object"
+      properties:
+        startsAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        endsAt:
+          type:
+            - "null"
+            - "string"
+          format: "date-time"
+        slots:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
     StatusChangeRequest:
       required:
         - "to"
