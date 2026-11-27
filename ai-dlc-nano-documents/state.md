@@ -1,14 +1,14 @@
 # AI-DLC Nano State
 - Active work item: none
 - Phase: —
-- Branch: feat/issue-79-ical-feeds
-- Base SHA: 8429827
-- Next step: user reviews the stacked branches #73..#79 (nothing pushed); then push/PRs on request
+- Branch: feat/issue-87-engagement-inbox
+- Base SHA: stacked
+- Next step: user reviews stacked branches #80..#87 (nothing pushed); then push/PRs on request
 - Paused work items:  (newest first)
-  - work-items/089-issue-79-ical-feeds (DONE, local, stacked)
-  - work-items/088-issue-78-task-assignment (DONE, local, stacked)
-  - work-items/087-issue-77-programme-delivery (DONE, local, stacked)
-  - work-items/086-issue-76-volunteer-hours (DONE, local, stacked)
-  - work-items/085-issue-75-event-attendance (DONE, local, stacked)
+  - work-items/097-issue-87-engagement-inbox (DONE, local, stacked)
+  - work-items/096-issue-86-social-og (DONE, local, stacked)
+  - work-items/095-issue-85-testimonials-consent (DONE, local, stacked)
+  - work-items/094-issue-84-press-coverage (DONE, local, stacked)
+  - work-items/093-issue-83-notification-channels (DONE, local, stacked)
 - Uncommitted code: no
 - Last updated: 2026-11-27 by claude

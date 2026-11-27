@@ -25,7 +25,8 @@ public sealed partial class PrivacyPublicRouteTests(PrivacyStack stack, ITestOut
         ["token"] = "invalid-preview-token",
         ["kind"] = "photo",
         ["reference"] = "PRIVACY-SCAN-MISSING",
-        ["gateway"] = "stripe"
+        ["gateway"] = "stripe",
+        ["code"] = "PRIVACYSCANMISSING"
     };
     private static readonly Dictionary<string, string> QueryValues = new(StringComparer.Ordinal)
     {
@@ -40,7 +41,18 @@ public sealed partial class PrivacyPublicRouteTests(PrivacyStack stack, ITestOut
         ["chapter"] = "",
         ["page"] = "1",
         ["result"] = "cancel",
-        ["token"] = "invalid-download-token"
+        ["token"] = "invalid-download-token",
+        ["from"] = "2026-01-01T00:00:00Z",
+        ["to"] = "2026-02-01T00:00:00Z",
+        ["since"] = "2026-01-01T00:00:00Z",
+        ["featured"] = "",
+        ["coverageLanguage"] = "",
+        ["tier"] = "",
+        ["unreadOnly"] = "",
+        ["endpoint"] = "https://push.example.org/privacy-scan-missing",
+        ["assignee"] = "",
+        ["category"] = "",
+        ["slaState"] = ""
     };
 
     [Fact]

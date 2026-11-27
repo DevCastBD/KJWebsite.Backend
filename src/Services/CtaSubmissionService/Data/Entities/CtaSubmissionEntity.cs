@@ -20,4 +20,17 @@ public sealed class CtaSubmissionEntity
     public string? DateOfBirth { get; set; }
     public string? CityOfResidence { get; set; }
     public string? CountryOfResidence { get; set; }
+
+    /// <summary>The kind of enquiry (`membership`, `volunteering`, `partnership`, `donation`, `media`, `general`): what routing and SLA targets key on.</summary>
+    public string Category { get; set; } = "general";
+
+    /// <summary>`new`, `in_progress`, `responded` or `closed`.</summary>
+    public string Status { get; set; } = "new";
+
+    /// <summary>`urgent`, `high` or `normal`.</summary>
+    public string Priority { get; set; } = "normal";
+
+    public string? AssignedTo { get; set; }
+    public DateTimeOffset? FirstResponseAt { get; set; }
+    public DateTimeOffset? ClosedAt { get; set; }
 }

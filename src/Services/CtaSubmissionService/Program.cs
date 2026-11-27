@@ -1,6 +1,7 @@
 using CtaSubmissionService.Contracts;
 using CtaSubmissionService.Data;
 using CtaSubmissionService.Data.Entities;
+using CtaSubmissionService.Engagement;
 using KJWebsite.BuildingBlocks;
 using KJWebsite.BuildingBlocks.Idempotency;
 using KJWebsite.BuildingBlocks.Security;
@@ -45,6 +46,8 @@ builder.Services.AddDbContext<CtaDbContext>((services, options) =>
 });
 
 builder.Services.AddKjJwtAuthentication();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<EngagementStore>();
 builder.Services.AddKjIdempotency(builder.Configuration);
 
 var app = builder.Build();
@@ -96,7 +99,7 @@ app.UseAuthorization();
 app.UseKjIdempotency();
 
 var allowedForms = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "registration", "contact", "footer-contact", "project-involved" };
-var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "join", "donate", "partnership", "get-involved", "contact" };
+var allowedTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "join", "donate", "partnership", "get-involved", "contact", "media" };
 var allowedLangs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "bn", "en" };
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmissionService" }))
@@ -105,7 +108,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "CtaSubmis
    .WithTags("System")
 .AllowAnonymous();
 
-app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db) =>
+app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmissionRequest payload, CtaDbContext db, EngagementStore engagement) =>
 {
     if (!allowedForms.Contains(payload.FormName) || !allowedTypes.Contains(payload.CtaType) || !allowedLangs.Contains(payload.Language))
     {
@@ -122,7 +125,7 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
     var createdAt = DateTimeOffset.UtcNow;
     var awaitingProfile = LegacyAwaitingUserMapper.TryMap(payload.Values);
 
-    db.Submissions.Add(new CtaSubmissionEntity
+    var submission = new CtaSubmissionEntity
     {
         Id = id,
         FormName = payload.FormName,
@@ -141,7 +144,9 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
         DateOfBirth = awaitingProfile?.DateOfBirth,
         CityOfResidence = awaitingProfile?.CityOfResidence,
         CountryOfResidence = awaitingProfile?.CountryOfResidence
-    });
+    };
+    await engagement.RouteAsync(submission);
+    db.Submissions.Add(submission);
 
     await db.SaveChangesAsync();
 
@@ -149,10 +154,12 @@ app.MapPost("/api/v1/cta/submissions", async (HttpContext context, CtaSubmission
 })
 .WithName("CreateCtaSubmission")
 .WithSummary("Submit a CTA form")
-.WithDescription("Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact.")
+.WithDescription("Accepts a call-to-action form submission. Valid formName values: registration, contact, footer-contact, project-involved. Valid ctaType values: join, donate, partnership, get-involved, contact, media. The enquiry lands in the engagement inbox, routed by the configured rules.")
 .WithTags("CTA")
 .RequireIdempotency()
 .AllowAnonymous();
+
+app.MapEngagement();
 
 app.Run();
 
