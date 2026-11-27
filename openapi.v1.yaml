@@ -449,6 +449,121 @@ paths:
       responses:
         "200":
           description: "OK"
+  "/api/v1/admin/content/press/{slug}/coverage":
+    get:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Get a press item\u0027s coverage details"
+      description: "The \u0060ETag\u0060 is the item\u0027s version: send it back as \u0060If-Match\u0060 on PUT."
+      operationId: "GetAdminPressCoverage"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Set a press item\u0027s outlet, date, links, permission and featured flag"
+      description: "\u0060externalUrl\u0060 (https) is always safe. A hosted \u0060clippingUrl\u0060 is only accepted when \u0060reproductionPermission\u0060 is \u0060granted\u0060 (with a \u0060permissionNote\u0060 saying who agreed); the permission values are unknown, linked-only, pending and granted. The public API never shows a clipping unless it is granted."
+      operationId: "PutPressCoverage"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PressCoverageRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/admin/content/press-featured-order:
+    put:
+      tags:
+        - "Admin \u2014 Content"
+      summary: "Set the homepage press strip: the listed items, in order"
+      description: "Every listed item becomes featured at its position; every other item is un-featured. Takes effect on the next public read, with no deployment."
+      operationId: "PutPressFeaturedOrder"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PressOrderRequest"
+        required: true
+      responses:
+        "200":
+          description: "OK"
+  "/api/v1/content/press/{slug}/coverage":
+    get:
+      tags:
+        - "Content \u2014 Press"
+      summary: "Coverage details of a published press item"
+      operationId: "GetPressCoverage"
+      parameters:
+        -
+          name: "slug"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "OK"
+  /api/v1/content/press-coverage:
+    get:
+      tags:
+        - "Content \u2014 Press"
+      summary: "Published press coverage, newest first, or the featured strip in order"
+      description: "\u0060featured=true\u0060 returns the homepage strip in the editors\u0027 order. \u0060coverageLanguage\u0060 filters by the language of the coverage itself (bn or en); \u0060lang\u0060 picks the language of the headline and excerpt."
+      operationId: "ListPressCoverage"
+      parameters:
+        -
+          name: "lang"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "featured"
+          in: "query"
+          schema:
+            type: "boolean"
+        -
+          name: "coverageLanguage"
+          in: "query"
+          schema:
+            type: "string"
+        -
+          name: "limit"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+        -
+          name: "offset"
+          in: "query"
+          schema:
+            pattern: "^-?(?:0|[1-9]\\d*)$"
+            type:
+              - "integer"
+              - "string"
+            format: "int32"
+      responses:
+        "200":
+          description: "OK"
   "/api/v1/content/events/{slug}/registrations":
     post:
       tags:
@@ -9137,6 +9252,8 @@ tags:
   -
     name: "Content \u2014 Event"
   -
+    name: "Content \u2014 Press"
+  -
     name: "Content \u2014 Event registration"
   -
     name: "Admin \u2014 Event registration"
@@ -9166,8 +9283,6 @@ tags:
     name: "Content \u2014 Testimonial"
   -
     name: "Content \u2014 Partner"
-  -
-    name: "Content \u2014 Press"
   -
     name: "Admin \u2014 Editorial workflow"
   -
@@ -9988,6 +10103,75 @@ components:
           type:
             - "null"
             - "string"
+    PressCoverageRequest:
+      required:
+        - "outlet"
+        - "outletLogoUrl"
+        - "publishedOn"
+        - "externalUrl"
+        - "clippingUrl"
+        - "language"
+        - "reproductionPermission"
+        - "permissionNote"
+        - "featured"
+        - "featuredOrder"
+      type: "object"
+      properties:
+        outlet:
+          type:
+            - "null"
+            - "string"
+        outletLogoUrl:
+          type:
+            - "null"
+            - "string"
+        publishedOn:
+          type:
+            - "null"
+            - "string"
+          format: "date"
+        externalUrl:
+          type:
+            - "null"
+            - "string"
+        clippingUrl:
+          type:
+            - "null"
+            - "string"
+        language:
+          type:
+            - "null"
+            - "string"
+        reproductionPermission:
+          type:
+            - "null"
+            - "string"
+        permissionNote:
+          type:
+            - "null"
+            - "string"
+        featured:
+          type:
+            - "null"
+            - "boolean"
+        featuredOrder:
+          pattern: "^-?(?:0|[1-9]\\d*)$"
+          type:
+            - "null"
+            - "integer"
+            - "string"
+          format: "int32"
+    PressOrderRequest:
+      required:
+        - "slugs"
+      type: "object"
+      properties:
+        slugs:
+          type:
+            - "null"
+            - "array"
+          items:
+            type: "string"
     PreviewTokenRequest:
       required:
         - "ttlMinutes"

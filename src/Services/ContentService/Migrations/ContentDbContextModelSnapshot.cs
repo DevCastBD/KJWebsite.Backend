@@ -1319,6 +1319,63 @@ namespace ContentService.Migrations
                     b.ToTable("tag_names", "content");
                 });
 
+            modelBuilder.Entity("ContentService.Data.PressCoverageEntity", b =>
+                {
+                    b.Property<string>("ContentItemId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ClippingUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ExternalUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("Featured")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("FeaturedOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Outlet")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OutletLogoUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("PermissionNote")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly>("PublishedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ReproductionPermission")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("ContentItemId");
+
+                    b.HasIndex("Featured", "FeaturedOrder");
+
+                    b.ToTable("press_coverage", "content");
+                });
+
             modelBuilder.Entity("KJWebsite.BuildingBlocks.Auditing.AuditEvent", b =>
                 {
                     b.Property<long>("Id")
@@ -1532,6 +1589,15 @@ namespace ContentService.Migrations
                     b.HasOne("ContentService.Data.Entities.TagEntity", null)
                         .WithMany("Names")
                         .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ContentService.Data.PressCoverageEntity", b =>
+                {
+                    b.HasOne("ContentService.Data.Entities.ContentItemEntity", null)
+                        .WithOne()
+                        .HasForeignKey("ContentService.Data.PressCoverageEntity", "ContentItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
