@@ -14,7 +14,11 @@ public sealed record EventScheduleRequest(
     string? Recurrence,
     List<string>? Exceptions,
     string? SeriesKey,
-    List<EventSessionInput>? Sessions);
+    List<EventSessionInput>? Sessions,
+    bool? RegistrationOpen = null,
+    bool? RequiresApproval = null,
+    long? PriceMinor = null,
+    string? Currency = null);
 
 public sealed record EventSessionView(int Position, int StartOffsetMinutes, int DurationMinutes, Dictionary<string, string> Titles, string Speaker, string Room);
 
@@ -36,7 +40,11 @@ public sealed record EventScheduleView(
     string SeriesKey,
     bool IsRecurring,
     List<EventSessionView> Sessions,
-    List<EventOccurrence> Occurrences);
+    List<EventOccurrence> Occurrences,
+    bool RegistrationOpen = true,
+    bool RequiresApproval = false,
+    long? PriceMinor = null,
+    string Currency = "");
 
 /// <summary>One occurrence in the public cross-event listing.</summary>
 public sealed record EventOccurrenceView(string Slug, string Title, string Summary, string ImageUrl, string TimeZoneId, DateTimeOffset StartUtc, DateTimeOffset EndUtc, string StartLocal, string EndLocal, string OnlineUrl, int? Capacity);

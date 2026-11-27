@@ -64,6 +64,10 @@ public sealed class EventStore(ContentDbContext db, TimeProvider time, RevisionS
         detail.RecurrenceRule = request.Recurrence?.Trim() ?? string.Empty;
         detail.ExceptionsJson = JsonSerializer.Serialize((request.Exceptions ?? []).Select(NormalizeException).Distinct().Order().ToList(), Json);
         detail.SeriesKey = request.SeriesKey?.Trim() ?? string.Empty;
+        detail.RegistrationOpen = request.RegistrationOpen ?? detail.RegistrationOpen;
+        detail.RequiresApproval = request.RequiresApproval ?? detail.RequiresApproval;
+        detail.PriceMinor = request.PriceMinor is > 0 ? request.PriceMinor : null;
+        detail.Currency = detail.PriceMinor is null ? string.Empty : request.Currency!.Trim().ToUpperInvariant();
 
         var existing = await db.Set<EventSessionEntity>().Where(s => s.ContentItemId == item.Id).ToListAsync();
         db.Set<EventSessionEntity>().RemoveRange(existing);
@@ -145,7 +149,7 @@ public sealed class EventStore(ContentDbContext db, TimeProvider time, RevisionS
     private static EventScheduleView ToView(string slug, EventEntity e, TimeZoneInfo zone, List<EventSessionView> sessions) => new(
         slug, e.TimeZoneId, e.StartUtc, e.EndUtc, Local(e.StartUtc, zone), Local(e.EndUtc, zone), e.OnlineUrl, e.Latitude, e.Longitude,
         e.Capacity, e.RecurrenceRule, JsonSerializer.Deserialize<List<string>>(e.ExceptionsJson, Json) ?? [], e.SeriesKey,
-        e.RecurrenceRule.Length > 0, sessions, [.. Expand(e, zone)]);
+        e.RecurrenceRule.Length > 0, sessions, [.. Expand(e, zone)], e.RegistrationOpen, e.RequiresApproval, e.PriceMinor, e.Currency);
 
     /// <summary>The occurrences of an event: the single start, or the rule expanded in the event's zone minus its exceptions.</summary>
     public static IEnumerable<EventOccurrence> Expand(EventEntity e, TimeZoneInfo zone)
@@ -203,6 +207,11 @@ public sealed class EventStore(ContentDbContext db, TimeProvider time, RevisionS
         if (request.Capacity is < 0)
         {
             return (null, "Capacity cannot be negative.");
+        }
+
+        if (request.PriceMinor is < 0 || request.PriceMinor is > 0 && (request.Currency is null || request.Currency.Trim().Length != 3 || !request.Currency.Trim().All(char.IsAsciiLetter)))
+        {
+            return (null, "A paid event needs a positive PriceMinor and a 3-letter Currency.");
         }
 
         if (request.Latitude is { } lat && (lat is < -90 or > 90) || request.Longitude is { } lon && (lon is < -180 or > 180) || (request.Latitude is null) != (request.Longitude is null))
