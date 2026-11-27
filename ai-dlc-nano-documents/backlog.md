@@ -95,3 +95,4 @@
 - [2026-11-27] volunteering — erasure/anonymisation of volunteer hours and signups when a member is erased (found: 086-issue-76)
 - [2026-11-27] programme — erase signatory/address data on request and add retention for MoUs (found: 087-issue-77)
 - [2026-11-27] tasks — timer for POST /tasks/reminders/run and email delivery of member_notifications (found: 088-issue-78)
+- [2026-11-27] finance+membership — donor/member merge not built: decisions only (found: 103-issue-93-data-quality)

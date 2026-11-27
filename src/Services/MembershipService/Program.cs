@@ -1,5 +1,6 @@
 using KJWebsite.BuildingBlocks.Aggregates;
 using MembershipService.Aggregates;
+using MembershipService.DataQuality;
 using System.Security.Cryptography;
 using System.Text;
 using KJWebsite.BuildingBlocks;
@@ -63,6 +64,7 @@ builder.Services.AddDbContext<MembershipDbContext>((services, options) =>
 });
 builder.Services.AddKjAuditing("membership", audit => audit
     .Audit<CampaignEntity>()
+    .Audit<MemberDuplicateDecisionEntity>()
     // Personal data stays out of the log; only the review state is recorded.
     .Audit<ApplicationEntity>(
         nameof(ApplicationEntity.FirstName), nameof(ApplicationEntity.LastName), nameof(ApplicationEntity.Gender),
@@ -94,6 +96,7 @@ if (builder.Configuration["DataProtection:KeysPath"] is { Length: > 0 } keysPath
 }
 
 builder.Services.AddSingleton<IFieldProtector, DataProtectionFieldProtector>();
+builder.Services.AddScoped<MemberDataQuality>();
 builder.Services.AddSingleton<ContactHasher>();
 builder.Services.AddSingleton<IAttachmentStore, LocalDiskAttachmentStore>();
 builder.Services.AddHostedService<RetentionWorker>();
@@ -286,6 +289,7 @@ app.MapPublicCommittees();
 app.MapVolunteering();
 app.MapProgramme();
 app.MapTasks();
+app.MapMemberDataQuality();
 app.MapAggregateFeed(MembershipAggregates.Source, ctx => MembershipAggregates.CollectAsync(ctx.RequestServices.GetRequiredService<MembershipDbContext>(), ctx.RequestServices.GetRequiredService<TimeProvider>(), ctx.RequestAborted));
 app.MapAuditLog<MembershipDbContext>("/api/v1/admin/membership/audit", "Membership");
 

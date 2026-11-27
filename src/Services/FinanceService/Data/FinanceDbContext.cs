@@ -42,6 +42,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<FiscalYearCloseEntity> FiscalYearCloses => Set<FiscalYearCloseEntity>();
     public DbSet<BudgetEntity> Budgets => Set<BudgetEntity>();
     public DbSet<BudgetAlertEntity> BudgetAlerts => Set<BudgetAlertEntity>();
+    public DbSet<DonationAnomalyEntity> DonationAnomalies => Set<DonationAnomalyEntity>();
+    public DbSet<DonorDuplicateDecisionEntity> DonorDuplicateDecisions => Set<DonorDuplicateDecisionEntity>();
     public DbSet<BankAccountEntity> BankAccounts => Set<BankAccountEntity>();
     public DbSet<BankStatementEntity> BankStatements => Set<BankStatementEntity>();
     public DbSet<BankLineEntity> BankLines => Set<BankLineEntity>();
@@ -598,6 +600,34 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             {
                 entity.ToTable(t => t.HasCheckConstraint("ck_budgets_positive", "\"PlannedAmount\" > 0"));
             }
+        });
+
+        modelBuilder.Entity<DonationAnomalyEntity>(entity =>
+        {
+            entity.ToTable("donation_anomalies");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.DedupeKey).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Rule).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.DonationId).HasMaxLength(40);
+            entity.Property(x => x.Detail).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.ReviewedBy).HasMaxLength(64);
+            entity.Property(x => x.ReviewNote).HasMaxLength(500);
+            entity.HasIndex(x => x.DedupeKey).IsUnique();
+            entity.HasIndex(x => new { x.Status, x.DetectedAt });
+        });
+
+        modelBuilder.Entity<DonorDuplicateDecisionEntity>(entity =>
+        {
+            entity.ToTable("donor_duplicate_decisions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(40);
+            entity.Property(x => x.PairKey).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Decision).HasMaxLength(24).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.DecidedBy).HasMaxLength(64);
+            entity.HasIndex(x => x.PairKey).IsUnique();
         });
 
         modelBuilder.Entity<BudgetAlertEntity>(entity =>
