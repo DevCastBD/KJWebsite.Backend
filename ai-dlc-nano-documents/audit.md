@@ -468,3 +468,4 @@
 - 2026-11-27T09:00Z [claude] 095-issue-85-testimonials-consent DONE: feat/issue-85-testimonials-consent stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
 - 2026-11-27T09:00Z [claude] 096-issue-86-social-og DONE: feat/issue-86-social-og stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
 - 2026-11-27T09:00Z [claude] 097-issue-87-engagement-inbox DONE: feat/issue-87-engagement-inbox stacked on previous; targeted tests pass; full suite skipped at user request; nothing pushed
+- 2026-11-27T12:00Z [claude] 098-issue-94-warehouse-lite DONE: feat/issue-94-warehouse-lite off origin/develop; targeted tests pass; full suite skipped at user request; issues 88,89,90,92,93,94 assigned to FHShubho (user asked); order 94 first as #88 depends on it

@@ -52,6 +52,7 @@ flowchart LR
 | `ApiGateway` | 7000 | Routes content, CTA, auth, and admin-content APIs | None | Public entry point |
 | `ContentService` | 7001 | Public projects/news and admin mutations | PostgreSQL (`content` database/schema) | Internal |
 | `CtaSubmissionService` | 7002 | CTA and registration-form submissions | PostgreSQL (`cta` database/schema) | Internal |
+| `ReportingService` | 7007 | Aggregate tables, dashboards, metrics, reports (see docs/REPORTING_WAREHOUSE.md) | PostgreSQL (`reporting` database/schema) | Internal |
 | `AuthIdentityService` | 7003 | Identity, JWT login/refresh/logout, sessions, and profile | PostgreSQL (`auth` database/schema) | Internal |
 
 ## Getting started

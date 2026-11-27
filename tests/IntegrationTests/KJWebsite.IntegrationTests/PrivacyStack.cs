@@ -22,6 +22,7 @@ public class PrivacyStack : IAsyncLifetime
     public MembershipApiFactory Membership { get; } = new();
     public FinanceApiFactory Finance { get; } = new();
     public SponsorshipApiFactory Sponsorship { get; } = new();
+    public ReportingApiFactory Reporting { get; } = new();
     public GatewayApiFactory GatewayFactory { get; } = new();
     public HttpClient Gateway { get; private set; } = null!;
     protected virtual bool SessionCheckEnabled => false;
@@ -29,7 +30,7 @@ public class PrivacyStack : IAsyncLifetime
     public Task InitializeAsync()
     {
         Content.SessionCheckEnabled = Cta.SessionCheckEnabled = Membership.SessionCheckEnabled =
-            Finance.SessionCheckEnabled = Sponsorship.SessionCheckEnabled = SessionCheckEnabled;
+            Finance.SessionCheckEnabled = Sponsorship.SessionCheckEnabled = Reporting.SessionCheckEnabled = SessionCheckEnabled;
         if (SessionCheckEnabled)
         {
             Content.SessionCheckHandler = SessionHandler();
@@ -37,6 +38,7 @@ public class PrivacyStack : IAsyncLifetime
             Membership.SessionCheckHandler = SessionHandler();
             Finance.SessionCheckHandler = SessionHandler();
             Sponsorship.SessionCheckHandler = SessionHandler();
+            Reporting.SessionCheckHandler = SessionHandler();
         }
         Membership.AuthHandler = Lazy(() => Auth.Server.CreateHandler());
         Finance.AuthHandler = Lazy(() => Auth.Server.CreateHandler());
@@ -50,10 +52,11 @@ public class PrivacyStack : IAsyncLifetime
             ["cta"] = () => Count("cta", () => Cta.Server.CreateHandler()),
             ["membership"] = () => Count("membership", () => Membership.Server.CreateHandler()),
             ["finance"] = () => Count("finance", () => Finance.Server.CreateHandler()),
-            ["sponsorship"] = () => Count("sponsorship", () => Sponsorship.Server.CreateHandler())
+            ["sponsorship"] = () => Count("sponsorship", () => Sponsorship.Server.CreateHandler()),
+            ["reporting"] = () => Count("reporting", () => Reporting.Server.CreateHandler())
         };
         // Start all six hosts once. Handlers still resolve the receiving server only on first use.
-        _ = Auth.Server; _ = Content.Server; _ = Cta.Server; _ = Membership.Server; _ = Finance.Server; _ = Sponsorship.Server;
+        _ = Auth.Server; _ = Content.Server; _ = Cta.Server; _ = Membership.Server; _ = Finance.Server; _ = Sponsorship.Server; _ = Reporting.Server;
         Gateway = GatewayFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, HandleCookies = false });
         return Task.CompletedTask;
     }
@@ -104,7 +107,7 @@ public class PrivacyStack : IAsyncLifetime
         var failures = new List<Exception>();
         void Clean(Action action) { try { action(); } catch (Exception exception) { failures.Add(exception); } }
         Clean(() => Gateway?.Dispose());
-        foreach (var factory in new IDisposable[] { GatewayFactory, Sponsorship, Finance, Membership, Cta, Content, Auth }) Clean(factory.Dispose);
+        foreach (var factory in new IDisposable[] { GatewayFactory, Reporting, Sponsorship, Finance, Membership, Cta, Content, Auth }) Clean(factory.Dispose);
         foreach (var handler in _handlers) Clean(handler.Dispose);
         Clean(() => { if (Directory.Exists(_proofs)) Directory.Delete(_proofs, true); });
         if (failures.Count != 0) throw new AggregateException(failures);

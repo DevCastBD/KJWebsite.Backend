@@ -1,3 +1,5 @@
+using ContentService.Aggregates;
+using KJWebsite.BuildingBlocks.Aggregates;
 using System.Security.Cryptography;
 using System.Text.Json;
 using ContentService;
@@ -388,6 +390,7 @@ app.MapGenericContent();
 app.MapSettings();
 app.MapBackOffice();
 app.MapPublicExtras();
+app.MapAggregateFeed(ContentAggregates.Source, ctx => ContentAggregates.CollectAsync(ctx.RequestServices.GetRequiredService<ContentDbContext>(), ctx.RequestServices.GetRequiredService<TimeProvider>(), ctx.RequestAborted));
 app.MapAuditLog<ContentDbContext>("/api/v1/admin/content/audit", "Content");
 
 app.Run();

@@ -146,7 +146,7 @@ public sealed class GatewayCorsTests : IDisposable
     [Fact]
     public async Task ETagFromAProxiedServiceReachesAListedOriginReadableByScripts()
     {
-        var clusters = new[] { "auth", "content", "cta", "membership", "finance", "sponsorship" };
+        var clusters = new[] { "auth", "content", "cta", "membership", "finance", "sponsorship", "reporting" };
         using var factory = new GatewayApiFactory { ClusterHandlers = clusters.ToDictionary(c => c, c => (Func<HttpMessageHandler>)(() => new EtagHandler())) }
             .WithWebHostBuilder(builder =>
             {

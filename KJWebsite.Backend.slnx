@@ -11,6 +11,7 @@
     <Project Path="src/Services/MembershipService/MembershipService.csproj" />
     <Project Path="src/Services/SponsorshipService/SponsorshipService.csproj" />
     <Project Path="src/Services/CtaSubmissionService/CtaSubmissionService.csproj" />
+    <Project Path="src/Services/ReportingService/ReportingService.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/OpenApiExporter/OpenApiExporter.csproj" />
